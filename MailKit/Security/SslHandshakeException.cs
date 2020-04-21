@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,14 @@
 //
 
 using System;
+using System.Text;
+using System.Net.Security;
+using System.Collections.Generic;
 #if SERIALIZABLE
+using System.Security;
 using System.Runtime.Serialization;
 #endif
+using System.Security.Cryptography.X509Certificates;
 
 namespace MailKit.Security
 {
@@ -71,14 +76,17 @@ namespace MailKit.Security
 		/// </exception>
 		protected SslHandshakeException (SerializationInfo info, StreamingContext context) : base (info, context)
 		{
+			var base64 = info.GetString ("ServerCertificate");
+
+			if (base64 != null)
+				ServerCertificate = new X509Certificate2 (Convert.FromBase64String (base64));
+
+			base64 = info.GetString ("RootCertificateAuthority");
+
+			if (base64 != null)
+				RootCertificateAuthority = new X509Certificate2 (Convert.FromBase64String (base64));
 		}
 #endif
-
-		//static string AddHelpLinkSuggestion (string message)
-		//{
-		//	return string.Format ("{0}{1}See {2} for possible solutions to this problem.",
-		//	                      message, Environment.NewLine, SslHandshakeHelpLink);
-		//}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="SslHandshakeException"/> class.
@@ -116,10 +124,65 @@ namespace MailKit.Security
 			HelpLink = SslHandshakeHelpLink;
 		}
 
-		internal static SslHandshakeException Create (Exception ex, bool starttls)
+		/// <summary>
+		/// Get the server's SSL certificate.
+		/// </summary>
+		/// <remarks>
+		/// Gets the server's SSL certificate, if it is available.
+		/// </remarks>
+		/// <value>The server's SSL certificate.</value>
+		public X509Certificate ServerCertificate {
+			get; private set;
+		}
+
+		/// <summary>
+		/// Get the certificate for the Root Certificate Authority.
+		/// </summary>
+		/// <remarks>
+		/// Gets the certificate for the Root Certificate Authority, if it is available.
+		/// </remarks>
+		/// <value>The Root Certificate Authority certificate.</value>
+		public X509Certificate RootCertificateAuthority {
+			get; private set;
+		}
+
+#if SERIALIZABLE
+		/// <summary>
+		/// When overridden in a derived class, sets the <see cref="System.Runtime.Serialization.SerializationInfo"/>
+		/// with information about the exception.
+		/// </summary>
+		/// <remarks>
+		/// Sets the <see cref="System.Runtime.Serialization.SerializationInfo"/>
+		/// with information about the exception.
+		/// </remarks>
+		/// <param name="info">The serialization info.</param>
+		/// <param name="context">The streaming context.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <paramref name="info"/> is <c>null</c>.
+		/// </exception>
+		[SecurityCritical]
+		public override void GetObjectData (SerializationInfo info, StreamingContext context)
 		{
-			var message = DefaultMessage + Environment.NewLine + Environment.NewLine;
+			base.GetObjectData (info, context);
+
+			if (ServerCertificate != null)
+				info.AddValue ("ServerCertificate", Convert.ToBase64String (ServerCertificate.GetRawCertData ()));
+			else
+				info.AddValue ("ServerCertificate", null, typeof (string));
+
+			if (RootCertificateAuthority != null)
+				info.AddValue ("RootCertificateAuthority", Convert.ToBase64String (RootCertificateAuthority.GetRawCertData ()));
+			else
+				info.AddValue ("RootCertificateAuthority", null, typeof (string));
+		}
+#endif
+
+		internal static SslHandshakeException Create (MailService client, Exception ex, bool starttls)
+		{
+			var message = new StringBuilder (DefaultMessage);
 			var aggregate = ex as AggregateException;
+			X509Certificate certificate = null;
+			X509Certificate root = null;
 
 			if (aggregate != null) {
 				aggregate = aggregate.Flatten ();
@@ -130,21 +193,113 @@ namespace MailKit.Security
 					ex = aggregate;
 			}
 
-			message += "This usually means that the SSL certificate presented by the server is not trusted by the system for one or more of" + Environment.NewLine;
-			message += "the following reasons:" + Environment.NewLine;
-			message += Environment.NewLine;
-			message += "1. The server is using a self-signed certificate which cannot be verified." + Environment.NewLine;
-			message += "2. The local system is missing a Root or Intermediate certificate needed to verify the server's certificate." + Environment.NewLine;
-			message += "3. A Certificate Authority CRL server for one or more of the certificates in the chain is temporarily unavailable." + Environment.NewLine;
-			message += "4. The certificate presented by the server is expired or invalid." + Environment.NewLine;
-			message += Environment.NewLine;
-			if (!starttls)
-				message += "Another possibility is that you are trying to connect to a port which does not support SSL/TLS." + Environment.NewLine + Environment.NewLine;
-			message += "It is also possible that the set of SSL/TLS protocols supported by the client and server do not match." + Environment.NewLine;
-			message += Environment.NewLine;
-			message += "See " + SslHandshakeHelpLink + " for possible solutions." + Environment.NewLine;
+			message.AppendLine ();
+			message.AppendLine ();
 
-			return new SslHandshakeException (message, ex);
+			var validationInfo = client?.SslCertificateValidationInfo;
+			if (validationInfo != null) {
+				client.SslCertificateValidationInfo = null;
+
+				int rootIndex = validationInfo.ChainElements.Count - 1;
+				if (rootIndex > 0)
+					root = validationInfo.ChainElements[rootIndex].Certificate;
+				certificate = validationInfo.Certificate;
+
+				if ((validationInfo.SslPolicyErrors & SslPolicyErrors.RemoteCertificateNotAvailable) != 0) {
+					message.AppendLine ("The SSL certificate for the server was not available.");
+				} else if ((validationInfo.SslPolicyErrors & SslPolicyErrors.RemoteCertificateNameMismatch) != 0) {
+					message.AppendLine ("The host name did not match the name given in the server's SSL certificate.");
+				} else {
+					message.AppendLine ("The server's SSL certificate could not be validated for the following reasons:");
+
+					bool haveReason = false;
+
+					for (int chainIndex = 0; chainIndex < validationInfo.ChainElements.Count; chainIndex++) {
+						var element = validationInfo.ChainElements[chainIndex];
+
+						if (element.ChainElementStatus.Length == 0)
+							continue;
+
+						if (chainIndex == 0) {
+							message.AppendLine ("\u2022 The server certificate has the following errors:");
+						} else if (chainIndex == rootIndex) {
+							message.AppendLine ("\u2022 The root certificate has the following errors:");
+						} else {
+							message.AppendLine ("\u2022 An intermediate certificate has the following errors:");
+						}
+
+						foreach (var status in element.ChainElementStatus)
+							message.AppendFormat ("  \u2022 {0}{1}", status.StatusInformation, Environment.NewLine);
+
+						haveReason = true;
+					}
+
+					// Note: Because Mono does not include any elements in the chain (at least on macOS), we need
+					// to find the inner-most exception and append its Message.
+					if (!haveReason) {
+						var innerException = ex.InnerException;
+
+						while (innerException.InnerException != null)
+							innerException = innerException.InnerException;
+
+						message.AppendLine ("\u2022 " + innerException.Message);
+					}
+				}
+			} else {
+				message.AppendLine ("This usually means that the SSL certificate presented by the server is not trusted by the system for one or more of");
+				message.AppendLine ("the following reasons:");
+				message.AppendLine ();
+				message.AppendLine ("1. The server is using a self-signed certificate which cannot be verified.");
+				message.AppendLine ("2. The local system is missing a Root or Intermediate certificate needed to verify the server's certificate.");
+				message.AppendLine ("3. A Certificate Authority CRL server for one or more of the certificates in the chain is temporarily unavailable.");
+				message.AppendLine ("4. The certificate presented by the server is expired or invalid.");
+				message.AppendLine ();
+				if (!starttls) {
+					message.AppendLine ("Another possibility is that you are trying to connect to a port which does not support SSL/TLS.");
+					message.AppendLine ();
+				}
+				message.AppendLine ("It is also possible that the set of SSL/TLS protocols supported by the client and server do not match.");
+				message.AppendLine ();
+				message.AppendLine ("See " + SslHandshakeHelpLink + " for possible solutions.");
+			}
+
+			return new SslHandshakeException (message.ToString (), ex) { ServerCertificate = certificate, RootCertificateAuthority = root };
+		}
+	}
+
+	class SslChainElement
+	{
+		public readonly X509Certificate Certificate;
+		public readonly X509ChainStatus[] ChainElementStatus;
+		public readonly string Information;
+
+		public SslChainElement (X509ChainElement element)
+		{
+			Certificate = new X509Certificate2 (element.Certificate.RawData);
+			ChainElementStatus = element.ChainElementStatus;
+			Information = element.Information;
+		}
+	}
+
+	class SslCertificateValidationInfo
+	{
+		public readonly List<SslChainElement> ChainElements;
+		public readonly X509ChainStatus[] ChainStatus;
+		public readonly SslPolicyErrors SslPolicyErrors;
+		public readonly X509Certificate Certificate;
+		public readonly string Host;
+
+		public SslCertificateValidationInfo (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		{
+			Certificate = new X509Certificate2 (certificate.Export (X509ContentType.Cert));
+			ChainElements = new List<SslChainElement> ();
+			SslPolicyErrors = sslPolicyErrors;
+			ChainStatus = chain.ChainStatus;
+			Host = sender as string;
+
+			// Note: we need to copy the ChainElements because the chain will be destroyed
+			foreach (var element in chain.ChainElements)
+				ChainElements.Add (new SslChainElement (element));
 		}
 	}
 }

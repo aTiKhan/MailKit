@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,11 +42,16 @@ namespace MailKit {
 	/// </remarks>
 	public static class MessageThreader
 	{
-		class ThreadableNode : IMessageSummary
+		internal class ThreadableNode : IMessageSummary
 		{
 			public readonly List<ThreadableNode> Children = new List<ThreadableNode> ();
 			public IMessageSummary Message;
 			public ThreadableNode Parent;
+
+			public ThreadableNode (IMessageSummary message)
+			{
+				Message = message;
+			}
 
 			public bool HasParent {
 				get { return Parent != null; }
@@ -55,6 +60,8 @@ namespace MailKit {
 			public bool HasChildren {
 				get { return Children.Count > 0; }
 			}
+
+			public IMailFolder Folder => null;
 
 			public MessageSummaryItems Fields {
 				get { return MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope | MessageSummaryItems.ModSeq | MessageSummaryItems.Size; }
@@ -115,6 +122,9 @@ namespace MailKit {
 				get { return Message != null ? Message.References : Children[0].References; }
 			}
 
+			public string EmailId => null;
+
+			[Obsolete]
 			public string Id => null;
 
 			public string ThreadId => null;
@@ -161,8 +171,7 @@ namespace MailKit {
 
 				if (node == null) {
 					// create a new ThreadContainer for this message and add it to ids
-					node = new ThreadableNode ();
-					node.Message = message;
+					node = new ThreadableNode (message);
 					ids.Add (id, node);
 				}
 
@@ -172,7 +181,7 @@ namespace MailKit {
 
 					if (!ids.TryGetValue (reference, out referenced)) {
 						// create a dummy container for the referenced message
-						referenced = new ThreadableNode ();
+						referenced = new ThreadableNode (null);
 						ids.Add (reference, referenced);
 					}
 
@@ -207,7 +216,7 @@ namespace MailKit {
 
 		static ThreadableNode CreateRoot (IDictionary<string, ThreadableNode> ids)
 		{
-			var root = new ThreadableNode ();
+			var root = new ThreadableNode (null);
 
 			foreach (var message in ids.Values) {
 				if (message.Parent == null)
@@ -315,8 +324,7 @@ namespace MailKit {
 					var dummy = match;
 
 					// clone the message already in the subject table
-					match = new ThreadableNode ();
-					match.Message = dummy.Message;
+					match = new ThreadableNode (dummy.Message);
 					match.Children.AddRange (dummy.Children);
 
 					// empty out the old match node (aka the new dummy node)
@@ -336,12 +344,8 @@ namespace MailKit {
 
 			for (int i = 0; i < root.Children.Count; i++) {
 				var message = root.Children[i].Message;
-				UniqueId? uid = null;
+				var thread = new MessageThread (message);
 
-				if (message != null)
-					uid = message.UniqueId;
-
-				var thread = new MessageThread (uid);
 				GetThreads (root.Children[i], thread.Children, orderBy);
 				threads.Add (thread);
 			}
@@ -364,16 +368,15 @@ namespace MailKit {
 		static IList<MessageThread> ThreadBySubject (IEnumerable<IMessageSummary> messages, IList<OrderBy> orderBy)
 		{
 			var threads = new List<MessageThread> ();
-			var root = new ThreadableNode ();
+			var root = new ThreadableNode (null);
 
 			foreach (var message in messages) {
 				if (message.Envelope == null)
 					throw new ArgumentException ("One or more messages is missing information needed for threading.", nameof (messages));
 
-				var container = new ThreadableNode ();
-				container.Message = message;
+				var node = new ThreadableNode (message);
 
-				root.Children.Add (container);
+				root.Children.Add (node);
 			}
 
 			GroupBySubject (root);

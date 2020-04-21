@@ -109,11 +109,47 @@ using (var client = new SmtpClient ()) {
 }
 ```
 
-Most likely you'll want to instead compare the certificate's [Thumbprint](https://msdn.microsoft.com/en-us/library/system.security.cryptography.x509certificates.x509certificate2.thumbprint(v=vs.110).aspx)
-property to a known value that you have verified at a prior date.
+A better solution might be to compare the certificate's common name, issuer, serial number, and fingerprint
+to known values to make sure that the certificate can be trusted. Take the following code snippet as an
+example of how to do this:
 
-You could also use this callback to prompt the user (much like you have probably seen web browsers do)
-as to whether or not the certificate should be trusted.
+```csharp
+bool MyServerCertificateValidationCallback (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+{
+    if (sslPolicyErrors == SslPolicyErrors.None)
+        return true;
+
+    // Note: The following code casts to an X509Certificate2 because it's easier to get the
+    // values for comparison, but it's possible to get them from an X509Certificate as well.
+    if (certificate is X509Certificate2 certificate2) {
+        var cn = certificate2.GetNameInfo (X509NameType.SimpleName, false);
+        var fingerprint = certificate2.Thumbprint;
+        var serial = certificate2.SerialNumber;
+        var issuer = certificate2.Issuer;
+
+        return cn == "imap.gmail.com" && issuer == "CN=GTS CA 1O1, O=Google Trust Services, C=US" &&
+	    serial == "0096768414983DDE9C0800000000320A68" &&
+	    fingerprint == "A53BA86C137D828618540738014F7C3D52F699C7";
+    }
+
+    return false;
+}
+```
+
+The downside of the above example is that it requires hard-coding known values for "trusted" mail server
+certificates which can quickly become unweildy to deal with if your program is meant to be used with
+a wide range of mail servers.
+
+The best approach would be to prompt the user with a dialog explaining that the certificate is
+not trusted for the reasons enumerated by the
+[SslPolicyErrors](https://docs.microsoft.com/en-us/dotnet/api/system.net.security.sslpolicyerrors?view=netframework-4.8)
+argument as well as potentially the errors provided in the
+[X509Chain](https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chain?view=netframework-4.8).
+If the user wishes to accept the risks of trusting the certificate, your program could then `return true`.
+
+For more details on writing a custom SSL certificate validation callback, it may be worth checking out the
+[SslCertificateValidation.cs](https://github.com/jstedfast/MailKit/blob/master/Documentation/Examples/SslCertificateValidation.cs)
+example.
 
 #### 3. A Certificate Authority CRL server for one or more of the certificates in the chain is temporarily unavailable.
 
@@ -208,7 +244,6 @@ code snippet to connect to GMail via IMAP:
 
 ```csharp
 using (var client = new ImapClient ()) {
-    client.ServerCertificateValidationCallback = (s,c,ch,e) => true;
     client.Connect ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
     client.Authenticate ("user@gmail.com", "password");
     
@@ -227,32 +262,40 @@ The first thing you need to do is follow
 [Google's instructions](https://developers.google.com/accounts/docs/OAuth2) 
 for obtaining OAuth 2.0 credentials for your application.
 
+(Or, as an alternative set of step-by-step instructions, you can follow the directions that I have
+written in [GMailOAuth2.md](https://github.com/jstedfast/MailKit/blob/master/GMailOAuth2.md).)
+
 Once you've done that, the easiest way to obtain an access token is to use Google's 
 [Google.Apis.Auth](https://www.nuget.org/packages/Google.Apis.Auth/) library:
 
 ```csharp
-var certificate = new X509Certificate2 (@"C:\path\to\certificate.p12", "password", X509KeyStorageFlags.Exportable);
-var credential = new ServiceAccountCredential (new ServiceAccountCredential
-    .Initializer ("your-developer-id@developer.gserviceaccount.com") {
-    // Note: other scopes can be found here: https://developers.google.com/gmail/api/auth/scopes
-    Scopes = new[] { "https://mail.google.com/" },
-    User = "user@gmail.com" // this is the user's GMail account email address
-}.FromCertificate (certificate));
+const string GMailAccount = "username@gmail.com";
 
-bool result = await credential.RequestAccessTokenAsync (CancellationToken.None);
+var clientSecrets = new ClientSecrets {
+	ClientId = "XXX.apps.googleusercontent.com",
+	ClientSecret = "XXX"
+};
 
-// Note: result will be true if the access token was received successfully
-```
+var codeFlow = new GoogleAuthorizationCodeFlow (new GoogleAuthorizationCodeFlow.Initializer {
+	// Cache tokens in ~/.local/share/google-filedatastore/CredentialCacheFolder on Linux/Mac
+	DataStore = new FileDataStore ("CredentialCacheFolder", false),
+	Scopes = new [] { "https://mail.google.com/" },
+	ClientSecrets = clientSecrets
+});
 
-Now that you have an access token (`credential.Token.AccessToken`), you can use it with MailKit by using the
-token to create a new OAuth2 SASL mechanism context and then authenticating with it:
+var codeReceiver = new LocalServerCodeReceiver ();
+var authCode = new AuthorizationCodeInstalledApp (codeFlow, codeReceiver);
+var credential = await authCode.AuthorizeAsync (GMailAccount, CancellationToken.None);
 
-```csharp
+if (authCode.ShouldRequestAuthorizationCode (credential.Token))
+	await credential.RefreshTokenAsync (CancellationToken.None);
+
+var oauth2 = new SaslMechanismOAuth2 (credential.UserId, credential.Token.AccessToken);
+
 using (var client = new ImapClient ()) {
-    client.Connect ("imap.gmail.com", 993, true);
-
-    var oauth2 = new SaslMechanismOAuth2 ("user@gmail.com", credential.Token.AccessToken);
-    client.Authenticate (oauth2);
+	await client.ConnectAsync ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
+	await client.AuthenticateAsync (oauth2);
+	await client.DisconnectAsync (true);
 }
 ```
 

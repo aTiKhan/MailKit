@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1022,7 +1022,7 @@ namespace MailKit.Net.Smtp {
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
-					throw SslHandshakeException.Create (ex, false);
+					throw SslHandshakeException.Create (this, ex, false);
 				}
 
 				secure = true;
@@ -1076,7 +1076,7 @@ namespace MailKit.Net.Smtp {
 #endif
 						}
 					} catch (Exception ex) {
-						throw SslHandshakeException.Create (ex, true);
+						throw SslHandshakeException.Create (this, ex, true);
 					}
 
 					secure = true;
@@ -1217,7 +1217,7 @@ namespace MailKit.Net.Smtp {
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
-					throw SslHandshakeException.Create (ex, false);
+					throw SslHandshakeException.Create (this, ex, false);
 				}
 
 				network = ssl;
@@ -1271,7 +1271,7 @@ namespace MailKit.Net.Smtp {
 #endif
 						}
 					} catch (Exception ex) {
-						throw SslHandshakeException.Create (ex, true);
+						throw SslHandshakeException.Create (this, ex, true);
 					}
 
 					secure = true;
@@ -1482,7 +1482,14 @@ namespace MailKit.Net.Smtp {
 			if (!IsConnected)
 				throw new ServiceNotConnectedException ("The SmtpClient is not connected.");
 
-			var response = await SendCommandAsync ("NOOP", doAsync, cancellationToken).ConfigureAwait (false);
+			SmtpResponse response;
+
+			try {
+				response = await SendCommandAsync ("NOOP", doAsync, cancellationToken).ConfigureAwait (false);
+			} catch {
+				Disconnect (uri.Host, uri.Port, GetSecureSocketOptions (uri), false);
+				throw;
+			}
 
 			if (response.StatusCode != SmtpStatusCode.Ok)
 				throw new SmtpCommandException (SmtpErrorCode.UnexpectedStatusCode, response.StatusCode, response.Response);

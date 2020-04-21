@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,6 +63,17 @@ namespace UnitTests {
 			Assert.AreEqual (2, query.Count, "Unexpected number of queries.");
 			Assert.AreEqual ("false", query["starttls"], "Unexpected value for 'starttls'.");
 			Assert.AreEqual ("false", query["compress"], "Unexpected value for 'compress'.");
+		}
+
+		[Test]
+		public void TestQueryWithoutValue ()
+		{
+			var uri = new Uri ("imap://imap.gmail.com/?starttls=false&compress");
+			var query = uri.ParsedQuery ();
+
+			Assert.AreEqual (2, query.Count, "Unexpected number of queries.");
+			Assert.AreEqual ("false", query["starttls"], "Unexpected value for 'starttls'.");
+			Assert.AreEqual (string.Empty, query["compress"], "Unexpected value for 'compress'.");
 		}
 	}
 }

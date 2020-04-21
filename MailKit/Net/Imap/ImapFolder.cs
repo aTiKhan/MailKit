@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -102,6 +102,22 @@ namespace MailKit.Net.Imap {
 		/// <value>The encoded name.</value>
 		internal string EncodedName {
 			get; set;
+		}
+
+		/// <summary>
+		/// Get whether or not the folder supports quick resynchronization.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets whether or not the folder supports quick resynchronization.</para>
+		/// <para>If quick resynchronization is supported by the folder, then
+		/// <see cref="Open(FolderAccess, uint, ulong, IList{UniqueId}, CancellationToken)"/> and
+		/// <see cref="OpenAsync(FolderAccess, uint, ulong, IList{UniqueId}, CancellationToken)"/> can
+		/// be used, otherwise they will throw <see cref="System.NotSupportedException"/> and should
+		/// not be used.</para>
+		/// </remarks>
+		/// <value><c>true</c> if supports quick resynchronization; otherwise, <c>false</c>.</value>
+		public override bool SupportsQuickResync {
+			get { return Engine.QResyncEnabled; }
 		}
 
 		/// <summary>
@@ -336,12 +352,12 @@ namespace MailKit.Net.Imap {
 			if ((Engine.Capabilities & ImapCapabilities.QuickResync) == 0)
 				throw new NotSupportedException ("The IMAP server does not support the QRESYNC extension.");
 
-			if (!Engine.QResyncEnabled)
+			if (!SupportsQuickResync)
 				throw new InvalidOperationException ("The QRESYNC extension has not been enabled.");
 
 			string qresync;
 
-			if ((Engine.Capabilities & ImapCapabilities.Annotate) != 0)
+			if ((Engine.Capabilities & ImapCapabilities.Annotate) != 0 && Engine.QuirksMode != ImapQuirksMode.SunMicrosystems)
 				qresync = string.Format (CultureInfo.InvariantCulture, "(ANNOTATE QRESYNC ({0} {1}", uidValidity, highestModSeq);
 			else
 				qresync = string.Format (CultureInfo.InvariantCulture, "(QRESYNC ({0} {1}", uidValidity, highestModSeq);
@@ -481,7 +497,7 @@ namespace MailKit.Net.Imap {
 
 			if ((Engine.Capabilities & ImapCapabilities.CondStore) != 0)
 				@params += "CONDSTORE";
-			if ((Engine.Capabilities & ImapCapabilities.Annotate) != 0)
+			if ((Engine.Capabilities & ImapCapabilities.Annotate) != 0 && Engine.QuirksMode != ImapQuirksMode.SunMicrosystems)
 				@params += " ANNOTATE";
 
 			if (@params.Length > 0)
@@ -5350,7 +5366,7 @@ namespace MailKit.Net.Imap {
 
 		internal async Task OnFetchAsync (ImapEngine engine, int index, bool doAsync, CancellationToken cancellationToken)
 		{
-			var message = new MessageSummary (index);
+			var message = new MessageSummary (this, index);
 			UniqueId? uid = null;
 
 			await FetchSummaryItemsAsync (engine, message, doAsync, cancellationToken).ConfigureAwait (false);

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -775,7 +775,6 @@ namespace MailKit.Net.Imap {
 		public async Task<bool> StepAsync (bool doAsync)
 		{
 			var supportsLiteralPlus = (Engine.Capabilities & ImapCapabilities.LiteralPlus) != 0;
-			int timeout = Engine.Stream.CanTimeout ? Engine.Stream.ReadTimeout : -1;
 			var idle = UserData as ImapIdleContext;
 			var result = ImapCommandResponse.None;
 			ImapToken token;
@@ -822,8 +821,12 @@ namespace MailKit.Net.Imap {
 			// now we need to read the response...
 			do {
 				if (Engine.State == ImapEngineState.Idle) {
-					if (Engine.Stream.CanTimeout)
-						Engine.Stream.ReadTimeout = -1;
+					int timeout = Timeout.Infinite;
+
+					if (Engine.Stream.CanTimeout) {
+						timeout = Engine.Stream.ReadTimeout;
+						Engine.Stream.ReadTimeout = Timeout.Infinite;
+					}
 
 					try {
 						token = await Engine.ReadTokenAsync (doAsync, CancellationToken).ConfigureAwait (false);

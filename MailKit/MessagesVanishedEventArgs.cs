@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,10 +66,10 @@ namespace MailKit {
 		}
 
 		/// <summary>
-		/// Gets whether the messages vanished inthe past as opposed to just now.
+		/// Gets whether the messages vanished in the past as opposed to just now.
 		/// </summary>
 		/// <remarks>
-		/// Gets whether the messages vanished inthe past as opposed to just now.
+		/// Gets whether the messages vanished in the past as opposed to just now.
 		/// </remarks>
 		/// <value><c>true</c> if the messages vanished earlier; otherwise, <c>false</c>.</value>
 		public bool Earlier {

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -96,6 +96,8 @@ namespace MailKit.Net.Imap {
 		Exchange,
 		GMail,
 		ProtonMail,
+		SmarterMail,
+		SunMicrosystems,
 		UW,
 		Yahoo,
 		Yandex
@@ -697,6 +699,8 @@ namespace MailKit.Net.Imap {
 					QuirksMode = ImapQuirksMode.GMail;
 				else if (text.Contains (" IMAP4rev1 2007f.") || text.Contains (" Panda IMAP "))
 					QuirksMode = ImapQuirksMode.UW;
+				else if (text.Contains ("SmarterMail"))
+					QuirksMode = ImapQuirksMode.SmarterMail;
 				else if (text.Contains ("Yandex IMAP4rev1 "))
 					QuirksMode = ImapQuirksMode.Yandex;
 
@@ -1169,6 +1173,7 @@ namespace MailKit.Net.Imap {
 					case "XLIST":                 Capabilities |= ImapCapabilities.XList; break;
 					case "X-GM-EXT-1":            Capabilities |= ImapCapabilities.GMailExt1; QuirksMode = ImapQuirksMode.GMail; break;
 					case "XSTOP":                 QuirksMode = ImapQuirksMode.ProtonMail; break;
+					case "X-SUN-IMAP":            QuirksMode = ImapQuirksMode.SunMicrosystems; break;
 					case "XYMHIGHESTMODSEQ":      QuirksMode = ImapQuirksMode.Yahoo; break;
 					}
 				}
@@ -1462,7 +1467,14 @@ namespace MailKit.Net.Imap {
 			case ImapResponseCodeType.UidNext:
 				var next = (UidNextResponseCode) code;
 
-				next.Uid = new UniqueId (ParseNumber (token, true, GenericResponseCodeSyntaxErrorFormat, "UIDNEXT", token));
+				// Note: we allow '0' here because some servers have been known to send "* OK [UIDNEXT 0]".
+				// The *probable* explanation here is that the folder has never been opened and/or no messages
+				// have ever been delivered (yet) to that mailbox and so the UIDNEXT has not (yet) been
+				// initialized.
+				//
+				// See https://github.com/jstedfast/MailKit/issues/1010 for an example.
+				var uid = ParseNumber (token, false, GenericResponseCodeSyntaxErrorFormat, "UIDNEXT", token);
+				next.Uid = uid > 0 ? new UniqueId (uid) : UniqueId.Invalid;
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				break;
 			case ImapResponseCodeType.UidValidity:
@@ -1470,7 +1482,7 @@ namespace MailKit.Net.Imap {
 
 				// Note: we allow '0' here because some servers have been known to send "* OK [UIDVALIDITY 0]".
 				// The *probable* explanation here is that the folder has never been opened and/or no messages
-				// have ever been delivered (yet) to that mailbox and so the UNIDVALIDITY has not (yet) been
+				// have ever been delivered (yet) to that mailbox and so the UIDVALIDITY has not (yet) been
 				// initialized.
 				//
 				// See https://github.com/jstedfast/MailKit/issues/150 for an example.

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -735,6 +735,21 @@ namespace MailKit.Net.Imap {
 		{
 			var token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
+			// Note: this is a work-around for broken IMAP servers that return negative integer values for things
+			// like octet counts and line counts.
+			if (token.Type == ImapTokenType.Atom) {
+				var atom = (string) token.Value;
+
+				if (atom.Length > 0 && atom[0] == '-') {
+					if (!int.TryParse (atom, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var negative))
+						throw ImapEngine.UnexpectedToken (format, token);
+
+					// Note: since Octets & Lines are the only 2 values this method is responsible for parsing,
+					// it seems the only sane value to return would be 0.
+					return 0;
+				}
+			}
+
 			return ImapEngine.ParseNumber (token, false, format, token);
 		}
 
@@ -1291,6 +1306,11 @@ namespace MailKit.Net.Imap {
 				if (token.Type == ImapTokenType.CloseParen)
 					break;
 
+				// Note: As seen in https://github.com/jstedfast/MailKit/issues/991, it seems that SmarterMail IMAP
+				// servers will sometimes include a NIL address token within the address list. Just ignore it.
+				if (token.Type == ImapTokenType.Nil)
+					continue;
+
 				ImapEngine.AssertToken (token, ImapTokenType.OpenParen, format, token);
 
 				var address = await ParseEnvelopeAddressAsync (engine, format, doAsync, cancellationToken).ConfigureAwait (false);
@@ -1384,8 +1404,13 @@ namespace MailKit.Net.Imap {
 				// See https://github.com/jstedfast/MailKit/issues/669
 				token = await engine.PeekTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				if (token.Type != ImapTokenType.CloseParen) {
-					if ((nstring = await ReadNStringTokenAsync (engine, format, false, doAsync, cancellationToken).ConfigureAwait (false)) != null)
-						envelope.MessageId = MimeUtils.ParseMessageId (nstring);
+					if ((nstring = await ReadNStringTokenAsync (engine, format, false, doAsync, cancellationToken).ConfigureAwait (false)) != null) {
+						try {
+							envelope.MessageId = MimeUtils.ParseMessageId (nstring);
+						} catch {
+							envelope.MessageId = nstring;
+						}
+					}
 				}
 			}
 
@@ -1401,8 +1426,8 @@ namespace MailKit.Net.Imap {
 		/// </summary>
 		/// <returns>The flags list string.</returns>
 		/// <param name="flags">The message flags.</param>
-		/// <param name="numUserFlags">The number of user-defined flags.</param>
-		public static string FormatFlagsList (MessageFlags flags, int numUserFlags)
+		/// <param name="numKeywords">The number of keywords.</param>
+		public static string FormatFlagsList (MessageFlags flags, int numKeywords)
 		{
 			var builder = new StringBuilder ();
 
@@ -1419,7 +1444,7 @@ namespace MailKit.Net.Imap {
 			if ((flags & MessageFlags.Seen) != 0)
 				builder.Append ("\\Seen ");
 
-			for (int i = 0; i < numUserFlags; i++)
+			for (int i = 0; i < numKeywords; i++)
 				builder.Append ("%S ");
 
 			if (builder.Length > 1)
@@ -1575,7 +1600,7 @@ namespace MailKit.Net.Imap {
 			uint uid;
 
 			if (token.Type == ImapTokenType.OpenParen) {
-				thread = new MessageThread (UniqueId.Invalid);
+				thread = new MessageThread ((UniqueId?) null /*UniqueId.Invalid*/);
 
 				do {
 					child = await ParseThreadAsync (engine, uidValidity, doAsync, cancellationToken).ConfigureAwait (false);

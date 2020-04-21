@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -486,6 +486,15 @@ namespace UnitTests.Net.Imap {
 			}
 		}
 
+		static readonly string[] PreviewTextValues = {
+			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…",
+			"Don’t miss our celebrity guest Monday evening",
+			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…",
+			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…",
+			"Don’t miss our celebrity guest Monday evening",
+			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…"
+		};
+
 		[Test]
 		public void TestFetchPreviewText ()
 		{
@@ -498,12 +507,18 @@ namespace UnitTests.Net.Imap {
 			commands.Add (new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"));
 			commands.Add (new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"));
 			commands.Add (new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"));
-			commands.Add (new ImapReplayCommand ("A00000007 UID FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext7.txt"));
-			commands.Add (new ImapReplayCommand ("A00000008 UID FETCH 1:3 (BODY.PEEK[TEXT]<0.256>)\r\n", "gmail.fetch-previewtext8.txt"));
-			commands.Add (new ImapReplayCommand ("A00000009 FETCH 1:3 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext9.txt"));
-			commands.Add (new ImapReplayCommand ("A00000010 UID FETCH 1:3 (BODY.PEEK[TEXT]<0.256>)\r\n", "gmail.fetch-previewtext10.txt"));
-			commands.Add (new ImapReplayCommand ("A00000011 FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext11.txt"));
-			commands.Add (new ImapReplayCommand ("A00000012 UID FETCH 1:3 (BODY.PEEK[TEXT]<0.256>)\r\n", "gmail.fetch-previewtext12.txt"));
+			commands.Add (new ImapReplayCommand ("A00000007 UID FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"));
+			commands.Add (new ImapReplayCommand ("A00000008 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000009 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"));
+			commands.Add (new ImapReplayCommand ("A00000010 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000011 FETCH 1:6 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"));
+			commands.Add (new ImapReplayCommand ("A00000012 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000013 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"));
+			commands.Add (new ImapReplayCommand ("A00000014 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000015 FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"));
+			commands.Add (new ImapReplayCommand ("A00000016 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000017 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"));
+			commands.Add (new ImapReplayCommand ("A00000018 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"));
 
 			using (var client = new ImapClient ()) {
 				try {
@@ -534,14 +549,17 @@ namespace UnitTests.Net.Imap {
 
 				inbox.Open (FolderAccess.ReadOnly);
 
-				foreach (var message in inbox.Fetch (UniqueIdRange.All, MessageSummaryItems.Full | MessageSummaryItems.PreviewText))
-					Assert.AreEqual ("This is the message body.\r\n", message.PreviewText);
+				var messages = inbox.Fetch (UniqueIdRange.All, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				for (int i = 0; i < messages.Count; i++)
+					Assert.AreEqual (PreviewTextValues[i], messages[i].PreviewText);
 
-				foreach (var message in inbox.Fetch (new int [] { 0, 1, 2 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText))
-					Assert.AreEqual ("This is the message body.\r\n", message.PreviewText);
+				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				for (int i = 0; i < messages.Count; i++)
+					Assert.AreEqual (PreviewTextValues[i], messages[i].PreviewText);
 
-				foreach (var message in inbox.Fetch (0, -1, MessageSummaryItems.Full | MessageSummaryItems.PreviewText))
-					Assert.AreEqual ("This is the message body.\r\n", message.PreviewText);
+				messages = inbox.Fetch (0, -1, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				for (int i = 0; i < messages.Count; i++)
+					Assert.AreEqual (PreviewTextValues[i], messages[i].PreviewText);
 
 				client.Disconnect (false);
 			}
@@ -559,12 +577,18 @@ namespace UnitTests.Net.Imap {
 			commands.Add (new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"));
 			commands.Add (new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"));
 			commands.Add (new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"));
-			commands.Add (new ImapReplayCommand ("A00000007 UID FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext7.txt"));
-			commands.Add (new ImapReplayCommand ("A00000008 UID FETCH 1:3 (BODY.PEEK[TEXT]<0.256>)\r\n", "gmail.fetch-previewtext8.txt"));
-			commands.Add (new ImapReplayCommand ("A00000009 FETCH 1:3 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext9.txt"));
-			commands.Add (new ImapReplayCommand ("A00000010 UID FETCH 1:3 (BODY.PEEK[TEXT]<0.256>)\r\n", "gmail.fetch-previewtext10.txt"));
-			commands.Add (new ImapReplayCommand ("A00000011 FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext11.txt"));
-			commands.Add (new ImapReplayCommand ("A00000012 UID FETCH 1:3 (BODY.PEEK[TEXT]<0.256>)\r\n", "gmail.fetch-previewtext12.txt"));
+			commands.Add (new ImapReplayCommand ("A00000007 UID FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"));
+			commands.Add (new ImapReplayCommand ("A00000008 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000009 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"));
+			commands.Add (new ImapReplayCommand ("A00000010 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000011 FETCH 1:6 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"));
+			commands.Add (new ImapReplayCommand ("A00000012 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000013 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"));
+			commands.Add (new ImapReplayCommand ("A00000014 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000015 FETCH 1:* (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"));
+			commands.Add (new ImapReplayCommand ("A00000016 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"));
+			commands.Add (new ImapReplayCommand ("A00000017 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"));
+			commands.Add (new ImapReplayCommand ("A00000018 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"));
 
 			using (var client = new ImapClient ()) {
 				try {
@@ -595,14 +619,17 @@ namespace UnitTests.Net.Imap {
 
 				await inbox.OpenAsync (FolderAccess.ReadOnly);
 
-				foreach (var message in await inbox.FetchAsync (UniqueIdRange.All, MessageSummaryItems.Full | MessageSummaryItems.PreviewText))
-					Assert.AreEqual ("This is the message body.\r\n", message.PreviewText);
+				var messages = await inbox.FetchAsync (UniqueIdRange.All, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				for (int i = 0; i < messages.Count; i++)
+					Assert.AreEqual (PreviewTextValues[i], messages[i].PreviewText);
 
-				foreach (var message in await inbox.FetchAsync (new int [] { 0, 1, 2 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText))
-					Assert.AreEqual ("This is the message body.\r\n", message.PreviewText);
+				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				for (int i = 0; i < messages.Count; i++)
+					Assert.AreEqual (PreviewTextValues[i], messages[i].PreviewText);
 
-				foreach (var message in await inbox.FetchAsync (0, -1, MessageSummaryItems.Full | MessageSummaryItems.PreviewText))
-					Assert.AreEqual ("This is the message body.\r\n", message.PreviewText);
+				messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				for (int i = 0; i < messages.Count; i++)
+					Assert.AreEqual (PreviewTextValues[i], messages[i].PreviewText);
 
 				await client.DisconnectAsync (false);
 			}
@@ -917,19 +944,19 @@ namespace UnitTests.Net.Imap {
 				var inbox = client.Inbox;
 				inbox.Open (FolderAccess.ReadOnly);
 
-				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Id | MessageSummaryItems.ThreadId);
+				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.EmailId | MessageSummaryItems.ThreadId);
 				Assert.AreEqual (4, messages.Count, "Count");
 				Assert.AreEqual (1, messages[0].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M6d99ac3275bb4e", messages[0].Id, "EmailId");
+				Assert.AreEqual ("M6d99ac3275bb4e", messages[0].EmailId, "EmailId");
 				Assert.AreEqual ("T64b478a75b7ea9", messages[0].ThreadId, "ThreadId");
 				Assert.AreEqual (2, messages[1].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M288836c4c7a762", messages[1].Id, "EmailId");
+				Assert.AreEqual ("M288836c4c7a762", messages[1].EmailId, "EmailId");
 				Assert.AreEqual ("T64b478a75b7ea9", messages[1].ThreadId, "ThreadId");
 				Assert.AreEqual (3, messages[2].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M5fdc09b49ea703", messages[2].Id, "EmailId");
+				Assert.AreEqual ("M5fdc09b49ea703", messages[2].EmailId, "EmailId");
 				Assert.AreEqual ("T11863d02dd95b5", messages[2].ThreadId, "ThreadId");
 				Assert.AreEqual (4, messages[3].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M4fdc09b49ea629", messages[3].Id, "EmailId");
+				Assert.AreEqual ("M4fdc09b49ea629", messages[3].EmailId, "EmailId");
 				Assert.AreEqual (null, messages[3].ThreadId, "ThreadId");
 
 				client.Disconnect (true);
@@ -959,19 +986,19 @@ namespace UnitTests.Net.Imap {
 				var inbox = client.Inbox;
 				await inbox.OpenAsync (FolderAccess.ReadOnly);
 
-				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Id | MessageSummaryItems.ThreadId);
+				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.EmailId | MessageSummaryItems.ThreadId);
 				Assert.AreEqual (4, messages.Count, "Count");
 				Assert.AreEqual (1, messages[0].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M6d99ac3275bb4e", messages[0].Id, "EmailId");
+				Assert.AreEqual ("M6d99ac3275bb4e", messages[0].EmailId, "EmailId");
 				Assert.AreEqual ("T64b478a75b7ea9", messages[0].ThreadId, "ThreadId");
 				Assert.AreEqual (2, messages[1].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M288836c4c7a762", messages[1].Id, "EmailId");
+				Assert.AreEqual ("M288836c4c7a762", messages[1].EmailId, "EmailId");
 				Assert.AreEqual ("T64b478a75b7ea9", messages[1].ThreadId, "ThreadId");
 				Assert.AreEqual (3, messages[2].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M5fdc09b49ea703", messages[2].Id, "EmailId");
+				Assert.AreEqual ("M5fdc09b49ea703", messages[2].EmailId, "EmailId");
 				Assert.AreEqual ("T11863d02dd95b5", messages[2].ThreadId, "ThreadId");
 				Assert.AreEqual (4, messages[3].UniqueId.Id, "UniqueId");
-				Assert.AreEqual ("M4fdc09b49ea629", messages[3].Id, "EmailId");
+				Assert.AreEqual ("M4fdc09b49ea629", messages[3].EmailId, "EmailId");
 				Assert.AreEqual (null, messages[3].ThreadId, "ThreadId");
 
 				await client.DisconnectAsync (true);
@@ -1127,42 +1154,6 @@ namespace UnitTests.Net.Imap {
 				Assert.AreEqual ("0", annotations[0].Properties[AnnotationAttribute.SharedSize], "annotations[0] size.shared");
 
 				client.Disconnect (false);
-			}
-		}
-
-		[Test]
-		public void TestGetPreviewText ()
-		{
-			var encoding = Encoding.GetEncoding ("big5");
-
-			using (var memory = new MemoryStream ()) {
-				var bytes = encoding.GetBytes ("日月星辰");
-				string preview;
-
-				memory.Write (bytes, 0, bytes.Length);
-
-				preview = ImapFolder.GetPreviewText (memory, "x-unknown");
-				Assert.AreEqual ("¤é¤ë¬P¨°", preview, "chinese text x-unknown -> UTF-8 -> iso-8859-1");
-			}
-
-			using (var memory = new MemoryStream ()) {
-				var bytes = Encoding.UTF8.GetBytes ("日月星辰");
-				string preview;
-
-				memory.Write (bytes, 0, bytes.Length);
-
-				preview = ImapFolder.GetPreviewText (memory, "x-unknown");
-				Assert.AreEqual ("日月星辰", preview, "x-unknown -> UTF-8");
-			}
-
-			using (var memory = new MemoryStream ()) {
-				var bytes = Encoding.GetEncoding (28591).GetBytes ("L'encyclopédie libre");
-				string preview;
-
-				memory.Write (bytes, 0, bytes.Length);
-
-				preview = ImapFolder.GetPreviewText (memory, "x-unknown");
-				Assert.AreEqual ("L'encyclopédie libre", preview, "french text x-unknown -> UTF-8 -> iso-8859-1");
 			}
 		}
 

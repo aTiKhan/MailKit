@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -515,6 +515,36 @@ namespace UnitTests.Net.Imap {
 						Assert.AreEqual ("\"Example From\" <@route1,@route2:from@example.com>", envelope.From.ToString ());
 						Assert.AreEqual ("\"Example Reply-To\" <reply-to@example.com>", envelope.ReplyTo.ToString ());
 						Assert.AreEqual ("boys: aaron, jeff, zach;, girls: alice, hailey, jenny;", envelope.To.ToString ());
+					}
+				}
+			}
+		}
+
+		// This tests the work-around for issue #991
+		[Test]
+		public void TestParseEnvelopeWithNilAddress ()
+		{
+			const string text = "(\"Thu, 18 Jul 2019 01:29:32 -0300\" \"Xxx xxx xxx xxx..\" (NIL ({123}\r\n_XXXXXXXX_xxxxxx_xxxx_xxx_?= =?iso-8859-1?Q?xxxx_xx_xxxxxxx_xxxxxxxxxx.Xxxxxxxx_xx_xxx=Xxxxxx_xx_xx_Xx?= =?iso-8859-1?Q?s?= NIL \"xxxxxxx\" \"xxxxxxxxxx.xxx\")) (NIL ({123}\r\n_XXXXXXXX_xxxxxx_xxxx_xxx_?= =?iso-8859-1?Q?xxxx_xx_xxxxxxx_xxxxxxxxxx.Xxxxxxxx_xx_xxx=Xxxxxx_xx_xx_Xx?= =?iso-8859-1?Q?s?= NIL \"xxxxxxx\" \"xxxxxxxxxx.xxx\")) ((NIL NIL \"xxxxxxx\" \"xxxxx.xxx.xx\")) ((NIL NIL \"xxxxxxx\" \"xxxxxxx.xxx.xx\")) NIL NIL NIL \"<0A9F01100712011D213C15B6D2B6DA@XXXXXXX-XXXXXXX>\"))\r\n";
+
+			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
+				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						Envelope envelope;
+
+						engine.SetStream (tokenizer);
+
+						try {
+							envelope = ImapUtils.ParseEnvelopeAsync (engine, false, CancellationToken.None).GetAwaiter ().GetResult ();
+						} catch (Exception ex) {
+							Assert.Fail ("Parsing ENVELOPE failed: {0}", ex);
+							return;
+						}
+
+						Assert.AreEqual ("\"_XXXXXXXX_xxxxxx_xxxx_xxx_?= xxxx xx xxxxxxx xxxxxxxxxx.Xxxxxxxx xx xxx=Xxxxxx xx xx Xxs\" <xxxxxxx@xxxxxxxxxx.xxx>", envelope.Sender.ToString ());
+						Assert.AreEqual ("\"_XXXXXXXX_xxxxxx_xxxx_xxx_?= xxxx xx xxxxxxx xxxxxxxxxx.Xxxxxxxx xx xxx=Xxxxxx xx xx Xxs\" <xxxxxxx@xxxxxxxxxx.xxx>", envelope.From.ToString ());
+						Assert.AreEqual ("xxxxxxx@xxxxx.xxx.xx", envelope.ReplyTo.ToString ());
+						Assert.AreEqual ("xxxxxxx@xxxxxxx.xxx.xx", envelope.To.ToString ());
+						Assert.AreEqual ("0A9F01100712011D213C15B6D2B6DA@XXXXXXX-XXXXXXX", envelope.MessageId);
 					}
 				}
 			}
@@ -1342,8 +1372,6 @@ namespace UnitTests.Net.Imap {
 				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
 					using (var engine = new ImapEngine (null)) {
 						BodyPartMultipart multipart;
-						BodyPartBasic msword;
-						BodyPartText plain;
 						BodyPart body;
 
 						engine.SetStream (tokenizer);
@@ -1366,6 +1394,43 @@ namespace UnitTests.Net.Imap {
 						Assert.AreEqual (3, multipart.BodyParts.Count, "BodyParts count does not match.");
 						Assert.AreEqual (1, multipart.ContentLanguage.Length, "Content-Language lengths do not match.");
 						Assert.AreEqual ("inline", multipart.ContentLanguage[0], "Content-Language does not match.");
+					}
+				}
+			}
+		}
+
+		// This tests a work-around for a bug in Exchange that was reported via email.
+		[Test]
+		public void TestParseBodyStructureWithNegativeOctetValue ()
+		{
+			const string text = "(\"multipart\" \"digest\" (\"boundary\" \"ommgDs4vJ6fX2nQAghXj4aUy9wsHMMDb\") NIL NIL \"7BIT\" -1 NIL NIL NIL NIL)\r\n";
+
+			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
+				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						BodyPartBasic basic;
+						BodyPart body;
+
+						engine.SetStream (tokenizer);
+
+						try {
+							body = ImapUtils.ParseBodyAsync (engine, "Unexpected token: {0}", string.Empty, false, CancellationToken.None).GetAwaiter ().GetResult ();
+						} catch (Exception ex) {
+							Assert.Fail ("Parsing BODYSTRUCTURE failed: {0}", ex);
+							return;
+						}
+
+						var token = engine.ReadToken (CancellationToken.None);
+						Assert.AreEqual (ImapTokenType.Eoln, token.Type, "Expected new-line, but got: {0}", token);
+
+						Assert.IsInstanceOf<BodyPartBasic> (body, "Body types did not match.");
+						basic = (BodyPartBasic) body;
+
+						Assert.IsTrue (basic.ContentType.IsMimeType ("multipart", "digest"), "Content-Type did not match.");
+						Assert.AreEqual ("ommgDs4vJ6fX2nQAghXj4aUy9wsHMMDb", basic.ContentType.Parameters["boundary"], "boundary param did not match");
+						Assert.AreEqual ("7BIT", basic.ContentTransferEncoding, "Content-Transfer-Encoding did not match.");
+						Assert.AreEqual (0, basic.Octets, "Octets did not match.");
+						Assert.IsNull (basic.ContentDisposition, "Content-Disposition did not match.");
 					}
 				}
 			}
@@ -1452,7 +1517,8 @@ namespace UnitTests.Net.Imap {
 
 						Assert.AreEqual ((uint) 3, threads[0].UniqueId.Value.Id);
 						Assert.AreEqual ((uint) 1, threads[1].UniqueId.Value.Id);
-						Assert.AreEqual ((uint) 0, threads[2].UniqueId.Value.Id);
+						//Assert.AreEqual ((uint) 0, threads[2].UniqueId.Value.Id);
+						Assert.IsFalse (threads[2].UniqueId.HasValue);
 
 						var branches = threads[2].Children.ToArray ();
 						Assert.AreEqual (3, branches.Length, "Expected 3 children.");
@@ -1485,7 +1551,8 @@ namespace UnitTests.Net.Imap {
 
 						Assert.AreEqual (1, threads.Count, "Expected 1 thread.");
 
-						Assert.AreEqual ((uint) 0, threads[0].UniqueId.Value.Id);
+						//Assert.AreEqual ((uint) 0, threads[0].UniqueId.Value.Id);
+						Assert.IsFalse (threads[0].UniqueId.HasValue);
 
 						var children = threads[0].Children;
 						Assert.AreEqual (2, children.Count, "Expected 2 children.");

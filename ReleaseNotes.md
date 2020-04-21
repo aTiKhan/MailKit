@@ -1,5 +1,66 @@
 # Release Notes
 
+### MailKit 2.6.0 (2020-04-03)
+
+* Properly handle connection drops in SmtpClient.NoOp() and NoOpAsync()
+  methods.
+* Improved default SSL certificate validation logic to be more secure
+  and to recognize the most commonly used mail servers even if their
+  Root CA Certificates are not available on the system.
+* SslHandshakeException's Message has been improved to be based on the
+  errors reported in the ServerCertificateValidationCallback and also
+  now has 2 new X509Certificate properties which represent the
+  ServerCertificate and the RootCertificateAuthority in order to help
+  developers diagnose problems.
+  (issue [#1002](https://github.com/jstedfast/MailKit/issues/1002))
+* Improved the IMAP PreviewText to extract text from HTML bodies.
+  (issue [#1001](https://github.com/jstedfast/MailKit/issues/1001))
+* Renamed MessageSummaryItems.Id to MessageSummaryItems.EmailId to
+  better map to the property name used in the IMAP OBJECTID
+  specification.
+* Updated NetworkStream.ReadAsync() and WriteAsync() mehods to make use of
+  timeouts. (issue [#827](https://github.com/jstedfast/MailKit/issues/827))
+
+### MailKit 2.5.2 (2020-03-14)
+
+* Added work-around for ENVELOPE responses with a NIL address token in an address-list.
+  (issue [#991](https://github.com/jstedfast/MailKit/issues/991))
+
+### MailKit 2.5.1 (2020-02-15)
+
+* Fixed the IMAP ENVELOPE parser to have a more lenient fallback if it fails to be able to
+  parse the Message-Id token value.
+  (issue [#976](https://github.com/jstedfast/MailKit/issues/976))
+* Fixed MailService.DefaultServerCertificateValidationCallback() to compare certificates by
+  their hashes rather than via Object.Equals().
+  (issue [#977](https://github.com/jstedfast/MailKit/issues/977))
+* Added work-around for IMAP servers that send `-1` as a line count or octet count in the
+  BODYSTRUCTURE response.
+
+### MailKit 2.5.0 (2020-01-18)
+
+* Ignore NIL tokens in the body-fld-lang token list.
+  (issue [#953](https://github.com/jstedfast/MailKit/issues/953))
+* Added logic to handle unexpected <CRLF> in untagged FETCH responses.
+  (issue [#954](https://github.com/jstedfast/MailKit/issues/954))
+* Added a way to override SmtpClient's preference for using BDAT vs DATA
+  via a new PreferSendAsBinaryData virtual property.
+* Update SslHandshakeException message to mention the possibility of SSL/TLS
+  version mismatch.
+  (issue [#957](https://github.com/jstedfast/MailKit/issues/957))
+* Fixed ImapFolder.GetStreamsAsync() to use an async callback delegate.
+  (issue [#958](https://github.com/jstedfast/MailKit/issues/958))
+* Added protocol-specific interfaces that inherit from IMailFolder,
+  IMailStore, etc.
+  (issue [#960](https://github.com/jstedfast/MailKit/issues/960))
+* Maintain the STARTTLS capability bit flag after a STARTTLS command.
+* Don't send the optional ANNOTATE parameter to SELECT/EXAMINE for
+  SUN IMAP servers (such as Apple's IMAP servers).
+  (issue [#970](https://github.com/jstedfast/MailKit/issues/970))
+
+Note: Developers using ImapFolder.GetStreamsAsync() will need to update their code as
+this release breaks API/ABI.
+
 ### MailKit 2.4.1 (2019-11-10)
 
 * Don't use PublicSign on non-Windows NT machines when building.

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -3187,8 +3187,7 @@ namespace UnitTests.Net.Imap {
 					Assert.AreEqual ("MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n", text);
 				}
 
-				var custom = new HashSet<string> ();
-				custom.Add ("$MailKit");
+				var custom = new HashSet<string> { "$MailKit" };
 
 				var unchanged1 = destination.AddFlags (uids, destination.HighestModSeq, MessageFlags.Deleted, custom, true);
 				Assert.AreEqual (14, modSeqChanged.Count, "Unexpected number of ModSeqChanged events");

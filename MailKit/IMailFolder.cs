@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -207,11 +207,26 @@ namespace MailKit {
 		/// Get whether or not the folder supports mod-sequences.
 		/// </summary>
 		/// <remarks>
-		/// If mod-sequences are not supported by the folder, then all of the APIs that take a modseq
-		/// argument will throw <see cref="System.NotSupportedException"/> and should not be used.
+		/// <para>Gets whether or not the folder supports mod-sequences.</para>
+		/// <para>If mod-sequences are not supported by the folder, then all of the APIs that take a modseq
+		/// argument will throw <see cref="System.NotSupportedException"/> and should not be used.</para>
 		/// </remarks>
 		/// <value><c>true</c> if supports mod-sequences; otherwise, <c>false</c>.</value>
 		bool SupportsModSeq { get; }
+
+		/// <summary>
+		/// Get whether or not the folder supports quick resynchronization.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets whether or not the folder supports quick resynchronization.</para>
+		/// <para>If quick resynchronization is supported by the folder, then
+		/// <see cref="Open(FolderAccess, uint, ulong, IList{UniqueId}, CancellationToken)"/> and
+		/// <see cref="OpenAsync(FolderAccess, uint, ulong, IList{UniqueId}, CancellationToken)"/> can
+		/// be used, otherwise they will throw <see cref="System.NotSupportedException"/> and should
+		/// not be used.</para>
+		/// </remarks>
+		/// <value><c>true</c> if supports quick resynchronization; otherwise, <c>false</c>.</value>
+		bool SupportsQuickResync { get; }
 
 		/// <summary>
 		/// Get the highest mod-sequence value of all messages in the mailbox.
@@ -4670,6 +4685,9 @@ namespace MailKit {
 		/// <remarks>
 		/// Emitted when a message is expunged from the folder.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapIdleExample.cs"/>
+		/// </example>
 		event EventHandler<MessageEventArgs> MessageExpunged;
 
 		/// <summary>
@@ -4686,6 +4704,9 @@ namespace MailKit {
 		/// <remarks>
 		/// Emitted when flags changed on a message.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapIdleExample.cs"/>
+		/// </example>
 		event EventHandler<MessageFlagsChangedEventArgs> MessageFlagsChanged;
 
 		/// <summary>
@@ -4786,6 +4807,9 @@ namespace MailKit {
 		/// <remarks>
 		/// Emitted when the <see cref="Count"/> property changes.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapIdleExample.cs"/>
+		/// </example>
 		event EventHandler<EventArgs> CountChanged;
 
 		/// <summary>
