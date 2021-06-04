@@ -60,25 +60,49 @@
             <table>
               <tableHeader>
                 <row>
-                  <entry>Protocol</entry>
-                  <entry>Standard Port</entry>
-                  <entry>SSL Port</entry>
+                  <entry>
+                    <para>Protocol</para>
+                  </entry>
+                  <entry>
+                    <para>Standard Port</para>
+                  </entry>
+                  <entry>
+                    <para>SSL Port</para>
+                  </entry>
                 </row>
               </tableHeader>
               <row>
-                <entry>SMTP</entry>
-                <entry>25 or 587</entry>
-                <entry>465</entry>
+                <entry>
+                  <para>SMTP</para>
+                </entry>
+                <entry>
+                  <para>25 or 587</para>
+                </entry>
+                <entry>
+                  <para>465</para>
+                </entry>
               </row>
               <row>
-                <entry>POP3</entry>
-                <entry>110</entry>
-                <entry>995</entry>
+                <entry>
+                  <para>POP3</para>
+                </entry>
+                <entry>
+                  <para>110</para>
+                </entry>
+                <entry>
+                  <para>995</para>
+                </entry>
               </row>
               <row>
-                <entry>IMAP</entry>
-                <entry>143</entry>
-                <entry>993</entry>
+                <entry>
+                  <para>IMAP</para>
+                </entry>
+                <entry>
+                  <para>143</para>
+                </entry>
+                <entry>
+                  <para>993</para>
+                </entry>
               </row>
             </table>
             <para>
@@ -151,8 +175,8 @@
                       var issuer = certificate2.Issuer;
 
                       return cn == "imap.gmail.com" &amp;&amp; issuer == "CN=GTS CA 1O1, O=Google Trust Services, C=US" &amp;&amp;
-                          serial == "0096768414983DDE9C0800000000320A68" &amp;&amp;
-                          fingerprint == "A53BA86C137D828618540738014F7C3D52F699C7";
+                          serial == "00BABE95B167C9ECAF08000000006065B6" &amp;&amp;
+                          fingerprint == "E79A011EF55EEC72D2B7E391D193761372796836";
                   }
 
                   return false;
@@ -217,7 +241,7 @@
               MailKit attempts to keep up with the latest security recommendations and so is continuously removing older SSL and TLS
               protocols that are no longer considered secure from the default configuration. This often means that MailKit's SMTP,
               POP3 and IMAP clients will fail to connect to servers that are still using older SSL and TLS protocols. Currently,
-              the SSL and TLS protocols that are not supported by default are: SSL v2.0, SSL v3.0, and TLS v1.0.
+              the SSL and TLS protocols that are not supported by default are: SSL v2.0, SSL v3.0, TLS v1.0 and TLS v1.1.
             </para>
             <para>
               You can override MailKit's default set of supported
@@ -226,7 +250,7 @@
                 <linkUri>https://docs.microsoft.com/en-us/dotnet/api/system.security.authentication.sslprotocols?view=netframework-4.8</linkUri>
                 <linkTarget>_blank</linkTarget>
               </externalLink>
-              by setting the value of the <codeReference>P:MailKit.MailService.SslProtocols</codeReference>
+              by setting the value of the <codeEntityReference>P:MailKit.MailService.SslProtocols</codeEntityReference>
               property on your SMTP, POP3 or IMAP client.
             </para>
             <para>For example:</para>
@@ -286,7 +310,7 @@
           <application>GMail Settings</application> page and make the following changes in the
           <application>POP3 Download</application> section:
         </para>
-        <list>
+        <list class="ordered">
           <listItem>
             <para>
               <application>Enable POP for all mail (even if it has already been downloaded)</application>.
@@ -791,7 +815,7 @@ message.WriteTo (options, stream);
           <codeEntityReference>T:MimeKit.Cryptography.OpenPgpContext</codeEntityReference>
           includes a
           <codeEntityReference>
-            M:MimeKit.Cryptography.OpenPgpContext.DecryptTo(System.IO.Stream,System.IO.Stream,System.Threading.CancellationToken)
+            M:MimeKit.Cryptography.OpenPgpContextBase.DecryptTo(System.IO.Stream,System.IO.Stream,System.Threading.CancellationToken)
           </codeEntityReference>
           method which can be used to get the raw decrypted stream.
         </para>

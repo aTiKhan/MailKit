@@ -35,6 +35,7 @@
 //
 
 using System;
+using System.Globalization;
 
 namespace MailKit.Security.Ntlm {
 	abstract class MessageBase
@@ -48,6 +49,10 @@ namespace MailKit.Security.Ntlm {
 		
 		public NtlmFlags Flags {
 			get; set;
+		}
+
+		public Version OSVersion {
+			get; protected set;
 		}
 
 		public int Type {
@@ -90,7 +95,7 @@ namespace MailKit.Security.Ntlm {
 				throw new ArgumentOutOfRangeException (nameof (length));
 
 			if (!CheckHeader (message, startIndex))
-				throw new ArgumentException (string.Format ("Invalid Type{0} message.", Type), nameof (message));
+				throw new ArgumentException (string.Format (CultureInfo.InvariantCulture, "Invalid Type{0} message.", Type), nameof (message));
 		}
 
 		public abstract byte[] Encode ();

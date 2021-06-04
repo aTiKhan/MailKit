@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -567,40 +567,42 @@ namespace MailKit.Net.Imap {
 						break;
 					case 'F': // an ImapFolder
 						var utf7 = ((ImapFolder) args[argc++]).EncodedName;
-						length += EstimateStringLength (engine, options, true, utf7, out eoln);
+						length += EstimateStringLength (engine, true, utf7, out eoln);
 						break;
 					case 'L': // a MimeMessage or a byte[]
-						var arg = args[argc++];
-						byte[] prefix;
-						long len;
+						// Note: This is commented out because %L is only ever used for APPEND and REPLACE commands which
+						// never need to split the command to keep it under the max line length.
+						//var arg = args[argc++];
+						//byte[] prefix;
+						//long len;
 
-						if (arg is MimeMessage message) {
-							prefix = options.International ? UTF8LiteralTokenPrefix : LiteralTokenPrefix;
-							var literal = new ImapLiteral (options, message, null);
-							len = literal.Length;
-						} else {
-							len = ((byte[]) arg).Length;
-							prefix = LiteralTokenPrefix;
-						}
+						//if (arg is MimeMessage message) {
+						//	prefix = options.International ? UTF8LiteralTokenPrefix : LiteralTokenPrefix;
+						//	var literal = new ImapLiteral (options, message, null);
+						//	len = literal.Length;
+						//} else {
+						//	len = ((byte[]) arg).Length;
+						//	prefix = LiteralTokenPrefix;
+						//}
 
-						length += prefix.Length;
-						length += Encoding.ASCII.GetByteCount (len.ToString (CultureInfo.InvariantCulture));
+						//length += prefix.Length;
+						//length += Encoding.ASCII.GetByteCount (len.ToString (CultureInfo.InvariantCulture));
 
-						if (CanUseNonSynchronizedLiteral (engine, len))
-							length++;
+						//if (CanUseNonSynchronizedLiteral (engine, len))
+						//	length++;
 
-						length += LiteralTokenSuffix.Length;
+						//length += LiteralTokenSuffix.Length;
 
-						if (prefix == UTF8LiteralTokenPrefix)
-							length++;
+						//if (prefix == UTF8LiteralTokenPrefix)
+						//	length++;
 
-						eoln = true;
+						//eoln = true;
 						break;
 					case 'S': // a string which may need to be quoted or made into a literal
-						length += EstimateStringLength (engine, options, true, (string) args[argc++], out eoln);
+						length += EstimateStringLength (engine, true, (string) args[argc++], out eoln);
 						break;
 					case 'Q': // similar to %S but string must be quoted at a minimum
-						length += EstimateStringLength (engine, options, false, (string) args[argc++], out eoln);
+						length += EstimateStringLength (engine, false, (string) args[argc++], out eoln);
 						break;
 					default:
 						throw new FormatException ();
@@ -667,7 +669,7 @@ namespace MailKit.Net.Imap {
 				(length <= 4096 && (engine.Capabilities & ImapCapabilities.LiteralMinus) != 0);
 		}
 
-		static int EstimateStringLength (ImapEngine engine, FormatOptions options, bool allowAtom, string value, out bool eoln)
+		static int EstimateStringLength (ImapEngine engine, bool allowAtom, string value, out bool eoln)
 		{
 			eoln = false;
 
@@ -831,7 +833,7 @@ namespace MailKit.Net.Imap {
 					try {
 						token = await Engine.ReadTokenAsync (doAsync, CancellationToken).ConfigureAwait (false);
 					} finally {
-						if (Engine.Stream.IsConnected && Engine.Stream.CanTimeout)
+						if (Engine.Stream != null && Engine.Stream.IsConnected && Engine.Stream.CanTimeout)
 							Engine.Stream.ReadTimeout = timeout;
 					}
 				} else {
@@ -864,7 +866,7 @@ namespace MailKit.Net.Imap {
 					// the next token should be "OK", "NO", or "BAD"
 					token = await Engine.ReadTokenAsync (doAsync, CancellationToken).ConfigureAwait (false);
 
-					ImapEngine.AssertToken (token, ImapTokenType.Atom, "Syntax error in tagged response. Unexpected token: {0}", token);
+					ImapEngine.AssertToken (token, ImapTokenType.Atom, "Syntax error in tagged response. {0}", token);
 
 					string atom = (string) token.Value;
 
@@ -872,7 +874,7 @@ namespace MailKit.Net.Imap {
 					case "BAD": result = ImapCommandResponse.Bad; break;
 					case "OK": result = ImapCommandResponse.Ok; break;
 					case "NO": result = ImapCommandResponse.No; break;
-					default: throw ImapEngine.UnexpectedToken ("Syntax error in tagged response. Unexpected token: {0}", token);
+					default: throw ImapEngine.UnexpectedToken ("Syntax error in tagged response. {0}", token);
 					}
 
 					token = await Engine.ReadTokenAsync (doAsync, CancellationToken).ConfigureAwait (false);
@@ -913,6 +915,24 @@ namespace MailKit.Net.Imap {
 			}
 
 			return false;
+		}
+
+		/// <summary>
+		/// Get the first response-code of the specified type.
+		/// </summary>
+		/// <remarks>
+		/// Gets the first response-code of the specified type.
+		/// </remarks>
+		/// <param name="type">The type of response-code.</param>
+		/// <returns>The response-code if it exists; otherwise, <c>null</c>.</returns>
+		public ImapResponseCode GetResponseCode (ImapResponseCodeType type)
+		{
+			for (int i = 0; i < RespCodes.Count; i++) {
+				if (RespCodes[i].Type == type)
+					return RespCodes[i];
+			}
+
+			return null;
 		}
 	}
 }

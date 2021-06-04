@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -150,11 +150,11 @@ namespace MailKit.Security {
 		/// </exception>
 		protected override byte[] Challenge (byte[] token, int startIndex, int length)
 		{
-			if (IsAuthenticated)
-				throw new InvalidOperationException ();
-
 			if (token == null)
 				throw new NotSupportedException ("CRAM-MD5 does not support SASL-IR.");
+
+			if (IsAuthenticated)
+				return null;
 
 			var userName = Encoding.UTF8.GetBytes (Credentials.UserName);
 			var password = Encoding.UTF8.GetBytes (Credentials.Password);

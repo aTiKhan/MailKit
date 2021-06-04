@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +84,7 @@ namespace UnitTests.Security {
 
 			Assert.AreEqual (expected2, challenge, "{0}: final challenge response does not match the expected string.", prefix);
 			Assert.IsTrue (sasl.IsAuthenticated, "{0}: should be authenticated.", prefix);
-			Assert.Throws<InvalidOperationException> (() => sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
 		}
 
 		[Test]

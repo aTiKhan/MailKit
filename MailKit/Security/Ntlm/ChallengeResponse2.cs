@@ -155,8 +155,11 @@ namespace MailKit.Security.Ntlm {
 			Array.Clear (ntlm_hash, 0, ntlm_hash.Length);
 
 			using (var md5 = new HMACMD5 (ntlm_v2_hash)) {
-				var timestamp = DateTime.Now.Ticks - 504911232000000000;
+				var timestamp = DateTime.UtcNow.Ticks - 504911232000000000;
 				var nonce = new byte[8];
+
+				if (type2.TargetInfo?.Timestamp != 0)
+					timestamp = type2.TargetInfo.Timestamp;
 
 				using (var rng = RandomNumberGenerator.Create ())
 					rng.GetBytes (nonce);
@@ -215,6 +218,8 @@ namespace MailKit.Security.Ntlm {
 				break;
 			case NtlmAuthLevel.NTLMv2_only:
 				ntlm = ComputeNtlmV2 (type2, username, password, domain);
+				if (type2.TargetInfo.Timestamp != 0)
+					lm = new byte[24];
 				break;
 			default:
 				throw new InvalidOperationException ();

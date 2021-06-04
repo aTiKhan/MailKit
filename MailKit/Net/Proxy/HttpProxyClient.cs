@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,10 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Buffers;
 using System.Threading;
 using System.Net.Sockets;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace MailKit.Net.Proxy
@@ -41,6 +43,8 @@ namespace MailKit.Net.Proxy
 	/// </remarkas>
 	public class HttpProxyClient : ProxyClient
 	{
+		const int BufferSize = 4096;
+
 		/// <summary>
 		/// Initializes a new instance of the <see cref="T:MailKit.Net.Proxy.HttpProxyClient"/> class.
 		/// </summary>
@@ -99,12 +103,12 @@ namespace MailKit.Net.Proxy
 			var socket = await SocketUtils.ConnectAsync (ProxyHost, ProxyPort, LocalEndPoint, doAsync, cancellationToken).ConfigureAwait (false);
 			var builder = new StringBuilder ();
 
-			builder.AppendFormat ("CONNECT {0}:{1} HTTP/1.1\r\n", host, port);
-			builder.AppendFormat ("Host: {0}:{1}\r\n", host, port);
+			builder.AppendFormat (CultureInfo.InvariantCulture, "CONNECT {0}:{1} HTTP/1.1\r\n", host, port);
+			builder.AppendFormat (CultureInfo.InvariantCulture, "Host: {0}:{1}\r\n", host, port);
 			if (ProxyCredentials != null) {
-				var token = Encoding.UTF8.GetBytes (string.Format ("{0}:{1}", ProxyCredentials.UserName, ProxyCredentials.Password));
+				var token = Encoding.UTF8.GetBytes (string.Format (CultureInfo.InvariantCulture, "{0}:{1}", ProxyCredentials.UserName, ProxyCredentials.Password));
 				var base64 = Convert.ToBase64String (token);
-				builder.AppendFormat ("Proxy-Authorization: Basic {0}\r\n", base64);
+				builder.AppendFormat (CultureInfo.InvariantCulture, "Proxy-Authorization: Basic {0}\r\n", base64);
 			}
 			builder.Append ("\r\n");
 
@@ -113,39 +117,44 @@ namespace MailKit.Net.Proxy
 			try {
 				await SendAsync (socket, command, 0, command.Length, doAsync, cancellationToken).ConfigureAwait (false);
 
-				var buffer = new byte[1024];
-				var endOfHeaders = false;
-				var newline = false;
+				var buffer = ArrayPool<byte>.Shared.Rent (BufferSize);
 
-				builder.Clear ();
+				try {
+					var endOfHeaders = false;
+					var newline = false;
 
-				// read until we consume the end of the headers (it's ok if we read some of the content)
-				do {
-					int nread = await ReceiveAsync (socket, buffer, 0, buffer.Length, doAsync, cancellationToken).ConfigureAwait (false);
+					builder.Clear ();
 
-					if (nread > 0) {
-						int n = nread;
+					// read until we consume the end of the headers (it's ok if we read some of the content)
+					do {
+						int nread = await ReceiveAsync (socket, buffer, 0, BufferSize, doAsync, cancellationToken).ConfigureAwait (false);
 
-						for (int i = 0; i < nread && !endOfHeaders; i++) {
-							switch ((char) buffer[i]) {
-							case '\r':
-								break;
-							case '\n':
-								endOfHeaders = newline;
-								newline = true;
+						if (nread > 0) {
+							int n = nread;
 
-								if (endOfHeaders)
-									n = i + 1;
-								break;
-							default:
-								newline = false;
-								break;
+							for (int i = 0; i < nread && !endOfHeaders; i++) {
+								switch ((char) buffer[i]) {
+								case '\r':
+									break;
+								case '\n':
+									endOfHeaders = newline;
+									newline = true;
+
+									if (endOfHeaders)
+										n = i + 1;
+									break;
+								default:
+									newline = false;
+									break;
+								}
 							}
-						}
 
-						builder.Append (Encoding.UTF8.GetString (buffer, 0, n));
-					}
-				} while (!endOfHeaders);
+							builder.Append (Encoding.UTF8.GetString (buffer, 0, n));
+						}
+					} while (!endOfHeaders);
+				} finally {
+					ArrayPool<byte>.Shared.Return (buffer);
+				}
 
 				int index = 0;
 
@@ -160,14 +169,14 @@ namespace MailKit.Net.Proxy
 
 				var response = builder.ToString ();
 
-				if (response.Length >= 16 && response.StartsWith ("HTTP/1.", StringComparison.OrdinalIgnoreCase) &&
+				if (response.Length >= 15 && response.StartsWith ("HTTP/1.", StringComparison.OrdinalIgnoreCase) &&
 					(response[7] == '1' || response[7] == '0') && response[8] == ' ' &&
 					response[9] == '2' && response[10] == '0' && response[11] == '0' &&
 					response[12] == ' ') {
 					return socket;
 				}
 
-				throw new ProxyProtocolException (string.Format ("Failed to connect to {0}:{1}: {2}", host, port, response));
+				throw new ProxyProtocolException (string.Format (CultureInfo.InvariantCulture, "Failed to connect to {0}:{1}: {2}", host, port, response));
 			} catch {
 #if !NETSTANDARD1_3 && !NETSTANDARD1_6
 				if (socket.Connected)

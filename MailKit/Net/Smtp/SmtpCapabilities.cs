@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -102,5 +102,10 @@ namespace MailKit.Net.Smtp {
 		/// The server supports the <a href="https://tools.ietf.org/html/rfc6531">SMTPUTF8</a> extension.
 		/// </summary>
 		UTF8                = 1 << 9,
+
+		/// <summary>
+		/// The server supports the <a href="https://tools.ietf.org/html/rfc8689">REQUIRETLS</a> extension.
+		/// </summary>
+		RequireTLS          = 1 << 10,
 	}
 }

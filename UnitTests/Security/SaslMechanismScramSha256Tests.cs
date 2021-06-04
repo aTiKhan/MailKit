@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -82,7 +82,7 @@ namespace UnitTests.Security {
 			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
 			Assert.AreEqual (string.Empty, challenge, "{0}: third SCRAM-SHA-256 challenge should be an empty string.", prefix);
 			Assert.IsTrue (sasl.IsAuthenticated, "{0}: SCRAM-SHA-256 should be authenticated now.", prefix);
-			Assert.Throws<InvalidOperationException> (() => sasl.Challenge (string.Empty));
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty));
 		}
 
 		[Test]
@@ -162,7 +162,7 @@ namespace UnitTests.Security {
 			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
 			Assert.AreEqual (string.Empty, challenge, "third SCRAM-SHA-256 challenge should be an empty string.");
 			Assert.IsTrue (sasl.IsAuthenticated, "SCRAM-SHA-256 should be authenticated now.");
-			Assert.Throws<InvalidOperationException> (() => sasl.Challenge (string.Empty));
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty));
 		}
 	}
 }

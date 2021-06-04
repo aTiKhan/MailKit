@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -83,7 +83,7 @@ namespace UnitTests.Security {
 
 			Assert.AreEqual (string.Empty, result, "{0}: second DIGEST-MD5 challenge should be an empty string.", prefix);
 			Assert.IsTrue (sasl.IsAuthenticated, "{0}: should be authenticated now.", prefix);
-			Assert.Throws<InvalidOperationException> (() => sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
 		}
 
 		[Test]
@@ -170,7 +170,7 @@ namespace UnitTests.Security {
 
 			Assert.AreEqual (string.Empty, result, "second DIGEST-MD5 challenge should be an empty string.");
 			Assert.IsTrue (sasl.IsAuthenticated, "should be authenticated now.");
-			Assert.Throws<InvalidOperationException> (() => sasl.Challenge (string.Empty), "challenge while authenticated.");
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "challenge while authenticated.");
 		}
 	}
 }

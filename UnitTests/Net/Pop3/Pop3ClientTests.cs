@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@ using System.Collections;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Security.Authentication;
 
 using NUnit.Framework;
 
@@ -47,29 +48,39 @@ using MailKit.Net.Proxy;
 
 using UnitTests.Net.Proxy;
 
+using AuthenticationException = MailKit.Security.AuthenticationException;
+
 namespace UnitTests.Net.Pop3 {
 	[TestFixture]
 	public class Pop3ClientTests
 	{
-		readonly Pop3Capabilities ComcastCapa1 = Pop3Capabilities.Expire | Pop3Capabilities.StartTLS |
+		static readonly Pop3Capabilities ComcastCapa1 = Pop3Capabilities.Expire | Pop3Capabilities.StartTLS |
 			Pop3Capabilities.Top | Pop3Capabilities.UIDL | Pop3Capabilities.User;
-		readonly Pop3Capabilities ComcastCapa2 = Pop3Capabilities.Expire | Pop3Capabilities.StartTLS |
+		static readonly Pop3Capabilities ComcastCapa2 = Pop3Capabilities.Expire | Pop3Capabilities.StartTLS |
 			Pop3Capabilities.Sasl | Pop3Capabilities.Top | Pop3Capabilities.UIDL | Pop3Capabilities.User;
-		readonly Pop3Capabilities ExchangeCapa = Pop3Capabilities.Sasl | Pop3Capabilities.Top |
+		static readonly Pop3Capabilities ExchangeCapa = Pop3Capabilities.Sasl | Pop3Capabilities.Top |
 			Pop3Capabilities.UIDL | Pop3Capabilities.User;
-		readonly Pop3Capabilities GMailCapa1 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
+		static readonly Pop3Capabilities GMailCapa1 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
 			Pop3Capabilities.Expire | Pop3Capabilities.LoginDelay | Pop3Capabilities.Top |
 			Pop3Capabilities.UIDL | Pop3Capabilities.Sasl;
-		readonly Pop3Capabilities GMailCapa2 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
+		static readonly Pop3Capabilities GMailCapa2 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
 			Pop3Capabilities.Pipelining | Pop3Capabilities.Expire | Pop3Capabilities.LoginDelay |
 			Pop3Capabilities.Top | Pop3Capabilities.UIDL;
-		readonly Pop3Capabilities LangCapa1 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
+		static readonly Pop3Capabilities LangCapa1 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
 		    Pop3Capabilities.Expire | Pop3Capabilities.LoginDelay | Pop3Capabilities.Top |
 		    Pop3Capabilities.UIDL | Pop3Capabilities.Sasl | Pop3Capabilities.UTF8 |
 		    Pop3Capabilities.UTF8User | Pop3Capabilities.Lang | Pop3Capabilities.Apop;
-		readonly Pop3Capabilities LangCapa2 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
+		static readonly Pop3Capabilities LangCapa2 = Pop3Capabilities.User | Pop3Capabilities.ResponseCodes |
 		    Pop3Capabilities.Pipelining | Pop3Capabilities.Expire | Pop3Capabilities.LoginDelay |
 		    Pop3Capabilities.Top | Pop3Capabilities.UIDL | Pop3Capabilities.Lang | Pop3Capabilities.Apop;
+		const CipherAlgorithmType GMailCipherAlgorithm = CipherAlgorithmType.Aes128;
+		const int GMailCipherStrength = 128;
+		const HashAlgorithmType GMailHashAlgorithm = HashAlgorithmType.Sha256;
+		const ExchangeAlgorithmType GMailKeyExchangeAlgorithm = (ExchangeAlgorithmType) 44550;
+		const CipherAlgorithmType GmxDeCipherAlgorithm = CipherAlgorithmType.Aes256;
+		const int GmxDeCipherStrength = 256;
+		const HashAlgorithmType GmxDeHashAlgorithm = HashAlgorithmType.Sha384;
+		const ExchangeAlgorithmType GmxDeKeyExchangeAlgorithm = (ExchangeAlgorithmType) 44550;
 
 		static string HexEncode (byte[] digest)
 		{
@@ -90,56 +101,56 @@ namespace UnitTests.Net.Pop3 {
 				// ReplayConnect
 				Assert.Throws<ArgumentNullException> (() => client.ReplayConnect (null, Stream.Null));
 				Assert.Throws<ArgumentNullException> (() => client.ReplayConnect ("host", null));
-				Assert.Throws<ArgumentNullException> (async () => await client.ReplayConnectAsync (null, Stream.Null));
-				Assert.Throws<ArgumentNullException> (async () => await client.ReplayConnectAsync ("host", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ReplayConnectAsync (null, Stream.Null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ReplayConnectAsync ("host", null));
 
 				// Connect
 				Assert.Throws<ArgumentNullException> (() => client.Connect ((Uri) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync ((Uri) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync ((Uri) null));
 				Assert.Throws<ArgumentException> (() => client.Connect (new Uri ("path", UriKind.Relative)));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (new Uri ("path", UriKind.Relative)));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (new Uri ("path", UriKind.Relative)));
 				Assert.Throws<ArgumentNullException> (() => client.Connect (null, 110, false));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync (null, 110, false));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync (null, 110, false));
 				Assert.Throws<ArgumentException> (() => client.Connect (string.Empty, 110, false));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 110, false));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 110, false));
 				Assert.Throws<ArgumentOutOfRangeException> (() => client.Connect ("host", -1, false));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, false));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, false));
 				Assert.Throws<ArgumentNullException> (() => client.Connect (null, 110, SecureSocketOptions.None));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync (null, 110, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync (null, 110, SecureSocketOptions.None));
 				Assert.Throws<ArgumentException> (() => client.Connect (string.Empty, 110, SecureSocketOptions.None));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 110, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 110, SecureSocketOptions.None));
 				Assert.Throws<ArgumentOutOfRangeException> (() => client.Connect ("host", -1, SecureSocketOptions.None));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, SecureSocketOptions.None));
 
 				Assert.Throws<ArgumentNullException> (() => client.Connect ((Socket) null, "host", 110, SecureSocketOptions.None));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync ((Socket) null, "host", 110, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync ((Socket) null, "host", 110, SecureSocketOptions.None));
 				Assert.Throws<ArgumentNullException> (() => client.Connect ((Stream) null, "host", 110, SecureSocketOptions.None));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync ((Stream) null, "host", 110, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync ((Stream) null, "host", 110, SecureSocketOptions.None));
 
 				using (var socket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
 					Assert.Throws<ArgumentException> (() => client.Connect (socket, "host", 110, SecureSocketOptions.None));
-					Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (socket, "host", 110, SecureSocketOptions.None));
+					Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (socket, "host", 110, SecureSocketOptions.None));
 				}
 
 				// Authenticate
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate ((SaslMechanism) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync ((SaslMechanism) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync ((SaslMechanism) null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate ((ICredentials) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync ((ICredentials) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync ((ICredentials) null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (null, "password"));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "password"));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "password"));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate ("username", null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync ("username", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync ("username", null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (null, credentials));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (null, credentials));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (null, credentials));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (Encoding.UTF8, null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (null, "username", "password"));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "username", "password"));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "username", "password"));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (Encoding.UTF8, null, "password"));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null, "password"));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null, "password"));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (Encoding.UTF8, "username", null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, "username", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, "username", null));
 			}
 		}
 
@@ -218,13 +229,13 @@ namespace UnitTests.Net.Pop3 {
 				Socket socket;
 
 				Assert.Throws<SslHandshakeException> (() => client.Connect ("www.gmail.com", 80, true));
-				Assert.Throws<SslHandshakeException> (async () => await client.ConnectAsync ("www.gmail.com", 80, true));
+				Assert.ThrowsAsync<SslHandshakeException> (async () => await client.ConnectAsync ("www.gmail.com", 80, true));
 
 				socket = Connect ("www.gmail.com", 80);
 				Assert.Throws<SslHandshakeException> (() => client.Connect (socket, "www.gmail.com", 80, SecureSocketOptions.SslOnConnect));
 
 				socket = Connect ("www.gmail.com", 80);
-				Assert.Throws<SslHandshakeException> (async () => await client.ConnectAsync (socket, "www.gmail.com", 80, SecureSocketOptions.SslOnConnect));
+				Assert.ThrowsAsync<SslHandshakeException> (async () => await client.ConnectAsync (socket, "www.gmail.com", 80, SecureSocketOptions.SslOnConnect));
 			}
 		}
 
@@ -380,32 +391,32 @@ namespace UnitTests.Net.Pop3 {
 			commands.Add (new Pop3ReplayCommand ("QUIT\r\n", "comcast.quit.txt"));
 
 			using (var client = new Pop3Client ()) {
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.AuthenticateAsync ("username", "password"));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.AuthenticateAsync (new NetworkCredential ("username", "password")));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.AuthenticateAsync (new SaslMechanismPlain ("username", "password")));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.AuthenticateAsync ("username", "password"));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.AuthenticateAsync (new NetworkCredential ("username", "password")));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.AuthenticateAsync (new SaslMechanismPlain ("username", "password")));
 
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.EnableUTF8Async ());
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetLanguagesAsync ());
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.SetLanguageAsync ("en"));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.EnableUTF8Async ());
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetLanguagesAsync ());
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.SetLanguageAsync ("en"));
 
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.NoOpAsync ());
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.NoOpAsync ());
 
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageSizesAsync ());
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageSizeAsync (0));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageUidsAsync ());
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageUidAsync (0));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageAsync (0));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessagesAsync (0, 1));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessagesAsync (new int[] { 0 }));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageHeadersAsync (0));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageHeadersAsync (0, 1));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetMessageHeadersAsync (new int[] { 0 }));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetStreamAsync (0));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetStreamsAsync (0, 1));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.GetStreamsAsync (new int[] { 0 }));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.DeleteMessageAsync (0));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.DeleteMessagesAsync (0, 1));
-				Assert.Throws<ServiceNotConnectedException> (async () => await client.DeleteMessagesAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageSizesAsync ());
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageSizeAsync (0));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageUidsAsync ());
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageUidAsync (0));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageAsync (0));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessagesAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessagesAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageHeadersAsync (0));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageHeadersAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetMessageHeadersAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetStreamAsync (0));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetStreamsAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.GetStreamsAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.DeleteMessageAsync (0));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.DeleteMessagesAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotConnectedException> (async () => await client.DeleteMessagesAsync (new int[] { 0 }));
 
 				try {
 					await client.ReplayConnectAsync ("localhost", new Pop3ReplayStream (commands, true, false));
@@ -423,59 +434,59 @@ namespace UnitTests.Net.Pop3 {
 				Assert.Throws<ArgumentException> (() => client.Capabilities |= Pop3Capabilities.Apop);
 				Assert.DoesNotThrow (() => client.Capabilities &= ~Pop3Capabilities.UIDL);
 
-				Assert.Throws<ArgumentNullException> (async () => await client.SetLanguageAsync (null));
-				Assert.Throws<ArgumentException> (async () => await client.SetLanguageAsync (string.Empty));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.SetLanguageAsync (null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.SetLanguageAsync (string.Empty));
 
-				Assert.Throws<AuthenticationException> (async () => await client.AuthenticateAsync ("username", "password"));
+				Assert.ThrowsAsync<AuthenticationException> (async () => await client.AuthenticateAsync ("username", "password"));
 				Assert.IsTrue (client.IsConnected, "AuthenticationException should not cause a disconnect.");
 
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageSizesAsync ());
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageSizeAsync (0));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageUidsAsync ());
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageUidAsync (0));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageAsync (0));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessagesAsync (0, 1));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessagesAsync (new int[] { 0 }));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageHeadersAsync (0));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageHeadersAsync (0, 1));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetMessageHeadersAsync (new int[] { 0 }));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetStreamAsync (0));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetStreamsAsync (0, 1));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.GetStreamsAsync (new int[] { 0 }));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.DeleteMessageAsync (0));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.DeleteMessagesAsync (0, 1));
-				Assert.Throws<ServiceNotAuthenticatedException> (async () => await client.DeleteMessagesAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageSizesAsync ());
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageSizeAsync (0));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageUidsAsync ());
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageUidAsync (0));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageAsync (0));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessagesAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessagesAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageHeadersAsync (0));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageHeadersAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetMessageHeadersAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetStreamAsync (0));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetStreamsAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.GetStreamsAsync (new int[] { 0 }));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.DeleteMessageAsync (0));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.DeleteMessagesAsync (0, 1));
+				Assert.ThrowsAsync<ServiceNotAuthenticatedException> (async () => await client.DeleteMessagesAsync (new int[] { 0 }));
 				Assert.IsTrue (client.IsConnected, "ServiceNotAuthenticatedException should not cause a disconnect.");
 
 				await client.AuthenticateAsync (Encoding.UTF8, "username", "password");
 				Assert.IsTrue (client.IsAuthenticated, "IsAuthenticated");
 
-				Assert.Throws<InvalidOperationException> (async () => await client.AuthenticateAsync ("username", "password"));
-				Assert.Throws<InvalidOperationException> (async () => await client.AuthenticateAsync (new NetworkCredential ("username", "password")));
-				Assert.Throws<InvalidOperationException> (async () => await client.AuthenticateAsync (new SaslMechanismPlain ("username", "password")));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.AuthenticateAsync ("username", "password"));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.AuthenticateAsync (new NetworkCredential ("username", "password")));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.AuthenticateAsync (new SaslMechanismPlain ("username", "password")));
 
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessageSizeAsync (-1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessageUidAsync (-1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessageAsync (-1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessagesAsync (-1, 1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessagesAsync (0, -1));
-				Assert.Throws<ArgumentNullException> (async () => await client.GetMessagesAsync (null));
-				Assert.Throws<ArgumentException> (async () => await client.GetMessagesAsync (new int[] { -1 }));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessageHeadersAsync (-1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessageHeadersAsync (-1, 1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetMessageHeadersAsync (0, -1));
-				Assert.Throws<ArgumentNullException> (async () => await client.GetMessageHeadersAsync (null));
-				Assert.Throws<ArgumentException> (async () => await client.GetMessageHeadersAsync (new int[] { -1 }));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetStreamAsync (-1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetStreamsAsync (-1, 1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.GetStreamsAsync (0, -1));
-				Assert.Throws<ArgumentNullException> (async () => await client.GetStreamsAsync (null));
-				Assert.Throws<ArgumentException> (async () => await client.GetStreamsAsync (new int[] { -1 }));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.DeleteMessageAsync (-1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.DeleteMessagesAsync (-1, 1));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.DeleteMessagesAsync (0, -1));
-				Assert.Throws<ArgumentNullException> (async () => await client.DeleteMessagesAsync (null));
-				Assert.Throws<ArgumentException> (async () => await client.DeleteMessagesAsync (new int[] { -1 }));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessageSizeAsync (-1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessageUidAsync (-1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessageAsync (-1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessagesAsync (-1, 1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessagesAsync (0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.GetMessagesAsync (null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.GetMessagesAsync (new int[] { -1 }));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessageHeadersAsync (-1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessageHeadersAsync (-1, 1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetMessageHeadersAsync (0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.GetMessageHeadersAsync (null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.GetMessageHeadersAsync (new int[] { -1 }));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetStreamAsync (-1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetStreamsAsync (-1, 1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.GetStreamsAsync (0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.GetStreamsAsync (null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.GetStreamsAsync (new int[] { -1 }));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.DeleteMessageAsync (-1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.DeleteMessagesAsync (-1, 1));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.DeleteMessagesAsync (0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.DeleteMessagesAsync (null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.DeleteMessagesAsync (new int[] { -1 }));
 
 				Assert.AreEqual (0, (await client.GetStreamsAsync (0, 0)).Count);
 				Assert.AreEqual (0, (await client.GetStreamsAsync (new int[0])).Count);
@@ -522,6 +533,15 @@ namespace UnitTests.Net.Pop3 {
 				client.Connect (host, 0, options);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
@@ -530,6 +550,15 @@ namespace UnitTests.Net.Pop3 {
 				client.Disconnect (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -562,14 +591,32 @@ namespace UnitTests.Net.Pop3 {
 				await client.ConnectAsync (host, 0, options);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
-				Assert.Throws<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
 
 				await client.DisconnectAsync (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -618,6 +665,15 @@ namespace UnitTests.Net.Pop3 {
 					}
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
@@ -626,6 +682,15 @@ namespace UnitTests.Net.Pop3 {
 					client.Disconnect (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -675,14 +740,32 @@ namespace UnitTests.Net.Pop3 {
 					}
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
-					Assert.Throws<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
+					Assert.ThrowsAsync<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
 
 					await client.DisconnectAsync (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -722,6 +805,15 @@ namespace UnitTests.Net.Pop3 {
 				client.Connect (socket, host, port, SecureSocketOptions.Auto);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
@@ -730,6 +822,15 @@ namespace UnitTests.Net.Pop3 {
 				client.Disconnect (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -761,21 +862,39 @@ namespace UnitTests.Net.Pop3 {
 
 				var socket = Connect (host, port);
 
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync (socket, null, port, SecureSocketOptions.Auto));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (socket, "", port, SecureSocketOptions.Auto));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.ConnectAsync (socket, host, -1, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync (socket, null, port, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (socket, "", port, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.ConnectAsync (socket, host, -1, SecureSocketOptions.Auto));
 
 				await client.ConnectAsync (socket, host, port, SecureSocketOptions.Auto);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
-				Assert.Throws<InvalidOperationException> (async () => await client.ConnectAsync (socket, host, port, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.ConnectAsync (socket, host, port, SecureSocketOptions.Auto));
 
 				await client.DisconnectAsync (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -810,12 +929,30 @@ namespace UnitTests.Net.Pop3 {
 					client.Connect (uri, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					client.Disconnect (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -851,12 +988,30 @@ namespace UnitTests.Net.Pop3 {
 					await client.ConnectAsync (uri, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					await client.DisconnectAsync (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -892,12 +1047,30 @@ namespace UnitTests.Net.Pop3 {
 					client.Connect (socket, host, port, options, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					client.Disconnect (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -933,12 +1106,30 @@ namespace UnitTests.Net.Pop3 {
 					await client.ConnectAsync (socket, host, port, options, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					await client.DisconnectAsync (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -1487,13 +1678,13 @@ namespace UnitTests.Net.Pop3 {
 
 				Assert.AreEqual (7, client.Count, "Expected 7 messages");
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageCountAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageCountAsync ());
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageCountAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageCountAsync ());
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageCountAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageCountAsync ());
 				Assert.IsTrue (client.IsConnected);
 
 				try {
@@ -1611,13 +1802,13 @@ namespace UnitTests.Net.Pop3 {
 
 				Assert.AreEqual (7, client.Count, "Expected 7 messages");
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageSizeAsync (0));
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageSizeAsync (0));
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageSizeAsync (0));
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageSizeAsync (0));
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageSizeAsync (0));
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageSizeAsync (0));
 				Assert.IsTrue (client.IsConnected);
 
 				try {
@@ -1735,13 +1926,13 @@ namespace UnitTests.Net.Pop3 {
 
 				Assert.AreEqual (7, client.Count, "Expected 7 messages");
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageSizesAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageSizesAsync ());
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageSizesAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageSizesAsync ());
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageSizesAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageSizesAsync ());
 				Assert.IsTrue (client.IsConnected);
 
 				try {
@@ -1848,10 +2039,10 @@ namespace UnitTests.Net.Pop3 {
 
 				Assert.AreEqual (3, client.Count, "Expected 3 messages");
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageUidAsync (0));
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageUidAsync (0));
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageUidAsync (0));
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageUidAsync (0));
 				Assert.IsTrue (client.IsConnected);
 
 				try {
@@ -1958,10 +2149,10 @@ namespace UnitTests.Net.Pop3 {
 
 				Assert.AreEqual (3, client.Count, "Expected 3 messages");
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageUidsAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageUidsAsync ());
 				Assert.IsTrue (client.IsConnected);
 
-				Assert.Throws<Pop3ProtocolException> (async () => await client.GetMessageUidsAsync ());
+				Assert.ThrowsAsync<Pop3ProtocolException> (async () => await client.GetMessageUidsAsync ());
 				Assert.IsTrue (client.IsConnected);
 
 				try {

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -109,6 +109,8 @@ namespace MailKit {
 			public HeaderList Headers => null;
 
 			public DateTimeOffset? InternalDate => null;
+
+			public DateTimeOffset? SaveDate => null;
 
 			public uint? Size {
 				get { return Message != null ? Message.Size : Children[0].Size; }

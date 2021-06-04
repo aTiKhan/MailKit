@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -99,9 +99,9 @@ namespace UnitTests.Net.Imap {
 				var buffer = new byte[32];
 				int n;
 
-				Assert.Throws<ArgumentNullException> (async () => await stream.ReadAsync (null, 0, buffer.Length));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, -1, buffer.Length));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, 0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await stream.ReadAsync (null, 0, buffer.Length));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, -1, buffer.Length));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, 0, -1));
 
 				stream.Stream.Write (data, 0, data.Length);
 				stream.Stream.Position = 0;
@@ -210,7 +210,7 @@ namespace UnitTests.Net.Imap {
 
 				token = stream.ReadToken (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.Atom, token.Type);
-				Assert.AreEqual ("[atom: atom]", token.ToString ());
+				Assert.AreEqual ("atom", token.ToString ());
 
 				token = stream.ReadToken (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.OpenParen, token.Type);
@@ -218,11 +218,11 @@ namespace UnitTests.Net.Imap {
 
 				token = stream.ReadToken (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.Flag, token.Type);
-				Assert.AreEqual ("[flag: \\flag]", token.ToString ());
+				Assert.AreEqual ("\\flag", token.ToString ());
 
 				token = stream.ReadToken (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.QString, token.Type);
-				Assert.AreEqual ("[qstring: \"qstring\"]", token.ToString ());
+				Assert.AreEqual ("\"qstring\"", token.ToString ());
 
 				token = stream.ReadToken (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.Nil, token.Type);
@@ -268,7 +268,7 @@ namespace UnitTests.Net.Imap {
 
 				token = await stream.ReadTokenAsync (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.Atom, token.Type);
-				Assert.AreEqual ("[atom: atom]", token.ToString ());
+				Assert.AreEqual ("atom", token.ToString ());
 
 				token = await stream.ReadTokenAsync (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.OpenParen, token.Type);
@@ -276,11 +276,11 @@ namespace UnitTests.Net.Imap {
 
 				token = await stream.ReadTokenAsync (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.Flag, token.Type);
-				Assert.AreEqual ("[flag: \\flag]", token.ToString ());
+				Assert.AreEqual ("\\flag", token.ToString ());
 
 				token = await stream.ReadTokenAsync (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.QString, token.Type);
-				Assert.AreEqual ("[qstring: \"qstring\"]", token.ToString ());
+				Assert.AreEqual ("\"qstring\"", token.ToString ());
 
 				token = await stream.ReadTokenAsync (CancellationToken.None);
 				Assert.AreEqual (ImapTokenType.Nil, token.Type);

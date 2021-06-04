@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,8 @@ namespace MailKit.Net.Imap {
 	static class ImapUtils
 	{
 		const FolderAttributes SpecialUseAttributes = FolderAttributes.All | FolderAttributes.Archive | FolderAttributes.Drafts |
-		    FolderAttributes.Flagged | FolderAttributes.Inbox | FolderAttributes.Junk | FolderAttributes.Sent | FolderAttributes.Trash;
+		    FolderAttributes.Flagged | FolderAttributes.Important | FolderAttributes.Inbox | FolderAttributes.Junk |
+			FolderAttributes.Sent | FolderAttributes.Trash;
 		const string QuotedSpecials = " \t()<>@,;:\\\"/[]?=";
 		static readonly int InboxLength = "INBOX".Length;
 
@@ -298,15 +299,21 @@ namespace MailKit.Net.Imap {
 		/// Formats the array of indexes as a string suitable for use with IMAP commands.
 		/// </summary>
 		/// <returns>The index set.</returns>
+		/// <param name="engine">The IMAP engine.</param>
 		/// <param name="indexes">The indexes.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="indexes"/> is <c>null</c>.
+		/// <para><paramref name="engine"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="indexes"/> is <c>null</c>.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// One or more of the indexes has a negative value.
 		/// </exception>
-		public static string FormatIndexSet (IList<int> indexes)
+		public static string FormatIndexSet (ImapEngine engine, IList<int> indexes)
 		{
+			if (engine == null)
+				throw new ArgumentNullException (nameof (engine));
+
 			if (indexes == null)
 				throw new ArgumentNullException (nameof (indexes));
 
@@ -332,7 +339,7 @@ namespace MailKit.Net.Imap {
 							end++;
 							i++;
 						}
-					} else if (indexes[i] == end - 1) {
+					} else if (indexes[i] == end - 1 && engine.QuirksMode != ImapQuirksMode.hMailServer) {
 						end = indexes[i++];
 
 						while (i < indexes.Count && indexes[i] == end - 1) {
@@ -490,31 +497,31 @@ namespace MailKit.Net.Imap {
 			token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 			while (token.Type == ImapTokenType.Flag || token.Type == ImapTokenType.Atom) {
-				var atom = (string) token.Value;
+				var atom = ((string) token.Value).ToLowerInvariant ();
 
 				switch (atom) {
-				case "\\NoInferiors":   attrs |= FolderAttributes.NoInferiors; break;
-				case "\\Noselect":      attrs |= FolderAttributes.NoSelect; break;
-				case "\\Marked":        attrs |= FolderAttributes.Marked; break;
-				case "\\Unmarked":      attrs |= FolderAttributes.Unmarked; break;
-				case "\\NonExistent":   attrs |= FolderAttributes.NonExistent; break;
-				case "\\Subscribed":    attrs |= FolderAttributes.Subscribed; break;
-				case "\\Remote":        attrs |= FolderAttributes.Remote; break;
-				case "\\HasChildren":   attrs |= FolderAttributes.HasChildren; break;
-				case "\\HasNoChildren": attrs |= FolderAttributes.HasNoChildren; break;
-				case "\\All":           attrs |= FolderAttributes.All; break;
-				case "\\Archive":       attrs |= FolderAttributes.Archive; break;
-				case "\\Drafts":        attrs |= FolderAttributes.Drafts; break;
-				case "\\Flagged":       attrs |= FolderAttributes.Flagged; break;
-				case "\\Junk":          attrs |= FolderAttributes.Junk; break;
-				case "\\Sent":          attrs |= FolderAttributes.Sent; break;
-				case "\\Trash":         attrs |= FolderAttributes.Trash; break;
+				case "\\noinferiors":   attrs |= FolderAttributes.NoInferiors; break;
+				case "\\noselect":      attrs |= FolderAttributes.NoSelect; break;
+				case "\\marked":        attrs |= FolderAttributes.Marked; break;
+				case "\\unmarked":      attrs |= FolderAttributes.Unmarked; break;
+				case "\\nonexistent":   attrs |= FolderAttributes.NonExistent; break;
+				case "\\subscribed":    attrs |= FolderAttributes.Subscribed; break;
+				case "\\remote":        attrs |= FolderAttributes.Remote; break;
+				case "\\haschildren":   attrs |= FolderAttributes.HasChildren; break;
+				case "\\hasnochildren": attrs |= FolderAttributes.HasNoChildren; break;
+				case "\\all":           attrs |= FolderAttributes.All; break;
+				case "\\archive":       attrs |= FolderAttributes.Archive; break;
+				case "\\drafts":        attrs |= FolderAttributes.Drafts; break;
+				case "\\flagged":       attrs |= FolderAttributes.Flagged; break;
+				case "\\important":     attrs |= FolderAttributes.Important; break;
+				case "\\junk":          attrs |= FolderAttributes.Junk; break;
+				case "\\sent":          attrs |= FolderAttributes.Sent; break;
+				case "\\trash":         attrs |= FolderAttributes.Trash; break;
 				// XLIST flags:
-				case "\\AllMail":       attrs |= FolderAttributes.All; break;
-				case "\\Important":     attrs |= FolderAttributes.Flagged; break;
-				case "\\Inbox":         attrs |= FolderAttributes.Inbox; break;
-				case "\\Spam":          attrs |= FolderAttributes.Junk; break;
-				case "\\Starred":       attrs |= FolderAttributes.Flagged; break;
+				case "\\allmail":       attrs |= FolderAttributes.All; break;
+				case "\\inbox":         attrs |= FolderAttributes.Inbox; break;
+				case "\\spam":          attrs |= FolderAttributes.Junk; break;
+				case "\\starred":       attrs |= FolderAttributes.Flagged; break;
 				}
 
 				token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
@@ -1473,21 +1480,23 @@ namespace MailKit.Net.Imap {
 
 			token = await engine.ReadTokenAsync (ImapStream.AtomSpecials, doAsync, cancellationToken).ConfigureAwait (false);
 
-			while (token.Type == ImapTokenType.Atom || token.Type == ImapTokenType.Flag || token.Type == ImapTokenType.QString) {
-				var flag = (string) token.Value;
+			while (token.Type == ImapTokenType.Atom || token.Type == ImapTokenType.Flag || token.Type == ImapTokenType.QString || token.Type == ImapTokenType.Nil) {
+				if (token.Type != ImapTokenType.Nil) {
+					var flag = (string) token.Value;
 
-				switch (flag) {
-				case "\\Answered": flags |= MessageFlags.Answered; break;
-				case "\\Deleted":  flags |= MessageFlags.Deleted; break;
-				case "\\Draft":    flags |= MessageFlags.Draft; break;
-				case "\\Flagged":  flags |= MessageFlags.Flagged; break;
-				case "\\Seen":     flags |= MessageFlags.Seen; break;
-				case "\\Recent":   flags |= MessageFlags.Recent; break;
-				case "\\*":        flags |= MessageFlags.UserDefined; break;
-				default:
-					if (keywords != null)
-						keywords.Add (flag);
-					break;
+					switch (flag) {
+					case "\\Answered": flags |= MessageFlags.Answered; break;
+					case "\\Deleted": flags |= MessageFlags.Deleted; break;
+					case "\\Draft": flags |= MessageFlags.Draft; break;
+					case "\\Flagged": flags |= MessageFlags.Flagged; break;
+					case "\\Seen": flags |= MessageFlags.Seen; break;
+					case "\\Recent": flags |= MessageFlags.Recent; break;
+					case "\\*": flags |= MessageFlags.UserDefined; break;
+					default:
+						if (keywords != null)
+							keywords.Add (flag);
+						break;
+					}
 				}
 
 				token = await engine.ReadTokenAsync (ImapStream.AtomSpecials, doAsync, cancellationToken).ConfigureAwait (false);

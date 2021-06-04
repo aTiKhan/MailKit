@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -249,6 +249,33 @@ namespace MailKit.Net.Imap
 				break;
 			case SearchTerm.Recent:
 				builder.Append ("RECENT");
+				break;
+			case SearchTerm.SaveDateSupported:
+				if ((Engine.Capabilities & ImapCapabilities.SaveDate) == 0)
+					throw new NotSupportedException ("The SAVEDATESUPPORTED search term is not supported by the IMAP server.");
+
+				builder.Append ("SAVEDATESUPPORTED");
+				break;
+			case SearchTerm.SavedBefore:
+				if ((Engine.Capabilities & ImapCapabilities.SaveDate) == 0)
+					throw new NotSupportedException ("The SAVEDBEFORE search term is not supported by the IMAP server.");
+
+				date = (DateSearchQuery) query;
+				builder.AppendFormat ("SAVEDBEFORE {0}", FormatDateTime (date.Date));
+				break;
+			case SearchTerm.SavedOn:
+				if ((Engine.Capabilities & ImapCapabilities.SaveDate) == 0)
+					throw new NotSupportedException ("The SAVEDON search term is not supported by the IMAP server.");
+
+				date = (DateSearchQuery) query;
+				builder.AppendFormat ("SAVEDON {0}", FormatDateTime (date.Date));
+				break;
+			case SearchTerm.SavedSince:
+				if ((Engine.Capabilities & ImapCapabilities.SaveDate) == 0)
+					throw new NotSupportedException ("The SAVEDSINCE search term is not supported by the IMAP server.");
+
+				date = (DateSearchQuery) query;
+				builder.AppendFormat ("SAVEDSINCE {0}", FormatDateTime (date.Date));
 				break;
 			case SearchTerm.Seen:
 				builder.Append ("SEEN");
@@ -581,7 +608,7 @@ namespace MailKit.Net.Imap
 			// respond with "* SEARCH ..." instead of "* ESEARCH ..." even when using the extended
 			// search syntax.
 			ic.RegisterUntaggedHandler ("SEARCH", SearchMatchesAsync);
-			ic.UserData = new SearchResults (SortOrder.Ascending);
+			ic.UserData = new SearchResults (UidValidity, SortOrder.Ascending);
 
 			Engine.QueueCommand (ic);
 
@@ -704,7 +731,7 @@ namespace MailKit.Net.Imap
 			var command = "UID SEARCH ";
 
 			if ((Engine.Capabilities & ImapCapabilities.ESearch) != 0)
-				command += "RETURN () ";
+				command += "RETURN (ALL) ";
 
 			if (charset != null && args.Count > 0 && !Engine.UTF8Enabled)
 				command += "CHARSET " + charset + " ";
@@ -719,7 +746,7 @@ namespace MailKit.Net.Imap
 			// respond with "* SEARCH ..." instead of "* ESEARCH ..." even when using the extended
 			// search syntax.
 			ic.RegisterUntaggedHandler ("SEARCH", SearchMatchesAsync);
-			ic.UserData = new SearchResults (SortOrder.Ascending);
+			ic.UserData = new SearchResults (UidValidity, SortOrder.Ascending);
 
 			Engine.QueueCommand (ic);
 
@@ -871,7 +898,7 @@ namespace MailKit.Net.Imap
 			// respond with "* SEARCH ..." instead of "* ESEARCH ..." even when using the extended
 			// search syntax.
 			ic.RegisterUntaggedHandler ("SEARCH", SearchMatchesAsync);
-			ic.UserData = new SearchResults ();
+			ic.UserData = new SearchResults (UidValidity);
 
 			Engine.QueueCommand (ic);
 
@@ -1005,7 +1032,7 @@ namespace MailKit.Net.Imap
 			if ((Engine.Capabilities & ImapCapabilities.ESort) != 0)
 				ic.RegisterUntaggedHandler ("ESEARCH", ESearchMatchesAsync);
 			ic.RegisterUntaggedHandler ("SORT", SearchMatchesAsync);
-			ic.UserData = new SearchResults ();
+			ic.UserData = new SearchResults (UidValidity);
 
 			Engine.QueueCommand (ic);
 
@@ -1144,7 +1171,7 @@ namespace MailKit.Net.Imap
 			var command = "UID SORT ";
 
 			if ((Engine.Capabilities & ImapCapabilities.ESort) != 0)
-				command += "RETURN () ";
+				command += "RETURN (ALL) ";
 
 			command += order + " " + (charset ?? "US-ASCII") + " " + expr + "\r\n";
 
@@ -1153,7 +1180,7 @@ namespace MailKit.Net.Imap
 				ic.RegisterUntaggedHandler ("ESEARCH", ESearchMatchesAsync);
 			else
 				ic.RegisterUntaggedHandler ("SORT", SearchMatchesAsync);
-			ic.UserData = new SearchResults ();
+			ic.UserData = new SearchResults (UidValidity);
 
 			Engine.QueueCommand (ic);
 
@@ -1320,7 +1347,7 @@ namespace MailKit.Net.Imap
 
 			var ic = new ImapCommand (Engine, cancellationToken, this, command, args.ToArray ());
 			ic.RegisterUntaggedHandler ("ESEARCH", ESearchMatchesAsync);
-			ic.UserData = new SearchResults ();
+			ic.UserData = new SearchResults (UidValidity);
 
 			Engine.QueueCommand (ic);
 

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -51,17 +51,17 @@ namespace UnitTests {
 				Assert.Throws<ArgumentOutOfRangeException> (() => stream.Read (buffer, -1, buffer.Length));
 				Assert.Throws<ArgumentOutOfRangeException> (() => stream.Read (buffer, 0, -1));
 
-				Assert.Throws<ArgumentNullException> (async () => await stream.ReadAsync (null, 0, buffer.Length));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, -1, buffer.Length));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, 0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await stream.ReadAsync (null, 0, buffer.Length));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, -1, buffer.Length));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await stream.ReadAsync (buffer, 0, -1));
 
 				Assert.Throws<ArgumentNullException> (() => stream.Write (null, 0, buffer.Length));
 				Assert.Throws<ArgumentOutOfRangeException> (() => stream.Write (buffer, -1, buffer.Length));
 				Assert.Throws<ArgumentOutOfRangeException> (() => stream.Write (buffer, 0, -1));
 
-				Assert.Throws<ArgumentNullException> (async () => await stream.WriteAsync (null, 0, buffer.Length));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await stream.WriteAsync (buffer, -1, buffer.Length));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await stream.WriteAsync (buffer, 0, -1));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await stream.WriteAsync (null, 0, buffer.Length));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await stream.WriteAsync (buffer, -1, buffer.Length));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await stream.WriteAsync (buffer, 0, -1));
 			}
 		}
 

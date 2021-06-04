@@ -1,5 +1,107 @@
 # Release Notes
 
+### MailKit 2.12.0 (2021-05-12)
+
+* Fixed the .NET 5.0 build to include .NET 5.0-specific features. Previous releases incorrectly used
+  #if NET50 instead of #if NET5_0. (issue [#1140](https://github.com/jstedfast/MailKit/issues/1140))
+* Added support for NETStandard 2.1. (issue [#1181](https://github.com/jstedfast/MailKit/issues/1181))
+* .NETStandard 2.1 and .NET 5.0 versions of MailKit now use the newer SslStream.AuthenticateAsClientAsync()
+  methods that take SslClientAuthenticationOptions and CancellationToken arguments. In theory, this should
+  make upgrading a TCP/IP connection to SSL/TLS cancellable. Older .NET frameworks remain uncancellable for
+  this operation.
+* Fixed a NullReferenceException bug in the NTLM SASL mechanism logic.
+* Updated hard-coded SSL certificate serial numbers and fingerprints for common mail servers.
+
+### MailKit 2.11.1 (2021-03-16)
+
+* Added work-around for IMAP servers that do not correctly handle the ESEARCH `RETURN ()` syntax
+  the same as `RETURN (ALL)`. (issue [#1177](https://github.com/jstedfast/MailKit/issues/1177))
+
+### MailKit 2.11.0 (2021-03-12)
+
+* Handle BAD responses to the NAMESPACE command for Exchange.
+  (issue [#1135](https://github.com/jstedfast/MailKit/issues/1135))
+* Added support for configuring SSL/TLS cipher algorithms (only available in the .NET 5.0 API).
+  (issue [#1140](https://github.com/jstedfast/MailKit/issues/1140))
+* Updated GMail and Yahoo! Mail SSL certificate info.
+* Protect against NREs in NTLM authentication of no OSVersion is set.
+  (issue [#1148](https://github.com/jstedfast/MailKit/issues/1148))
+* Added work-around for hMailServer bug that doesn't accept seq-ranges in descending order.
+  (issue [#1150](https://github.com/jstedfast/MailKit/issues/1150))
+* Properly escape IPv6 addresses for Uri in order to allow Connect/Async methods to work with IPv6 addresses.
+  (issue [#1165](https://github.com/jstedfast/MailKit/issues/1165))
+* Added IsEncrypted and IsSigned properties to IMailService.
+  (issue [#1175](https://github.com/jstedfast/MailKit/issues/1175))
+
+### MailKit 2.10.1 (2021-01-02)
+
+* A few NTLM improvements that I hope are correct.
+
+### MailKit 2.10.0 (2020-11-20)
+
+* Don't enable support for TLS v1.1 by default anymore.
+  (issue [#1077](https://github.com/jstedfast/MailKit/issues/1077))
+* Added support for the SCRAM-SHA-512 SASL mechanism.
+  (issue [#1097](https://github.com/jstedfast/MailKit/issues/1097))
+* Added support for the OAUTHBEARER SASL mechanism.
+* Updated SSL certificate info for the common mail servers (GMail, outlook.com, Yahoo! Mail, etc).
+* Improved the SslHandshakeException error message to report common mistakes like trying to initiate
+  an SSL connection on a non-SSL port.
+* Improved IMAP's "Unexpected token" exception messages a bit
+* Updated code to use ArrayPools from System.Buffers.
+
+### MailKit 2.9.0 (2020-09-12)
+
+* Refactored Connect/ConnectAsync() logic to set timeouts *before* calling SslStream.AuthenticateAsClient()
+  when connecting to an SSL-wrapped service.
+  (issue [#1059](https://github.com/jstedfast/MailKit/issues/1059))
+* Hardcode the value of SslProtocols.Tls13 for frameworks that do not support it and add it to the
+  client's default SslProtocols. This adds TLS v1.3 support, by default, for apps using .NETStandard2.0
+  where the app project is built against a version of .NETCore that supports TLS v1.3.
+  (issue [#1058](https://github.com/jstedfast/MailKit/issues/1058))
+* Initialize IMAP SearchResults with the UIDVALIDITY value.
+  (issue [#1060](https://github.com/jstedfast/MailKit/issues/1060))
+* Make sure the ImapStream is not null (can be null if user calls Disconnect() causing IDLE to abort).
+  (issue [#1025](https://github.com/jstedfast/MailKit/issues/1025))
+* Case-insenitively match IMAP folder attribute flags (e.g. \HasNoChildren and \NoSelect).
+* Added support for the IMAP SAVEDATE extension.
+* Added support for detecting SMTP's REQUIRETLS extension.
+
+### MailKit 2.8.0 (2020-07-11)
+
+* Make sure to use the InvariantCulture when converting port values to a string.
+  (issue [#1040](https://github.com/jstedfast/MailKit/issues/1040))
+* Fixed other instances of string formatting for integer values to always use
+  CultureInfo.InvariantCulture.
+* Added a work-around for broken IMAP servers that allow NIL message flags.
+  (issue [#1042](https://github.com/jstedfast/MailKit/issues/1042))
+
+### MailKit 2.7.0 (2020-05-30)
+
+* Added a MessageSummary.Folder property and MessageThread.Message property
+  to allow developers to thread messages from multiple IMAP folders and be
+  able to figure out which folder each message belongs to.
+* Added a work-around for IMAP servers that send a UIDNEXT response with a
+  value of '0'. (issue [#1010](https://github.com/jstedfast/MailKit/issues/1010))
+* Added an IMailFolder.Supports(FolderFeature) method so that developers can check
+  whether a feature is supported by the folder without needing a reference to the
+  corresponding ImapClient object in order to check the Capabilities.
+* Fixed the HTTP proxy client to accept "200 OK" with an empty body as a successful
+  connection. (issue [#1015](https://github.com/jstedfast/MailKit/issues/1015))
+* Fixed the SOCKS5 proxy client to correctly send an authentication request.
+  (issue [#1019](https://github.com/jstedfast/MailKit/issues/1019))
+* Added support for customizable ProtocolLogger client/server prefixes.
+  (issue [#1024](https://github.com/jstedfast/MailKit/issues/1024))
+* Fixed an NRE in SslHandshakeException.Create() when running on Mono/Linux.
+* Modified the SmtpClient to take advantage of the SMTPUTF8 extension for the
+  `MAIL FROM` and `RCPT TO` commands even if a `options.International` is not
+  explicitly set to `true` if any of the mailbox addresses are international
+  addresses.
+  (issue [#1026](https://github.com/jstedfast/MailKit/issues/1026))
+* Added support for a new Important SpecialFolder ([rfc8457](https://tools.ietf.org/html/rfc8457)).
+* Added support for the IMAP REPLACE extension ([rfc8508](https://tools.ietf.org/html/rfc8508)).
+* NuGet packages now include the portable pdb's.
+
 ### MailKit 2.6.0 (2020-04-03)
 
 * Properly handle connection drops in SmtpClient.NoOp() and NoOpAsync()
@@ -128,8 +230,8 @@ this release breaks API/ABI.
 * Modified SmtpClient.Send*() to not call MimeMessage.Prepare() if any DKIM or ARC headers
   are present in order to avoid the potential risk of altering the message and breaking
   the signatures within those headers.
-* Added SmtpClient.SendCommand[Async]() to allow custom subclasses the ability to send
-  custom commands to the SMTP server.
+* Added SmtpClient.SendCommand() and SendCommandAsync() to allow custom subclasses the
+  ability to send custom commands to the SMTP server.
   (issue [#891](https://github.com/jstedfast/MailKit/issues/891))
 * Allow SmtpClient subclasses to override message preparation by overriding a new
   SmtpClient.Prepare() method.
@@ -196,9 +298,9 @@ this release breaks API/ABI.
   developers to specify the `RET` parameter value to the `MAIL FROM` command.
 * Fixed a number of locations in the code to clear password buffers after using
   them.
-* SmtpClient.Send[Async]() methods that accept a FormatOptions argument will no
-  longer hide Bcc, Resent-Bcc, nor Content-Length headers when uploading the
-  raw message to the SMTP server. It is now up to callers to add these values
+* SmtpClient.Send() and SendAsync() methods that accept a FormatOptions argument
+  will no longer hide Bcc, Resent-Bcc, nor Content-Length headers when uploading
+  the raw message to the SMTP server. It is now up to callers to add these values
   to their custom FormatOptions.HiddenHeaders property.
   (issue [#360](https://github.com/jstedfast/MailKit/issues/360))
 

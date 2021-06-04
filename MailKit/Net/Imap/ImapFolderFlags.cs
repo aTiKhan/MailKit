@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,7 +70,7 @@ namespace MailKit.Net.Imap
 			if (uids == null)
 				throw new ArgumentNullException (nameof (uids));
 
-			if (modseq.HasValue && !SupportsModSeq)
+			if (modseq.HasValue && !supportsModSeq)
 				throw new NotSupportedException ("The ImapFolder does not support mod-sequences.");
 
 			CheckState (true, true);
@@ -739,7 +739,7 @@ namespace MailKit.Net.Imap
 			if (indexes == null)
 				throw new ArgumentNullException (nameof (indexes));
 
-			if (modseq.HasValue && !SupportsModSeq)
+			if (modseq.HasValue && !supportsModSeq)
 				throw new NotSupportedException ("The ImapFolder does not support mod-sequences.");
 
 			CheckState (true, true);
@@ -749,7 +749,7 @@ namespace MailKit.Net.Imap
 
 			var flaglist = ImapUtils.FormatFlagsList (flags & PermanentFlags, keywords != null ? keywords.Count : 0);
 			var keywordList = keywords != null ? keywords.ToArray () : new object [0];
-			var set = ImapUtils.FormatIndexSet (indexes);
+			var set = ImapUtils.FormatIndexSet (Engine, indexes);
 			var @params = string.Empty;
 
 			if (modseq.HasValue)
@@ -1501,6 +1501,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -1557,6 +1560,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -1611,6 +1617,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -1668,6 +1677,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -1721,6 +1733,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -1771,6 +1786,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -1825,6 +1843,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -1883,6 +1904,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -1939,6 +1963,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -1997,6 +2024,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2052,6 +2082,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2104,6 +2137,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2137,7 +2173,7 @@ namespace MailKit.Net.Imap
 			if (indexes.Count == 0)
 				return new int[0];
 
-			var set = ImapUtils.FormatIndexSet (indexes);
+			var set = ImapUtils.FormatIndexSet (Engine, indexes);
 			var @params = string.Empty;
 
 			if (modseq.HasValue)
@@ -2189,6 +2225,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -2246,6 +2285,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2300,6 +2342,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -2357,6 +2402,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2410,6 +2458,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2460,6 +2511,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -2514,6 +2568,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -2572,6 +2629,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2628,6 +2688,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
@@ -2686,6 +2749,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2741,6 +2807,9 @@ namespace MailKit.Net.Imap
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
 		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
+		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -2792,6 +2861,9 @@ namespace MailKit.Net.Imap
 		/// </exception>
 		/// <exception cref="FolderNotOpenException">
 		/// The <see cref="ImapFolder"/> is not currently open in read-write mode.
+		/// </exception>
+		/// <exception cref="System.NotSupportedException">
+		/// The IMAP server does not support the Google Mail Extensions.
 		/// </exception>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,10 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Buffers;
 using System.Threading;
 using System.Net.Sockets;
+using System.Globalization;
 using System.Threading.Tasks;
 
 using MailKit.Security;
@@ -139,7 +141,7 @@ namespace MailKit.Net.Proxy
 			case Socks5Reply.TTLExpired:              return "TTL expired.";
 			case Socks5Reply.CommandNotSupported:     return "Command not supported.";
 			case Socks5Reply.AddressTypeNotSupported: return "Address type not supported.";
-			default:                                  return string.Format ("Unknown error ({0}).", (int) reply);
+			default:                                  return string.Format (CultureInfo.InvariantCulture, "Unknown error ({0}).", (int) reply);
 			}
 		}
 
@@ -158,7 +160,7 @@ namespace MailKit.Net.Proxy
 		void VerifySocksVersion (byte version)
 		{
 			if (version != (byte) SocksVersion)
-				throw new ProxyProtocolException (string.Format ("Proxy server responded with unknown SOCKS version: {0}", (int) version));
+				throw new ProxyProtocolException (string.Format (CultureInfo.InvariantCulture, "Proxy server responded with unknown SOCKS version: {0}", (int) version));
 		}
 
 		async Task<Socks5AuthMethod> NegotiateAuthMethodAsync (Socket socket, bool doAsync, CancellationToken cancellationToken, params Socks5AuthMethod[] methods)
@@ -211,7 +213,7 @@ namespace MailKit.Net.Proxy
 			var buffer = new byte[user.Length + passwd.Length + 3];
 			int nread, n = 0;
 
-			buffer[n++] = (byte) SocksVersion;
+			buffer[n++] = 1;
 			buffer[n++] = (byte) user.Length;
 			Buffer.BlockCopy (user, 0, buffer, n, user.Length);
 			n += user.Length;
@@ -228,8 +230,6 @@ namespace MailKit.Net.Proxy
 				if ((nread = await ReceiveAsync (socket, buffer, 0 + n, 2 - n, doAsync, cancellationToken).ConfigureAwait (false)) > 0)
 					n += nread;
 			} while (n < 2);
-
-			VerifySocksVersion (buffer[0]);
 
 			if (buffer[1] != (byte) Socks5Reply.Success)
 				throw new AuthenticationException ("Failed to authenticate with SOCKS5 proxy server.");
@@ -248,7 +248,6 @@ namespace MailKit.Net.Proxy
 
 			var socket = await SocketUtils.ConnectAsync (ProxyHost, ProxyPort, LocalEndPoint, doAsync, cancellationToken).ConfigureAwait (false);
 			byte[] domain = null, addr = null;
-			const int bufferSize = 6 + 257;
 
 			if (addrType == Socks5AddressType.Domain)
 				domain = Encoding.UTF8.GetBytes (host);
@@ -276,7 +275,7 @@ namespace MailKit.Net.Proxy
 				// +----+-----+-------+------+----------+----------+
 				// | 1  |  1  | X'00' |  1   | Variable |    2     |
 				// +----+-----+-------+------+----------+----------+
-				var buffer = new byte[bufferSize];
+				var buffer = new byte[4 + 257 + 2];
 				int nread, n = 0;
 
 				buffer[n++] = (byte) SocksVersion;
@@ -300,7 +299,7 @@ namespace MailKit.Net.Proxy
 					n += 4;
 					break;
 				}
-				buffer[n++] = (byte)(port >> 8);
+				buffer[n++] = (byte) (port >> 8);
 				buffer[n++] = (byte) port;
 
 				await SendAsync (socket, buffer, 0, n, doAsync, cancellationToken).ConfigureAwait (false);
@@ -324,7 +323,7 @@ namespace MailKit.Net.Proxy
 				VerifySocksVersion (buffer[0]);
 
 				if (buffer[1] != (byte) Socks5Reply.Success)
-					throw new ProxyProtocolException (string.Format ("Failed to connect to {0}:{1}: {2}", host, port, GetFailureReason (buffer[1])));
+					throw new ProxyProtocolException (string.Format (CultureInfo.InvariantCulture, "Failed to connect to {0}:{1}: {2}", host, port, GetFailureReason (buffer[1])));
 
 				addrType = (Socks5AddressType) buffer[3];
 

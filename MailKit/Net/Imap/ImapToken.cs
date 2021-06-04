@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
+
+using System.Globalization;
+
+using MimeKit.Utils;
 
 namespace MailKit.Net.Imap {
 	enum ImapTokenType {
@@ -61,17 +65,17 @@ namespace MailKit.Net.Imap {
 			switch (Type) {
 			case ImapTokenType.NoData:       return "<no data>";
 			case ImapTokenType.Nil:          return "NIL";
-			case ImapTokenType.Atom:         return "[atom: " + (string) Value + "]";
-			case ImapTokenType.Flag:         return "[flag: " + (string) Value + "]";
-			case ImapTokenType.QString:      return "[qstring: \"" + (string) Value + "\"]";
-			case ImapTokenType.Literal:      return "{" + (int) Value + "}";
+			case ImapTokenType.Atom:         return (string) Value;
+			case ImapTokenType.Flag:         return (string) Value;
+			case ImapTokenType.QString:      return MimeUtils.Quote ((string) Value);
+			case ImapTokenType.Literal:      return string.Format (CultureInfo.InvariantCulture, "{{{0}}}", (int) Value);
 			case ImapTokenType.Eoln:         return "'\\n'";
 			case ImapTokenType.OpenParen:    return "'('";
 			case ImapTokenType.CloseParen:   return "')'";
 			case ImapTokenType.Asterisk:     return "'*'";
 			case ImapTokenType.OpenBracket:  return "'['";
 			case ImapTokenType.CloseBracket: return "']'";
-			default:                         return string.Format ("[{0}: '{1}']", Type, Value);
+			default:                         return string.Format (CultureInfo.InvariantCulture, "[{0}: '{1}']", Type, Value);
 			}
 		}
 	}

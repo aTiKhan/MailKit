@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -325,6 +325,16 @@ namespace MailKit.Net.Imap {
 		/// The server supports the <a href="https://tools.ietf.org/html/rfc8474">OBJECTID</a> extension.
 		/// </summary>
 		ObjectID         = 1L << 55,
+
+		/// <summary>
+		/// The server supports the <a href="https://tools.ietf.org/html/rfc8508">REPLACE</a> extension.
+		/// </summary>
+		Replace          = 1L << 56,
+
+		/// <summary>
+		/// The server supports the <a href="https://tools.ietf.org/html/rfc8514">SAVEDATE</a> extension.
+		/// </summary>
+		SaveDate         = 1L << 57,
 
 		#region GMail Extensions
 

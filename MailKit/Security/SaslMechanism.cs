@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ namespace MailKit.Security {
 		/// which order the SASL mechanisms supported by the server should be tried.
 		/// </remarks>
 		public static readonly string[] AuthMechanismRank = {
-			"SCRAM-SHA-256", "SCRAM-SHA-1", "CRAM-MD5", "DIGEST-MD5", "PLAIN", "LOGIN"
+			"SCRAM-SHA-512", "SCRAM-SHA-256", "SCRAM-SHA-1", "CRAM-MD5", "DIGEST-MD5", "PLAIN", "LOGIN"
 		};
 		static readonly bool md5supported;
 
@@ -324,10 +324,12 @@ namespace MailKit.Security {
 				throw new ArgumentNullException (nameof (mechanism));
 
 			switch (mechanism) {
+			case "SCRAM-SHA-512": return true;
 			case "SCRAM-SHA-256": return true;
 			case "SCRAM-SHA-1":   return true;
 			case "DIGEST-MD5":    return md5supported;
 			case "CRAM-MD5":      return md5supported;
+			case "OAUTHBEARER":   return true;
 			case "XOAUTH2":       return true;
 			case "PLAIN":         return true;
 			case "LOGIN":         return true;
@@ -375,11 +377,13 @@ namespace MailKit.Security {
 
 			switch (mechanism) {
 			//case "KERBEROS_V4":   return null;
+			case "SCRAM-SHA-512": return new SaslMechanismScramSha512 (cred) { Uri = uri };
 			case "SCRAM-SHA-256": return new SaslMechanismScramSha256 (cred) { Uri = uri };
 			case "SCRAM-SHA-1":   return new SaslMechanismScramSha1 (cred) { Uri = uri };
 			case "DIGEST-MD5":    return md5supported ? new SaslMechanismDigestMd5 (cred) { Uri = uri } : null;
 			case "CRAM-MD5":      return md5supported ? new SaslMechanismCramMd5 (cred) { Uri = uri } : null;
 			//case "GSSAPI":        return null;
+			case "OAUTHBEARER":   return new SaslMechanismOAuthBearer (cred) { Uri = uri };
 			case "XOAUTH2":       return new SaslMechanismOAuth2 (cred) { Uri = uri };
 			case "PLAIN":         return new SaslMechanismPlain (encoding, cred) { Uri = uri };
 			case "LOGIN":         return new SaslMechanismLogin (encoding, cred) { Uri = uri };

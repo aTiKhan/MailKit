@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,10 @@ namespace MailKit.Security {
 	/// A SASL mechanism used by Google that makes use of a short-lived
 	/// OAuth 2.0 access token.
 	/// </remarks>
+	/// <example>
+	/// <code language="c#" source="Examples\OAuth2GMailExample.cs"/>
+	/// <code language="c#" source="Examples\OAuth2ExchangeExample.cs"/>
+	/// </example>
 	public class SaslMechanismOAuth2 : SaslMechanism
 	{
 		const string AuthBearer = "auth=Bearer ";
@@ -99,6 +103,10 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// Creates a new XOAUTH2 SASL context.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\OAuth2GMailExample.cs"/>
+		/// <code language="c#" source="Examples\OAuth2ExchangeExample.cs"/>
+		/// </example>
 		/// <param name="userName">The user name.</param>
 		/// <param name="auth_token">The auth token.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -152,7 +160,7 @@ namespace MailKit.Security {
 		protected override byte[] Challenge (byte[] token, int startIndex, int length)
 		{
 			if (IsAuthenticated)
-				throw new InvalidOperationException ();
+				return null;
 
 			var authToken = Credentials.Password;
 			var userName = Credentials.UserName;

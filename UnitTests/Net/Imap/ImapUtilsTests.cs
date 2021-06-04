@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,8 @@ namespace UnitTests.Net.Imap {
 	[TestFixture]
 	public class ImapUtilsTests
 	{
+		readonly ImapEngine engine = new ImapEngine (null);
+
 		[Test]
 		public void TestResponseCodeCreation ()
 		{
@@ -57,10 +59,11 @@ namespace UnitTests.Net.Imap {
 			const string expect = "1:9";
 			string actual;
 
-			Assert.Throws<ArgumentNullException> (() => ImapUtils.FormatIndexSet (null));
-			Assert.Throws<ArgumentException> (() => ImapUtils.FormatIndexSet (new int[0]));
+			Assert.Throws<ArgumentNullException> (() => ImapUtils.FormatIndexSet (null, new int[1]));
+			Assert.Throws<ArgumentNullException> (() => ImapUtils.FormatIndexSet (engine, null));
+			Assert.Throws<ArgumentException> (() => ImapUtils.FormatIndexSet (engine, new int[0]));
 
-			actual = ImapUtils.FormatIndexSet (indexes);
+			actual = ImapUtils.FormatIndexSet (engine, indexes);
 			Assert.AreEqual (expect, actual, "Formatting a simple range of indexes failed.");
 		}
 
@@ -71,7 +74,7 @@ namespace UnitTests.Net.Imap {
 			const string expect = "1,3,5,7,9";
 			string actual;
 
-			actual = ImapUtils.FormatIndexSet (indexes);
+			actual = ImapUtils.FormatIndexSet (engine, indexes);
 			Assert.AreEqual (expect, actual, "Formatting a non-sequential list of indexes.");
 		}
 
@@ -82,7 +85,7 @@ namespace UnitTests.Net.Imap {
 			const string expect = "1:3,5:6,9:12,15,19:20";
 			string actual;
 
-			actual = ImapUtils.FormatIndexSet (indexes);
+			actual = ImapUtils.FormatIndexSet (engine, indexes);
 			Assert.AreEqual (expect, actual, "Formatting a complex list of indexes.");
 		}
 
@@ -93,7 +96,7 @@ namespace UnitTests.Net.Imap {
 			const string expect = "20:19,15,12:9,6:5,3:1";
 			string actual;
 
-			actual = ImapUtils.FormatIndexSet (indexes);
+			actual = ImapUtils.FormatIndexSet (engine, indexes);
 			Assert.AreEqual (expect, actual, "Formatting a complex list of indexes.");
 		}
 

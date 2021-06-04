@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Security.Authentication;
 
 using NUnit.Framework;
 
@@ -45,6 +46,8 @@ using MailKit.Net.Imap;
 using MailKit.Net.Proxy;
 
 using UnitTests.Net.Proxy;
+
+using AuthenticationException = MailKit.Security.AuthenticationException;
 
 namespace UnitTests.Net.Imap {
 	[TestFixture]
@@ -78,17 +81,26 @@ namespace UnitTests.Net.Imap {
 		static readonly ImapCapabilities AclAuthenticatedCapabilities = GMailAuthenticatedCapabilities | ImapCapabilities.Acl;
 		static readonly ImapCapabilities MetadataInitialCapabilities = GMailInitialCapabilities | ImapCapabilities.Metadata;
 		static readonly ImapCapabilities MetadataAuthenticatedCapabilities = GMailAuthenticatedCapabilities | ImapCapabilities.Metadata;
+		const CipherAlgorithmType GMailCipherAlgorithm = CipherAlgorithmType.Aes128;
+		const int GMailCipherStrength = 128;
+		const HashAlgorithmType GMailHashAlgorithm = HashAlgorithmType.Sha256;
+		const ExchangeAlgorithmType GMailKeyExchangeAlgorithm = (ExchangeAlgorithmType) 44550;
+		const CipherAlgorithmType GmxDeCipherAlgorithm = CipherAlgorithmType.Aes256;
+		const int GmxDeCipherStrength = 256;
+		const HashAlgorithmType GmxDeHashAlgorithm = HashAlgorithmType.Sha384;
+		const ExchangeAlgorithmType GmxDeKeyExchangeAlgorithm = (ExchangeAlgorithmType) 44550;
 
 		static FolderAttributes GetSpecialFolderAttribute (SpecialFolder special)
 		{
 			switch (special) {
-			case SpecialFolder.All:     return FolderAttributes.All;
-			case SpecialFolder.Archive: return FolderAttributes.Archive;
-			case SpecialFolder.Drafts:  return FolderAttributes.Drafts;
-			case SpecialFolder.Flagged: return FolderAttributes.Flagged;
-			case SpecialFolder.Junk:    return FolderAttributes.Junk;
-			case SpecialFolder.Sent:    return FolderAttributes.Sent;
-			case SpecialFolder.Trash:   return FolderAttributes.Trash;
+			case SpecialFolder.All:       return FolderAttributes.All;
+			case SpecialFolder.Archive:   return FolderAttributes.Archive;
+			case SpecialFolder.Drafts:    return FolderAttributes.Drafts;
+			case SpecialFolder.Flagged:   return FolderAttributes.Flagged;
+			case SpecialFolder.Important: return FolderAttributes.Important;
+			case SpecialFolder.Junk:      return FolderAttributes.Junk;
+			case SpecialFolder.Sent:      return FolderAttributes.Sent;
+			case SpecialFolder.Trash:     return FolderAttributes.Trash;
 			default: throw new ArgumentOutOfRangeException ();
 			}
 		}
@@ -136,35 +148,35 @@ namespace UnitTests.Net.Imap {
 				// ReplayConnect
 				Assert.Throws<ArgumentNullException> (() => client.ReplayConnect (null, Stream.Null));
 				Assert.Throws<ArgumentNullException> (() => client.ReplayConnect ("host", null));
-				Assert.Throws<ArgumentNullException> (async () => await client.ReplayConnectAsync (null, Stream.Null));
-				Assert.Throws<ArgumentNullException> (async () => await client.ReplayConnectAsync ("host", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ReplayConnectAsync (null, Stream.Null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ReplayConnectAsync ("host", null));
 
 				// Connect
 				Assert.Throws<ArgumentNullException> (() => client.Connect ((Uri) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync ((Uri) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync ((Uri) null));
 				Assert.Throws<ArgumentException> (() => client.Connect (new Uri ("path", UriKind.Relative)));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (new Uri ("path", UriKind.Relative)));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (new Uri ("path", UriKind.Relative)));
 				Assert.Throws<ArgumentNullException> (() => client.Connect (null, 143, false));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync (null, 143, false));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync (null, 143, false));
 				Assert.Throws<ArgumentException> (() => client.Connect (string.Empty, 143, false));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 143, false));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 143, false));
 				Assert.Throws<ArgumentOutOfRangeException> (() => client.Connect ("host", -1, false));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, false));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, false));
 				Assert.Throws<ArgumentNullException> (() => client.Connect (null, 143, SecureSocketOptions.None));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync (null, 143, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync (null, 143, SecureSocketOptions.None));
 				Assert.Throws<ArgumentException> (() => client.Connect (string.Empty, 143, SecureSocketOptions.None));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 143, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (string.Empty, 143, SecureSocketOptions.None));
 				Assert.Throws<ArgumentOutOfRangeException> (() => client.Connect ("host", -1, SecureSocketOptions.None));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.ConnectAsync ("host", -1, SecureSocketOptions.None));
 
 				Assert.Throws<ArgumentNullException> (() => client.Connect ((Socket) null, "host", 143, SecureSocketOptions.None));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync ((Socket) null, "host", 143, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync ((Socket) null, "host", 143, SecureSocketOptions.None));
 				Assert.Throws<ArgumentNullException> (() => client.Connect ((Stream) null, "host", 143, SecureSocketOptions.None));
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync ((Stream) null, "host", 143, SecureSocketOptions.None));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync ((Stream) null, "host", 143, SecureSocketOptions.None));
 
 				using (var socket = new Socket (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)) {
 					Assert.Throws<ArgumentException> (() => client.Connect (socket, "host", 143, SecureSocketOptions.None));
-					Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (socket, "host", 143, SecureSocketOptions.None));
+					Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (socket, "host", 143, SecureSocketOptions.None));
 				}
 
 				try {
@@ -175,23 +187,23 @@ namespace UnitTests.Net.Imap {
 
 				// Authenticate
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate ((SaslMechanism) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync ((SaslMechanism) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync ((SaslMechanism) null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate ((ICredentials) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync ((ICredentials) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync ((ICredentials) null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (null, "password"));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "password"));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "password"));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate ("username", null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync ("username", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync ("username", null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (null, credentials));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (null, credentials));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (null, credentials));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (Encoding.UTF8, null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (null, "username", "password"));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "username", "password"));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (null, "username", "password"));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (Encoding.UTF8, null, "password"));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null, "password"));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, null, "password"));
 				Assert.Throws<ArgumentNullException> (() => client.Authenticate (Encoding.UTF8, "username", null));
-				Assert.Throws<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, "username", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.AuthenticateAsync (Encoding.UTF8, "username", null));
 
 				// Note: we do not want to use SASL at all...
 				client.AuthenticationMechanisms.Clear ();
@@ -204,9 +216,9 @@ namespace UnitTests.Net.Imap {
 
 				// Notify
 				Assert.Throws<ArgumentNullException> (() => client.Notify (true, null));
-				Assert.Throws<ArgumentNullException> (async () => await client.NotifyAsync (true, null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.NotifyAsync (true, null));
 				Assert.Throws<ArgumentException> (() => client.Notify (true, new ImapEventGroup[0]));
-				Assert.Throws<ArgumentException> (async () => await client.NotifyAsync (true, new ImapEventGroup[0]));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.NotifyAsync (true, new ImapEventGroup[0]));
 				Assert.Throws<ArgumentNullException> (() => new ImapEventGroup (null, new List<ImapEvent> ()));
 				Assert.Throws<ArgumentNullException> (() => new ImapEventGroup (ImapMailboxFilter.Selected, null));
 				Assert.Throws<ArgumentNullException> (() => new ImapMailboxFilter.Subtree (null));
@@ -218,11 +230,11 @@ namespace UnitTests.Net.Imap {
 
 				Assert.Throws<ArgumentNullException> (() => client.GetFolder ((string) null));
 				Assert.Throws<ArgumentNullException> (() => client.GetFolder ((FolderNamespace) null));
-				Assert.Throws<ArgumentNullException> (async () => await client.GetFolderAsync ((string) null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.GetFolderAsync ((string) null));
 				Assert.Throws<ArgumentNullException> (() => client.GetFolders (null));
 				Assert.Throws<ArgumentNullException> (() => client.GetFolders (null, false));
-				Assert.Throws<ArgumentNullException> (async () => await client.GetFoldersAsync (null));
-				Assert.Throws<ArgumentNullException> (async () => await client.GetFoldersAsync (null, false));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.GetFoldersAsync (null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.GetFoldersAsync (null, false));
 
 				Assert.AreEqual (1, client.PersonalNamespaces.Count, "Personal");
 				Assert.AreEqual (0, client.SharedNamespaces.Count, "Shared");
@@ -329,13 +341,13 @@ namespace UnitTests.Net.Imap {
 				Socket socket;
 
 				Assert.Throws<SslHandshakeException> (() => client.Connect ("www.gmail.com", 80, true));
-				Assert.Throws<SslHandshakeException> (async () => await client.ConnectAsync ("www.gmail.com", 80, true));
+				Assert.ThrowsAsync<SslHandshakeException> (async () => await client.ConnectAsync ("www.gmail.com", 80, true));
 
 				socket = Connect ("www.gmail.com", 80);
 				Assert.Throws<SslHandshakeException> (() => client.Connect (socket, "www.gmail.com", 80, SecureSocketOptions.SslOnConnect));
 
 				socket = Connect ("www.gmail.com", 80);
-				Assert.Throws<SslHandshakeException> (async () => await client.ConnectAsync (socket, "www.gmail.com", 80, SecureSocketOptions.SslOnConnect));
+				Assert.ThrowsAsync<SslHandshakeException> (async () => await client.ConnectAsync (socket, "www.gmail.com", 80, SecureSocketOptions.SslOnConnect));
 			}
 		}
 
@@ -367,6 +379,15 @@ namespace UnitTests.Net.Imap {
 				client.Connect (host, 0, options);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
@@ -375,6 +396,15 @@ namespace UnitTests.Net.Imap {
 				client.Disconnect (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -407,14 +437,32 @@ namespace UnitTests.Net.Imap {
 				await client.ConnectAsync (host, 0, options);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
-				Assert.Throws<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
 
 				await client.DisconnectAsync (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -463,6 +511,15 @@ namespace UnitTests.Net.Imap {
 					}
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
@@ -471,6 +528,15 @@ namespace UnitTests.Net.Imap {
 					client.Disconnect (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -521,14 +587,32 @@ namespace UnitTests.Net.Imap {
 					}
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
-					Assert.Throws<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
+					Assert.ThrowsAsync<InvalidOperationException> (async () => await client.ConnectAsync (host, 0, options));
 
 					await client.DisconnectAsync (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -568,6 +652,15 @@ namespace UnitTests.Net.Imap {
 				client.Connect (socket, host, port, SecureSocketOptions.Auto);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
@@ -576,6 +669,15 @@ namespace UnitTests.Net.Imap {
 				client.Disconnect (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -607,21 +709,39 @@ namespace UnitTests.Net.Imap {
 
 				var socket = Connect (host, port);
 
-				Assert.Throws<ArgumentNullException> (async () => await client.ConnectAsync (socket, null, port, SecureSocketOptions.Auto));
-				Assert.Throws<ArgumentException> (async () => await client.ConnectAsync (socket, "", port, SecureSocketOptions.Auto));
-				Assert.Throws<ArgumentOutOfRangeException> (async () => await client.ConnectAsync (socket, host, -1, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.ConnectAsync (socket, null, port, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.ConnectAsync (socket, "", port, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<ArgumentOutOfRangeException> (async () => await client.ConnectAsync (socket, host, -1, SecureSocketOptions.Auto));
 
 				await client.ConnectAsync (socket, host, port, SecureSocketOptions.Auto);
 				Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 				Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+				Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+				Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+				Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+				Assert.AreEqual (GMailCipherAlgorithm, client.SslCipherAlgorithm);
+				Assert.AreEqual (GMailCipherStrength, client.SslCipherStrength);
+				Assert.AreEqual (GMailHashAlgorithm, client.SslHashAlgorithm);
+				Assert.AreEqual (0, client.SslHashStrength);
+				Assert.AreEqual (GMailKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+				Assert.AreEqual (255, client.SslKeyExchangeStrength);
 				Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 				Assert.AreEqual (1, connected, "ConnectedEvent");
 
-				Assert.Throws<InvalidOperationException> (async () => await client.ConnectAsync (socket, host, port, SecureSocketOptions.Auto));
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.ConnectAsync (socket, host, port, SecureSocketOptions.Auto));
 
 				await client.DisconnectAsync (true);
 				Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 				Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+				Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+				Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+				Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+				Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+				Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+				Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 				Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 			}
 		}
@@ -656,12 +776,30 @@ namespace UnitTests.Net.Imap {
 					client.Connect (uri, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					client.Disconnect (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -697,12 +835,30 @@ namespace UnitTests.Net.Imap {
 					await client.ConnectAsync (uri, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					await client.DisconnectAsync (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -738,12 +894,30 @@ namespace UnitTests.Net.Imap {
 					client.Connect (socket, host, port, options, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					client.Disconnect (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -779,12 +953,30 @@ namespace UnitTests.Net.Imap {
 					await client.ConnectAsync (socket, host, port, options, cancel.Token);
 					Assert.IsTrue (client.IsConnected, "Expected the client to be connected");
 					Assert.IsTrue (client.IsSecure, "Expected a secure connection");
+					Assert.IsTrue (client.IsEncrypted, "Expected an encrypted connection");
+					Assert.IsTrue (client.IsSigned, "Expected a signed connection");
+					Assert.AreEqual (client.SslProtocol, SslProtocols.Tls12, "Expected a TLS v1.2 connection");
+					Assert.AreEqual (GmxDeCipherAlgorithm, client.SslCipherAlgorithm);
+					Assert.AreEqual (GmxDeCipherStrength, client.SslCipherStrength);
+					Assert.AreEqual (GmxDeHashAlgorithm, client.SslHashAlgorithm);
+					Assert.AreEqual (0, client.SslHashStrength);
+					Assert.AreEqual (GmxDeKeyExchangeAlgorithm, client.SslKeyExchangeAlgorithm);
+					Assert.AreEqual (255, client.SslKeyExchangeStrength);
 					Assert.IsFalse (client.IsAuthenticated, "Expected the client to not be authenticated");
 					Assert.AreEqual (1, connected, "ConnectedEvent");
 
 					await client.DisconnectAsync (true);
 					Assert.IsFalse (client.IsConnected, "Expected the client to be disconnected");
 					Assert.IsFalse (client.IsSecure, "Expected IsSecure to be false after disconnecting");
+					Assert.IsFalse (client.IsEncrypted, "Expected IsEncrypted to be false after disconnecting");
+					Assert.IsFalse (client.IsSigned, "Expected IsSigned to be false after disconnecting");
+					Assert.AreEqual (SslProtocols.None, client.SslProtocol, "Expected SslProtocol to be None after disconnecting");
+					Assert.IsNull (client.SslCipherAlgorithm, "Expected SslCipherAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslCipherStrength, "Expected SslCipherStrength to be null after disconnecting");
+					Assert.IsNull (client.SslHashAlgorithm, "Expected SslHashAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslHashStrength, "Expected SslHashStrength to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeAlgorithm, "Expected SslKeyExchangeAlgorithm to be null after disconnecting");
+					Assert.IsNull (client.SslKeyExchangeStrength, "Expected SslKeyExchangeStrength to be null after disconnecting");
 					Assert.AreEqual (1, disconnected, "DisconnectedEvent");
 				}
 			}
@@ -1643,6 +1835,114 @@ namespace UnitTests.Net.Imap {
 		}
 
 		[Test]
+		public void TestLoginSpecialCharacter ()
+		{
+			var commands = new List<ImapReplayCommand> ();
+			commands.Add (new ImapReplayCommand ("", "gmail.greeting.txt"));
+			commands.Add (new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"));
+			commands.Add (new ImapReplayCommand ("A00000001 LOGIN username \"pass%word\"\r\n", "gmail.authenticate.txt"));
+			commands.Add (new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"));
+			commands.Add (new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"));
+			commands.Add (new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"));
+
+			using (var client = new ImapClient ()) {
+				try {
+					client.ReplayConnect ("localhost", new ImapReplayStream (commands, false));
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+				}
+
+				Assert.IsTrue (client.IsConnected, "Client failed to connect.");
+				Assert.IsFalse (client.IsSecure, "IsSecure should be false.");
+
+				Assert.AreEqual (GMailInitialCapabilities, client.Capabilities);
+				Assert.AreEqual (5, client.AuthenticationMechanisms.Count);
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("XOAUTH"), "Expected SASL XOAUTH auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("XOAUTH2"), "Expected SASL XOAUTH2 auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("OAUTHBEARER"), "Expected SASL OAUTHBEARER auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("PLAIN"), "Expected SASL PLAIN auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("PLAIN-CLIENTTOKEN"), "Expected SASL PLAIN-CLIENTTOKEN auth mechanism");
+
+				Assert.AreEqual (120000, client.Timeout, "Timeout");
+				client.Timeout *= 2;
+
+				// Note: Do not try to use any SASL mechanisms
+				client.AuthenticationMechanisms.Clear ();
+
+				int authenticated = 0;
+				client.Authenticated += (sender, e) => {
+					authenticated++;
+				};
+
+				try {
+					client.Authenticate ("username", "pass%word");
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+				}
+
+				Assert.AreEqual (1, authenticated, "Authenticated event was not emitted the expected number of times");
+				Assert.AreEqual (GMailAuthenticatedCapabilities, client.Capabilities);
+				Assert.IsTrue (client.SupportsQuotas, "SupportsQuotas");
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestLoginSpecialCharacterAsync ()
+		{
+			var commands = new List<ImapReplayCommand> ();
+			commands.Add (new ImapReplayCommand ("", "gmail.greeting.txt"));
+			commands.Add (new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"));
+			commands.Add (new ImapReplayCommand ("A00000001 LOGIN username \"pass%word\"\r\n", "gmail.authenticate.txt"));
+			commands.Add (new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"));
+			commands.Add (new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"));
+			commands.Add (new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"));
+
+			using (var client = new ImapClient ()) {
+				try {
+					await client.ReplayConnectAsync ("localhost", new ImapReplayStream (commands, true));
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+				}
+
+				Assert.IsTrue (client.IsConnected, "Client failed to connect.");
+				Assert.IsFalse (client.IsSecure, "IsSecure should be false.");
+
+				Assert.AreEqual (GMailInitialCapabilities, client.Capabilities);
+				Assert.AreEqual (5, client.AuthenticationMechanisms.Count);
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("XOAUTH"), "Expected SASL XOAUTH auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("XOAUTH2"), "Expected SASL XOAUTH2 auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("OAUTHBEARER"), "Expected SASL OAUTHBEARER auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("PLAIN"), "Expected SASL PLAIN auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("PLAIN-CLIENTTOKEN"), "Expected SASL PLAIN-CLIENTTOKEN auth mechanism");
+
+				Assert.AreEqual (120000, client.Timeout, "Timeout");
+				client.Timeout *= 2;
+
+				// Note: Do not try to use any SASL mechanisms
+				client.AuthenticationMechanisms.Clear ();
+
+				int authenticated = 0;
+				client.Authenticated += (sender, e) => {
+					authenticated++;
+				};
+
+				try {
+					await client.AuthenticateAsync ("username", "pass%word");
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+				}
+
+				Assert.AreEqual (1, authenticated, "Authenticated event was not emitted the expected number of times");
+				Assert.AreEqual (GMailAuthenticatedCapabilities, client.Capabilities);
+				Assert.IsTrue (client.SupportsQuotas, "SupportsQuotas");
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		[Test]
 		public void TestLoginDisabled ()
 		{
 			var commands = new List<ImapReplayCommand> ();
@@ -1731,6 +2031,86 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ("Did not expect Authenticate to work.");
 				} catch (AuthenticationException ax) {
 					Assert.AreEqual ("The LOGIN command is disabled.", ax.Message);
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+				}
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		[Test]
+		public void TestExchangeUserIsAuthenticatedButNotConnected ()
+		{
+			var commands = new List<ImapReplayCommand> ();
+			commands.Add (new ImapReplayCommand ("", "exchange.greeting.txt"));
+			commands.Add (new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "exchange.capability-preauth.txt"));
+			commands.Add (new ImapReplayCommand ("A00000001 LOGIN \"user@domain.com\\\\mailbox\" password\r\n", ImapReplayCommandResponse.OK));
+			commands.Add (new ImapReplayCommand ("A00000002 CAPABILITY\r\n", "exchange.capability-postauth.txt"));
+			commands.Add (new ImapReplayCommand ("A00000003 NAMESPACE\r\n", Encoding.ASCII.GetBytes ("A00000003 BAD User is authenticated but not connected.\r\n")));
+
+			using (var client = new ImapClient ()) {
+				try {
+					client.ReplayConnect ("localhost", new ImapReplayStream (commands, false));
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+				}
+
+				Assert.AreEqual (ImapCapabilities.IMAP4 | ImapCapabilities.IMAP4rev1 | ImapCapabilities.SaslIR | ImapCapabilities.UidPlus | ImapCapabilities.Id |
+					ImapCapabilities.Unselect | ImapCapabilities.Children | ImapCapabilities.Idle | ImapCapabilities.Namespace | ImapCapabilities.LiteralPlus |
+					ImapCapabilities.Status, client.Capabilities);
+				Assert.AreEqual (2, client.AuthenticationMechanisms.Count);
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("XOAUTH2"), "Expected SASL XOAUTH2 auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("PLAIN"), "Expected SASL PLAIN auth mechanism");
+
+				client.AuthenticationMechanisms.Clear ();
+
+				try {
+					client.Authenticate ("user@domain.com\\mailbox", "password");
+					Assert.Fail ("Did not expect Authenticate to work.");
+				} catch (ImapCommandException cx) {
+					Assert.AreEqual (ImapCommandResponse.Bad, cx.Response);
+					Assert.AreEqual ("User is authenticated but not connected.", cx.ResponseText);
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+				}
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestExchangeUserIsAuthenticatedButNotConnectedAsync ()
+		{
+			var commands = new List<ImapReplayCommand> ();
+			commands.Add (new ImapReplayCommand ("", "exchange.greeting.txt"));
+			commands.Add (new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "exchange.capability-preauth.txt"));
+			commands.Add (new ImapReplayCommand ("A00000001 LOGIN \"user@domain.com\\\\mailbox\" password\r\n", ImapReplayCommandResponse.OK));
+			commands.Add (new ImapReplayCommand ("A00000002 CAPABILITY\r\n", "exchange.capability-postauth.txt"));
+			commands.Add (new ImapReplayCommand ("A00000003 NAMESPACE\r\n", Encoding.ASCII.GetBytes ("A00000003 BAD User is authenticated but not connected.\r\n")));
+
+			using (var client = new ImapClient ()) {
+				try {
+					await client.ReplayConnectAsync ("localhost", new ImapReplayStream (commands, true));
+				} catch (Exception ex) {
+					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+				}
+
+				Assert.AreEqual (ImapCapabilities.IMAP4 | ImapCapabilities.IMAP4rev1 | ImapCapabilities.SaslIR | ImapCapabilities.UidPlus | ImapCapabilities.Id |
+					ImapCapabilities.Unselect | ImapCapabilities.Children | ImapCapabilities.Idle | ImapCapabilities.Namespace | ImapCapabilities.LiteralPlus |
+					ImapCapabilities.Status, client.Capabilities);
+				Assert.AreEqual (2, client.AuthenticationMechanisms.Count);
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("XOAUTH2"), "Expected SASL XOAUTH2 auth mechanism");
+				Assert.IsTrue (client.AuthenticationMechanisms.Contains ("PLAIN"), "Expected SASL PLAIN auth mechanism");
+
+				client.AuthenticationMechanisms.Clear ();
+
+				try {
+					await client.AuthenticateAsync ("user@domain.com\\mailbox", "password");
+					Assert.Fail ("Did not expect Authenticate to work.");
+				} catch (ImapCommandException cx) {
+					Assert.AreEqual (ImapCommandResponse.Bad, cx.Response);
+					Assert.AreEqual ("User is authenticated but not connected.", cx.ResponseText);
 				} catch (Exception ex) {
 					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
 				}
@@ -2241,7 +2621,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (folders[1], "[Gmail]", null, FolderAttributes.HasChildren | FolderAttributes.NonExistent, true, 0, 0, 0, 0, 0, 0, 0);
 				AssertFolder (folders[2], "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (folders[3], "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (folders[5], "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (folders[6], "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (folders[7], "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2250,7 +2630,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (client.Inbox, "INBOX", "d0f3b017-d3ec-40aa-9bb9-66c1aeccbb24", FolderAttributes.HasNoChildren | FolderAttributes.Inbox, true, 41234, 60, 0, 410, 1, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				//AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2265,7 +2645,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (folders[1], "[Gmail]", null, FolderAttributes.HasChildren | FolderAttributes.NonExistent, true, 0, 0, 0, 0, 0, 0, 0);
 				AssertFolder (folders[2], "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (folders[3], "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (folders[5], "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (folders[6], "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (folders[7], "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2274,7 +2654,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (client.Inbox, "INBOX", "d0f3b017-d3ec-40aa-9bb9-66c1aeccbb24", FolderAttributes.HasNoChildren | FolderAttributes.Inbox, true, 41234, 60, 0, 410, 1, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				//AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2289,7 +2669,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (folders[1], "[Gmail]", null, FolderAttributes.HasChildren | FolderAttributes.NonExistent, true, 0, 0, 0, 0, 0, 0, 0);
 				AssertFolder (folders[2], "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (folders[3], "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (folders[5], "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (folders[6], "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (folders[7], "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2298,7 +2678,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (client.Inbox, "INBOX", "d0f3b017-d3ec-40aa-9bb9-66c1aeccbb24", FolderAttributes.HasNoChildren | FolderAttributes.Inbox, true, 41234, 60, 0, 410, 1, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				//AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2349,7 +2729,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (folders[1], "[Gmail]", null, FolderAttributes.HasChildren | FolderAttributes.NonExistent, true, 0, 0, 0, 0, 0, 0, 0);
 				AssertFolder (folders[2], "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (folders[3], "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (folders[5], "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (folders[6], "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (folders[7], "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2358,7 +2738,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (client.Inbox, "INBOX", "d0f3b017-d3ec-40aa-9bb9-66c1aeccbb24", FolderAttributes.HasNoChildren | FolderAttributes.Inbox, true, 41234, 60, 0, 410, 1, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				//AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2373,7 +2753,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (folders[1], "[Gmail]", null, FolderAttributes.HasChildren | FolderAttributes.NonExistent, true, 0, 0, 0, 0, 0, 0, 0);
 				AssertFolder (folders[2], "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (folders[3], "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (folders[5], "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (folders[6], "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (folders[7], "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2382,7 +2762,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (client.Inbox, "INBOX", "d0f3b017-d3ec-40aa-9bb9-66c1aeccbb24", FolderAttributes.HasNoChildren | FolderAttributes.Inbox, true, 41234, 60, 0, 410, 1, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				//AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2397,7 +2777,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (folders[1], "[Gmail]", null, FolderAttributes.HasChildren | FolderAttributes.NonExistent, true, 0, 0, 0, 0, 0, 0, 0);
 				AssertFolder (folders[2], "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (folders[3], "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (folders[4], "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (folders[5], "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (folders[6], "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (folders[7], "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2406,7 +2786,7 @@ namespace UnitTests.Net.Imap {
 				AssertFolder (client.Inbox, "INBOX", "d0f3b017-d3ec-40aa-9bb9-66c1aeccbb24", FolderAttributes.HasNoChildren | FolderAttributes.Inbox, true, 41234, 60, 0, 410, 1, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", "f668b57d-9f42-453b-b315-a18cd3eb0f85", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", "fdacc3c7-4e20-4ca0-a0d7-4f7267187e48", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0, 1024);
-				//AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 58, 0, 307, 9, 0, 1024);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", "2a0410e1-252a-4ee8-b48d-30111cda734a", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", "79da5ecd-afe4-440e-81ce-64ace69c9fbd", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", "f5df5af8-5e11-49a5-891d-c3e05591265e", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0, 1024);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", "93ad849a-2127-4c8e-ac41-594cd0a346a4", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0, 1024);
@@ -2625,7 +3005,7 @@ namespace UnitTests.Net.Imap {
 			commands.Add (new ImapReplayCommand ("A00000021 UID FETCH 1:7 (UID FLAGS MODSEQ)\r\n", "dovecot.fetch1.txt"));
 			commands.Add (new ImapReplayCommand ("A00000022 UID FETCH 1:* (UID FLAGS MODSEQ) (CHANGEDSINCE 2 VANISHED)\r\n", "dovecot.fetch2.txt"));
 			commands.Add (new ImapReplayCommand ("A00000023 UID SORT RETURN (ALL RELEVANCY COUNT MIN MAX) (REVERSE ARRIVAL) US-ASCII ALL\r\n", "dovecot.sort-reverse-arrival.txt"));
-			commands.Add (new ImapReplayCommand ("A00000024 UID SEARCH RETURN () UNDELETED SEEN\r\n", "dovecot.optimized-search.txt"));
+			commands.Add (new ImapReplayCommand ("A00000024 UID SEARCH RETURN (ALL) UNDELETED SEEN\r\n", "dovecot.optimized-search.txt"));
 			commands.Add (new ImapReplayCommand ("A00000025 CREATE UnitTests.Destination\r\n", ImapReplayCommandResponse.OK));
 			commands.Add (new ImapReplayCommand ("A00000026 LIST \"\" UnitTests.Destination\r\n", "dovecot.list-unittests-destination.txt"));
 			commands.Add (new ImapReplayCommand ("A00000027 UID COPY 1:7 UnitTests.Destination\r\n", "dovecot.copy.txt"));
@@ -2656,10 +3036,10 @@ namespace UnitTests.Net.Imap {
 			commands.Add (new ImapReplayCommand ("A00000052 FETCH 1 (BODY.PEEK[HEADER.FIELDS (MIME-VERSION CONTENT-TYPE)])\r\n", "dovecot.getstream-section2.txt"));
 			commands.Add (new ImapReplayCommand ("A00000053 UID STORE 1:14 (UNCHANGEDSINCE 3) +FLAGS.SILENT (\\Deleted $MailKit)\r\n", "dovecot.store-deleted-custom.txt"));
 			commands.Add (new ImapReplayCommand ("A00000054 STORE 1:7 (UNCHANGEDSINCE 5) FLAGS.SILENT (\\Deleted \\Seen $MailKit)\r\n", "dovecot.setflags-unchangedsince.txt"));
-			commands.Add (new ImapReplayCommand ("A00000055 UID SEARCH RETURN () UID 1:14 OR NEW OR OLD OR ANSWERED OR DELETED OR DRAFT OR FLAGGED OR RECENT OR UNANSWERED OR UNDELETED OR UNDRAFT OR UNFLAGGED OR UNSEEN OR KEYWORD $MailKit UNKEYWORD $MailKit\r\n", "dovecot.search-uids.txt"));
+			commands.Add (new ImapReplayCommand ("A00000055 UID SEARCH RETURN (ALL) UID 1:14 OR NEW OR OLD OR ANSWERED OR DELETED OR DRAFT OR FLAGGED OR RECENT OR UNANSWERED OR UNDELETED OR UNDRAFT OR UNFLAGGED OR UNSEEN OR KEYWORD $MailKit UNKEYWORD $MailKit\r\n", "dovecot.search-uids.txt"));
 			commands.Add (new ImapReplayCommand ("A00000056 UID SEARCH RETURN (ALL RELEVANCY COUNT MIN MAX) UID 1:14 LARGER 256 SMALLER 512\r\n", "dovecot.search-uids-options.txt"));
-			commands.Add (new ImapReplayCommand ("A00000057 UID SORT RETURN () (REVERSE DATE SUBJECT DISPLAYFROM SIZE) US-ASCII OR OR (SENTBEFORE 12-Oct-2016 SENTSINCE 10-Oct-2016) NOT SENTON 11-Oct-2016 OR (BEFORE 12-Oct-2016 SINCE 10-Oct-2016) NOT ON 11-Oct-2016\r\n", "dovecot.sort-by-date.txt"));
-			commands.Add (new ImapReplayCommand ("A00000058 UID SORT RETURN () (FROM TO CC) US-ASCII UID 1:14 OR BCC xyz OR CC xyz OR FROM xyz OR TO xyz OR SUBJECT xyz OR HEADER Message-Id mimekit.net OR BODY \"This is the message body.\" TEXT message\r\n", "dovecot.sort-by-strings.txt"));
+			commands.Add (new ImapReplayCommand ("A00000057 UID SORT RETURN (ALL) (REVERSE DATE SUBJECT DISPLAYFROM SIZE) US-ASCII OR OR (SENTBEFORE 12-Oct-2016 SENTSINCE 10-Oct-2016) NOT SENTON 11-Oct-2016 OR (BEFORE 12-Oct-2016 SINCE 10-Oct-2016) NOT ON 11-Oct-2016\r\n", "dovecot.sort-by-date.txt"));
+			commands.Add (new ImapReplayCommand ("A00000058 UID SORT RETURN (ALL) (FROM TO CC) US-ASCII UID 1:14 OR BCC xyz OR CC xyz OR FROM xyz OR TO xyz OR SUBJECT xyz OR HEADER Message-Id mimekit.net OR BODY \"This is the message body.\" TEXT message\r\n", "dovecot.sort-by-strings.txt"));
 			commands.Add (new ImapReplayCommand ("A00000059 UID SORT RETURN (ALL RELEVANCY COUNT MIN MAX) (DISPLAYTO) US-ASCII UID 1:14 OLDER 1 YOUNGER 3600\r\n", "dovecot.sort-uids-options.txt"));
 			commands.Add (new ImapReplayCommand ("A00000060 UID SEARCH ALL\r\n", "dovecot.search-raw.txt"));
 			commands.Add (new ImapReplayCommand ("A00000061 UID SORT (REVERSE ARRIVAL) US-ASCII ALL\r\n", "dovecot.sort-raw.txt"));
@@ -2718,6 +3098,16 @@ namespace UnitTests.Net.Imap {
 
 				var personal = client.GetFolder (client.PersonalNamespaces[0]);
 
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.AccessRights));
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.Annotations));
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.Metadata));
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.ModSequences)); // not supported until opened
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.QuickResync)); // not supported until it is enabled
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.Quotas));
+				Assert.IsTrue (client.Inbox.Supports (FolderFeature.Sorting));
+				Assert.IsTrue (client.Inbox.Supports (FolderFeature.Threading));
+				Assert.IsFalse (client.Inbox.Supports (FolderFeature.UTF8));
+
 				// Make sure these all throw NotSupportedException
 				Assert.Throws<NotSupportedException> (() => client.EnableUTF8 ());
 				Assert.Throws<NotSupportedException> (() => client.Inbox.GetAccessRights ("smith"));
@@ -2758,6 +3148,8 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ("Did not expect an exception when enabling QRESYNC: {0}", ex);
 				}
 
+				Assert.IsTrue (client.Inbox.Supports (FolderFeature.QuickResync));
+
 				// take advantage of LIST-STATUS to get top-level personal folders...
 				var statusItems = StatusItems.Count | StatusItems.HighestModSeq | StatusItems.Recent | StatusItems.UidNext | StatusItems.UidValidity | StatusItems.Unread;
 
@@ -2795,6 +3187,7 @@ namespace UnitTests.Net.Imap {
 
 				// SELECT the folder so that we can test some stuff
 				var access = folder.Open (FolderAccess.ReadWrite);
+				Assert.IsTrue (folder.Supports (FolderFeature.ModSequences));
 				Assert.AreEqual (expectedPermanentFlags, folder.PermanentFlags, "UnitTests.Messages PERMANENTFLAGS");
 				Assert.AreEqual (expectedFlags, folder.AcceptedFlags, "UnitTests.Messages FLAGS");
 				Assert.AreEqual (8, folder.Count, "UnitTests.Messages EXISTS");
@@ -2883,6 +3276,10 @@ namespace UnitTests.Net.Imap {
 				recentChanged = false;
 				vanished.Clear ();
 
+				Assert.IsTrue (folder.Supports (FolderFeature.Threading), "Supports threading");
+				Assert.IsTrue (folder.ThreadingAlgorithms.Contains (ThreadingAlgorithm.References), "Supports threading by References");
+				Assert.IsTrue (folder.ThreadingAlgorithms.Contains (ThreadingAlgorithm.OrderedSubject), "Supports threading by OrderedSubject");
+
 				// Verify that THREAD works correctly
 				var threaded = folder.Thread (ThreadingAlgorithm.References, SearchQuery.All);
 				Assert.AreEqual (2, threaded.Count, "Unexpected number of root nodes in threaded results");
@@ -2894,6 +3291,7 @@ namespace UnitTests.Net.Imap {
 				folder.Close ();
 
 				// Use QRESYNC to get the changes since last time we opened the folder
+				Assert.IsTrue (folder.Supports (FolderFeature.QuickResync), "Supports QRESYNC");
 				access = folder.Open (FolderAccess.ReadWrite, uidValidity, highestModSeq, appended);
 				Assert.AreEqual (FolderAccess.ReadWrite, access, "Expected UnitTests.Messages to be opened in READ-WRITE mode");
 				Assert.AreEqual (7, flagsChanged.Count, "Unexpected number of MessageFlagsChanged events");
@@ -2930,6 +3328,10 @@ namespace UnitTests.Net.Imap {
 				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.Fuzzy (SearchQuery.SubjectContains ("some fuzzy text"))));
 				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.Filter (new MetadataTag ("/private/filters/values/saved-search"))));
 				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.Filter ("saved-search")));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SaveDateSupported));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SavedBefore (DateTime.Now)));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SavedOn (DateTime.Now)));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SavedSince (DateTime.Now)));
 
 				// Use SEARCH and FETCH to get the same info
 				var searchOptions = SearchOptions.All | SearchOptions.Count | SearchOptions.Min | SearchOptions.Max | SearchOptions.Relevancy;
@@ -3343,38 +3745,38 @@ namespace UnitTests.Net.Imap {
 				var personal = client.GetFolder (client.PersonalNamespaces[0]);
 
 				// Make sure these all throw NotSupportedException
-				Assert.Throws<NotSupportedException> (async () => await client.EnableUTF8Async ());
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.GetAccessRightsAsync ("smith"));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.GetMyAccessRightsAsync ());
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.EnableUTF8Async ());
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.GetAccessRightsAsync ("smith"));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.GetMyAccessRightsAsync ());
 				var rights = new AccessRights ("lrswida");
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddAccessRightsAsync ("smith", rights));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveAccessRightsAsync ("smith", rights));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetAccessRightsAsync ("smith", rights));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveAccessAsync ("smith"));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.GetQuotaAsync ());
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetQuotaAsync (null, null));
-				Assert.Throws<NotSupportedException> (async () => await client.GetMetadataAsync (MetadataTag.PrivateComment));
-				Assert.Throws<NotSupportedException> (async () => await client.GetMetadataAsync (new MetadataTag[] { MetadataTag.PrivateComment }));
-				Assert.Throws<NotSupportedException> (async () => await client.SetMetadataAsync (new MetadataCollection ()));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddAccessRightsAsync ("smith", rights));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveAccessRightsAsync ("smith", rights));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetAccessRightsAsync ("smith", rights));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveAccessAsync ("smith"));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.GetQuotaAsync ());
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetQuotaAsync (null, null));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.GetMetadataAsync (MetadataTag.PrivateComment));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.GetMetadataAsync (new MetadataTag[] { MetadataTag.PrivateComment }));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.SetMetadataAsync (new MetadataCollection ()));
 				var labels = new string[] { "Label1", "Label2" };
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (UniqueId.MinValue, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (UniqueIdRange.All, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (UniqueIdRange.All, 1, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (0, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (new int[] { 0 }, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (new int[] { 0 }, 1, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (UniqueId.MinValue, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (UniqueIdRange.All, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (UniqueIdRange.All, 1, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (0, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (new int[] { 0 }, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (new int[] { 0 }, 1, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (UniqueId.MinValue, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (UniqueIdRange.All, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (UniqueIdRange.All, 1, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (0, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (new int[] { 0 }, labels, true));
-				Assert.Throws<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (new int[] { 0 }, 1, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (UniqueId.MinValue, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (UniqueIdRange.All, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (UniqueIdRange.All, 1, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (0, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (new int[] { 0 }, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.AddLabelsAsync (new int[] { 0 }, 1, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (UniqueId.MinValue, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (UniqueIdRange.All, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (UniqueIdRange.All, 1, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (0, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (new int[] { 0 }, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.RemoveLabelsAsync (new int[] { 0 }, 1, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (UniqueId.MinValue, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (UniqueIdRange.All, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (UniqueIdRange.All, 1, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (0, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (new int[] { 0 }, labels, true));
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.Inbox.SetLabelsAsync (new int[] { 0 }, 1, labels, true));
 
 				try {
 					await client.EnableQuickResyncAsync ();
@@ -3554,6 +3956,10 @@ namespace UnitTests.Net.Imap {
 				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.Fuzzy (SearchQuery.SubjectContains ("some fuzzy text"))));
 				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.Filter (new MetadataTag ("/private/filters/values/saved-search"))));
 				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.Filter ("saved-search")));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SaveDateSupported));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SavedBefore (DateTime.Now)));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SavedOn (DateTime.Now)));
+				Assert.Throws<NotSupportedException> (() => folder.Search (SearchQuery.SavedSince (DateTime.Now)));
 
 				// Use SEARCH and FETCH to get the same info
 				var searchOptions = SearchOptions.All | SearchOptions.Count | SearchOptions.Min | SearchOptions.Max | SearchOptions.Relevancy;
@@ -3970,7 +4376,7 @@ namespace UnitTests.Net.Imap {
 					commands.Add (new ImapReplayCommand (command, string.Format ("gmail.append.{0}.txt", i + 1)));
 				}
 			}
-			commands.Add (new ImapReplayCommand ("A00000059 UID SEARCH RETURN () OR X-GM-MSGID 1 OR X-GM-THRID 5 OR X-GM-LABELS \"Custom Label\" X-GM-RAW \"has:attachment in:unread\"\r\n", "gmail.search.txt"));
+			commands.Add (new ImapReplayCommand ("A00000059 UID SEARCH RETURN (ALL) OR X-GM-MSGID 1 OR X-GM-THRID 5 OR X-GM-LABELS \"Custom Label\" X-GM-RAW \"has:attachment in:unread\"\r\n", "gmail.search.txt"));
 			commands.Add (new ImapReplayCommand ("A00000060 UID FETCH 1:3,5,7:9,11:14,26:29,31,34,41:43,50 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY X-GM-MSGID X-GM-THRID X-GM-LABELS)\r\n", "gmail.search-summary.txt"));
 			commands.Add (new ImapReplayCommand ("A00000061 UID FETCH 1 (BODY.PEEK[])\r\n", "gmail.fetch.1.txt"));
 			commands.Add (new ImapReplayCommand ("A00000062 UID FETCH 2 (BODY.PEEK[])\r\n", "gmail.fetch.2.txt"));
@@ -4216,13 +4622,13 @@ namespace UnitTests.Net.Imap {
 				Assert.IsTrue (client.AppendLimit.HasValue, "Expected AppendLimit to have a value");
 				Assert.AreEqual (35651584, client.AppendLimit.Value, "Expected AppendLimit value to match");
 
-				Assert.Throws<NotSupportedException> (async () => await client.EnableQuickResyncAsync ());
-				Assert.Throws<NotSupportedException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.EnableQuickResyncAsync ());
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
 					new ImapEventGroup (ImapMailboxFilter.Inboxes, new List<ImapEvent> {
 						ImapEvent.FlagChange
 					})
 				}));
-				Assert.Throws<NotSupportedException> (async () => await client.DisableNotifyAsync ());
+				Assert.ThrowsAsync<NotSupportedException> (async () => await client.DisableNotifyAsync ());
 
 				var inbox = client.Inbox;
 				Assert.IsNotNull (inbox, "Expected non-null Inbox folder.");
@@ -4838,35 +5244,35 @@ namespace UnitTests.Net.Imap {
 				// Test some InvalidOperationExceptions
 
 				// This fires due to non-message events for a Selected mailbox filter
-				Assert.Throws<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
 					new ImapEventGroup (ImapMailboxFilter.Selected, new List<ImapEvent> {
 						ImapEvent.MailboxName,
 					})
 				}));
 
 				// This fires due to having MessageNew, but not MessageExpunged
-				Assert.Throws<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
 					new ImapEventGroup (ImapMailboxFilter.Selected, new List<ImapEvent> {
 						new ImapEvent.MessageNew (items, new HashSet<HeaderId> ())
 					})
 				}));
 
 				// This fires due to having MessageNew, but not MessageExpunged
-				Assert.Throws<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
 					new ImapEventGroup (ImapMailboxFilter.Selected, new List<ImapEvent> {
 						new ImapEvent.MessageNew (items, new HashSet<string> ())
 					})
 				}));
 
 				// This fires due to having FlagsChanged but not MessageNew and MessageExpunged
-				Assert.Throws<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
 					new ImapEventGroup (ImapMailboxFilter.Selected, new List<ImapEvent> {
 						ImapEvent.AnnotationChange, ImapEvent.FlagChange
 					})
 				}));
 
 				// This fires due to MessageNew being aded to a non-Selected folder
-				Assert.Throws<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
+				Assert.ThrowsAsync<InvalidOperationException> (async () => await client.NotifyAsync (true, new List<ImapEventGroup> {
 					new ImapEventGroup (ImapMailboxFilter.Personal, new List<ImapEvent> {
 						new ImapEvent.MessageNew (items, new HashSet<string> ())
 					})
@@ -5020,7 +5426,7 @@ namespace UnitTests.Net.Imap {
 			commands.Add (new ImapReplayCommand ("A00000005 COMPRESS DEFLATE\r\n", ImapReplayCommandResponse.OK));
 			commands.Add (new ImapReplayCommand ("A00000006 COMPRESS DEFLATE\r\n", ImapReplayCommandResponse.NO, true));
 			commands.Add (new ImapReplayCommand ("A00000007 SELECT INBOX (CONDSTORE)\r\n", "gmail.select-inbox.txt", true));
-			commands.Add (new ImapReplayCommand ("A00000008 UID SEARCH RETURN () ALL\r\n", "gmail.search.txt", true));
+			commands.Add (new ImapReplayCommand ("A00000008 UID SEARCH RETURN (ALL) ALL\r\n", "gmail.search.txt", true));
 			commands.Add (new ImapReplayCommand ("A00000009 UID STORE 1:3,5,7:9,11:14,26:29,31,34,41:43,50 +FLAGS.SILENT (\\Deleted)\r\n", ImapReplayCommandResponse.OK, true));
 			commands.Add (new ImapReplayCommand ("A00000010 UID EXPUNGE 1:3\r\n", "gmail.expunge.txt", true));
 			commands.Add (new ImapReplayCommand ("A00000011 LOGOUT\r\n", "gmail.logout.txt", true));
@@ -5096,7 +5502,7 @@ namespace UnitTests.Net.Imap {
 
 				await client.CompressAsync ();
 
-				Assert.Throws<ImapCommandException> (async () => await client.CompressAsync ());
+				Assert.ThrowsAsync<ImapCommandException> (async () => await client.CompressAsync ());
 
 				int changed = 0, expunged = 0;
 				var inbox = client.Inbox;
@@ -5304,8 +5710,8 @@ namespace UnitTests.Net.Imap {
 				Assert.AreEqual ("lrswi", acl[1].Rights.ToString (), "The access rights for the second access control does not match.");
 
 				// LISTRIGHTS INBOX smith
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.GetAccessRightsAsync (null));
-				//Assert.Throws<ArgumentException> (async () => await client.Inbox.GetAccessRightsAsync (string.Empty));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.GetAccessRightsAsync (null));
+				//Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.GetAccessRightsAsync (string.Empty));
 				var rights = await client.Inbox.GetAccessRightsAsync ("smith");
 				Assert.AreEqual ("lrswipkxtecda0123456789", rights.ToString (), "The access rights do not match for user smith.");
 
@@ -5316,28 +5722,28 @@ namespace UnitTests.Net.Imap {
 				// SETACL INBOX smith +lrswida
 				var empty = new AccessRights (string.Empty);
 				rights = new AccessRights ("lrswida");
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.AddAccessRightsAsync (null, rights));
-				//Assert.Throws<ArgumentException> (async () => await client.Inbox.AddAccessRightsAsync (string.Empty, rights));
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.AddAccessRightsAsync ("smith", null));
-				Assert.Throws<ArgumentException> (async () => await client.Inbox.AddAccessRightsAsync ("smith", empty));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.AddAccessRightsAsync (null, rights));
+				//Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.AddAccessRightsAsync (string.Empty, rights));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.AddAccessRightsAsync ("smith", null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.AddAccessRightsAsync ("smith", empty));
 				await client.Inbox.AddAccessRightsAsync ("smith", rights);
 
 				// SETACL INBOX smith -lrswida
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.RemoveAccessRightsAsync (null, rights));
-				//Assert.Throws<ArgumentException> (async () => await client.Inbox.RemoveAccessRightsAsync (string.Empty, rights));
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.RemoveAccessRightsAsync ("smith", null));
-				Assert.Throws<ArgumentException> (async () => await client.Inbox.RemoveAccessRightsAsync ("smith", empty));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.RemoveAccessRightsAsync (null, rights));
+				//Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.RemoveAccessRightsAsync (string.Empty, rights));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.RemoveAccessRightsAsync ("smith", null));
+				Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.RemoveAccessRightsAsync ("smith", empty));
 				await client.Inbox.RemoveAccessRightsAsync ("smith", rights);
 
 				// SETACL INBOX smith lrswida
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.SetAccessRightsAsync (null, rights));
-				//Assert.Throws<ArgumentException> (async () => await client.Inbox.SetAccessRightsAsync (string.Empty, rights));
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.SetAccessRightsAsync ("smith", null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.SetAccessRightsAsync (null, rights));
+				//Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.SetAccessRightsAsync (string.Empty, rights));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.SetAccessRightsAsync ("smith", null));
 				await client.Inbox.SetAccessRightsAsync ("smith", rights);
 
 				// DELETEACL INBOX smith
-				Assert.Throws<ArgumentNullException> (async () => await client.Inbox.RemoveAccessAsync (null));
-				//Assert.Throws<ArgumentException> (async () => await client.Inbox.RemoveAccessAsync (string.Empty));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await client.Inbox.RemoveAccessAsync (null));
+				//Assert.ThrowsAsync<ArgumentException> (async () => await client.Inbox.RemoveAccessAsync (string.Empty));
 				await client.Inbox.RemoveAccessAsync ("smith");
 
 				await client.DisconnectAsync (false);
@@ -5574,13 +5980,13 @@ namespace UnitTests.Net.Imap {
 				Assert.AreEqual ("this is a shared comment", metadata[1].Value, "Second metadata value did not match.");
 
 				// SETMETADATA
-				Assert.Throws<ImapCommandException> (async () => await client.SetMetadataAsync (new MetadataCollection (new [] {
+				Assert.ThrowsAsync<ImapCommandException> (async () => await client.SetMetadataAsync (new MetadataCollection (new [] {
 					new Metadata (MetadataTag.PrivateComment, "this is a comment")
 				})), "Expected NOPRIVATE RESP-CODE.");
-				Assert.Throws<ImapCommandException> (async () => await client.SetMetadataAsync (new MetadataCollection (new [] {
+				Assert.ThrowsAsync<ImapCommandException> (async () => await client.SetMetadataAsync (new MetadataCollection (new [] {
 					new Metadata (MetadataTag.PrivateComment, "this comment is too long!")
 				})), "Expected MAXSIZE RESP-CODE.");
-				Assert.Throws<ImapCommandException> (async () => await client.SetMetadataAsync (new MetadataCollection (new [] {
+				Assert.ThrowsAsync<ImapCommandException> (async () => await client.SetMetadataAsync (new MetadataCollection (new [] {
 					new Metadata (MetadataTag.PrivateComment, "this is a private comment"),
 					new Metadata (MetadataTag.SharedComment, "this is a shared comment"),
 				})), "Expected TOOMANY RESP-CODE.");
@@ -5606,13 +6012,13 @@ namespace UnitTests.Net.Imap {
 				Assert.AreEqual ("this is a shared comment", metadata[1].Value, "Second metadata value did not match.");
 
 				// SETMETADATA folder
-				Assert.Throws<ImapCommandException> (async () => await inbox.SetMetadataAsync (new MetadataCollection (new [] {
+				Assert.ThrowsAsync<ImapCommandException> (async () => await inbox.SetMetadataAsync (new MetadataCollection (new [] {
 					new Metadata (MetadataTag.PrivateComment, "this is a comment")
 				})), "Expected NOPRIVATE RESP-CODE.");
-				Assert.Throws<ImapCommandException> (async () => await inbox.SetMetadataAsync (new MetadataCollection (new [] {
+				Assert.ThrowsAsync<ImapCommandException> (async () => await inbox.SetMetadataAsync (new MetadataCollection (new [] {
 					new Metadata (MetadataTag.PrivateComment, "this comment is too long!")
 				})), "Expected MAXSIZE RESP-CODE.");
-				Assert.Throws<ImapCommandException> (async () => await inbox.SetMetadataAsync (new MetadataCollection (new [] {
+				Assert.ThrowsAsync<ImapCommandException> (async () => await inbox.SetMetadataAsync (new MetadataCollection (new [] {
 					new Metadata (MetadataTag.PrivateComment, "this is a private comment"),
 					new Metadata (MetadataTag.SharedComment, "this is a shared comment"),
 				})), "Expected TOOMANY RESP-CODE.");

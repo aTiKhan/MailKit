@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@ using System.Net.Security;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 
 using MimeKit;
@@ -45,6 +46,7 @@ using MailKit.Security;
 
 using SslStream = MailKit.Net.SslStream;
 using NetworkStream = MailKit.Net.NetworkStream;
+using AuthenticationException = MailKit.Security.AuthenticationException;
 
 namespace MailKit.Net.Smtp {
 	/// <summary>
@@ -161,7 +163,7 @@ namespace MailKit.Net.Smtp {
 		/// Get the capabilities supported by the SMTP server.
 		/// </summary>
 		/// <remarks>
-		/// The capabilities will not be known until a successful connection has been made 
+		/// The capabilities will not be known until a successful connection has been made
 		/// and may change once the client is authenticated.
 		/// </remarks>
 		/// <example>
@@ -304,6 +306,140 @@ namespace MailKit.Net.Smtp {
 		/// <value><c>true</c> if the connection is secure; otherwise, <c>false</c>.</value>
 		public override bool IsSecure {
 			get { return IsConnected && secure; }
+		}
+
+		/// <summary>
+		/// Get whether or not the connection is encrypted (typically via SSL or TLS).
+		/// </summary>
+		/// <remarks>
+		/// Gets whether or not the connection is encrypted (typically via SSL or TLS).
+		/// </remarks>
+		/// <value><c>true</c> if the connection is encrypted; otherwise, <c>false</c>.</value>
+		public override bool IsEncrypted {
+			get { return IsSecure && (Stream.Stream is SslStream sslStream) && sslStream.IsEncrypted; }
+		}
+
+		/// <summary>
+		/// Get whether or not the connection is signed (typically via SSL or TLS).
+		/// </summary>
+		/// <remarks>
+		/// Gets whether or not the connection is signed (typically via SSL or TLS).
+		/// </remarks>
+		/// <value><c>true</c> if the connection is signed; otherwise, <c>false</c>.</value>
+		public override bool IsSigned {
+			get { return IsSecure && (Stream.Stream is SslStream sslStream) && sslStream.IsSigned; }
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS protocol version.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets the negotiated SSL or TLS protocol version once an SSL or TLS connection has been made.</para>
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS protocol version.</value>
+		public override SslProtocols SslProtocol {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.SslProtocol;
+
+				return SslProtocols.None;
+			}
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS cipher algorithm.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS cipher algorithm once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS cipher algorithm.</value>
+		public override CipherAlgorithmType? SslCipherAlgorithm {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.CipherAlgorithm;
+
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS cipher algorithm strength.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS cipher algorithm strength once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS cipher algorithm strength.</value>
+		public override int? SslCipherStrength {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.CipherStrength;
+
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS hash algorithm.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS hash algorithm once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS hash algorithm.</value>
+		public override HashAlgorithmType? SslHashAlgorithm {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.HashAlgorithm;
+
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS hash algorithm strength.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS hash algorithm strength once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS hash algorithm strength.</value>
+		public override int? SslHashStrength {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.HashStrength;
+
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS key exchange algorithm.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS key exchange algorithm once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS key exchange algorithm.</value>
+		public override ExchangeAlgorithmType? SslKeyExchangeAlgorithm {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.KeyExchangeAlgorithm;
+
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS key exchange algorithm strength.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS key exchange algorithm strength once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS key exchange algorithm strength.</value>
+		public override int? SslKeyExchangeStrength {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.KeyExchangeStrength;
+
+				return null;
+			}
 		}
 
 		/// <summary>
@@ -574,22 +710,18 @@ namespace MailKit.Net.Smtp {
 
 						if (uint.TryParse (capability.Substring (index), NumberStyles.None, CultureInfo.InvariantCulture, out size))
 							MaxSize = size;
-					} else if (capability == "DSN") {
-						capabilities |= SmtpCapabilities.Dsn;
-					} else if (capability == "BINARYMIME") {
-						capabilities |= SmtpCapabilities.BinaryMime;
-					} else if (capability == "CHUNKING") {
-						capabilities |= SmtpCapabilities.Chunking;
-					} else if (capability == "ENHANCEDSTATUSCODES") {
-						capabilities |= SmtpCapabilities.EnhancedStatusCodes;
-					} else if (capability == "8BITMIME") {
-						capabilities |= SmtpCapabilities.EightBitMime;
-					} else if (capability == "PIPELINING") {
-						capabilities |= SmtpCapabilities.Pipelining;
-					} else if (capability == "STARTTLS") {
-						capabilities |= SmtpCapabilities.StartTLS;
-					} else if (capability == "SMTPUTF8") {
-						capabilities |= SmtpCapabilities.UTF8;
+					} else {
+						switch (capability) {
+						case "DSN":                 capabilities |= SmtpCapabilities.Dsn; break;
+						case "BINARYMIME":          capabilities |= SmtpCapabilities.BinaryMime; break;
+						case "CHUNKING":            capabilities |= SmtpCapabilities.Chunking; break;
+						case "ENHANCEDSTATUSCODES": capabilities |= SmtpCapabilities.EnhancedStatusCodes; break;
+						case "8BITMIME":            capabilities |= SmtpCapabilities.EightBitMime; break;
+						case "PIPELINING":          capabilities |= SmtpCapabilities.Pipelining; break;
+						case "STARTTLS":            capabilities |= SmtpCapabilities.StartTLS; break;
+						case "SMTPUTF8":            capabilities |= SmtpCapabilities.UTF8; break;
+						case "REQUIRETLS":          capabilities |= SmtpCapabilities.RequireTLS; break;
+						}
 					}
 				}
 			}
@@ -635,10 +767,7 @@ namespace MailKit.Net.Smtp {
 			SaslException saslException = null;
 
 			try {
-				while (!mechanism.IsAuthenticated) {
-					if (response.StatusCode != SmtpStatusCode.AuthenticationChallenge)
-						break;
-
+				while (response.StatusCode == SmtpStatusCode.AuthenticationChallenge) {
 					challenge = mechanism.Challenge (response.Response);
 					response = await SendCommandAsync (challenge, doAsync, cancellationToken).ConfigureAwait (false);
 				}
@@ -658,7 +787,7 @@ namespace MailKit.Net.Smtp {
 				return;
 			}
 
-			var message = string.Format ("{0}: {1}", (int) response.StatusCode, response.Response);
+			var message = string.Format (CultureInfo.InvariantCulture, "{0}: {1}", (int) response.StatusCode, response.Response);
 
 			if (saslException != null)
 				throw new AuthenticationException (message, saslException);
@@ -789,7 +918,7 @@ namespace MailKit.Net.Smtp {
 					return;
 				}
 
-				var message = string.Format ("{0}: {1}", (int) response.StatusCode, response.Response);
+				var message = string.Format (CultureInfo.InvariantCulture, "{0}: {1}", (int) response.StatusCode, response.Response);
 				Exception inner;
 
 				if (saslException != null)
@@ -958,21 +1087,24 @@ namespace MailKit.Net.Smtp {
 				break;
 			}
 
+			if (IPAddress.TryParse (host, out var ip) && ip.AddressFamily == AddressFamily.InterNetworkV6)
+				host = "[" + host + "]";
+
 			switch (options) {
 			case SecureSocketOptions.StartTlsWhenAvailable:
-				uri = new Uri ("smtp://" + host + ":" + port + "/?starttls=when-available");
+				uri = new Uri (string.Format (CultureInfo.InvariantCulture, "smtp://{0}:{1}/?starttls=when-available", host, port));
 				starttls = true;
 				break;
 			case SecureSocketOptions.StartTls:
-				uri = new Uri ("smtp://" + host + ":" + port + "/?starttls=always");
+				uri = new Uri (string.Format (CultureInfo.InvariantCulture, "smtp://{0}:{1}/?starttls=always", host, port));
 				starttls = true;
 				break;
 			case SecureSocketOptions.SslOnConnect:
-				uri = new Uri ("smtps://" + host + ":" + port);
+				uri = new Uri (string.Format (CultureInfo.InvariantCulture, "smtps://{0}:{1}", host, port));
 				starttls = false;
 				break;
 			default:
-				uri = new Uri ("smtp://" + host + ":" + port);
+				uri = new Uri (string.Format (CultureInfo.InvariantCulture, "smtp://{0}:{1}", host, port));
 				starttls = false;
 				break;
 			}
@@ -998,23 +1130,29 @@ namespace MailKit.Net.Smtp {
 			AuthenticationMechanisms.Clear ();
 			MaxSize = 0;
 
-			SmtpResponse response;
-			Stream stream;
-			bool starttls;
-
-			ComputeDefaultValues (host, ref port, ref options, out uri, out starttls);
+			ComputeDefaultValues (host, ref port, ref options, out uri, out var starttls);
 
 			var socket = await ConnectSocket (host, port, doAsync, cancellationToken).ConfigureAwait (false);
+			Stream stream = new NetworkStream (socket, true) {
+				WriteTimeout = timeout,
+				ReadTimeout = timeout
+			};
 
 			if (options == SecureSocketOptions.SslOnConnect) {
-				var ssl = new SslStream (new NetworkStream (socket, true), false, ValidateRemoteCertificate);
+				var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
 
 				try {
 					if (doAsync) {
+#if NET5_0 || NETSTANDARD2_1
+						await ssl.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
+#else
 						await ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
+#endif
 					} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 						ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
+#elif NET5_0
+						ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 						ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
 #endif
@@ -1022,24 +1160,20 @@ namespace MailKit.Net.Smtp {
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
-					throw SslHandshakeException.Create (this, ex, false);
+					throw SslHandshakeException.Create (this, ex, false, "SMTP", host, port, 465, 25, 587);
 				}
 
 				secure = true;
 				stream = ssl;
 			} else {
-				stream = new NetworkStream (socket, true);
 				secure = false;
-			}
-
-			if (stream.CanTimeout) {
-				stream.WriteTimeout = timeout;
-				stream.ReadTimeout = timeout;
 			}
 
 			Stream = new SmtpStream (stream, ProtocolLogger);
 
 			try {
+				SmtpResponse response;
+
 				ProtocolLogger.LogConnect (uri);
 
 				// read the greeting
@@ -1067,16 +1201,22 @@ namespace MailKit.Net.Smtp {
 						Stream.Stream = tls;
 
 						if (doAsync) {
+#if NET5_0 || NETSTANDARD2_1
+							await tls.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
+#else
 							await tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
+#endif
 						} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 							tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
+#elif NET5_0
+							tls.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 							tls.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
 #endif
 						}
 					} catch (Exception ex) {
-						throw SslHandshakeException.Create (this, ex, true);
+						throw SslHandshakeException.Create (this, ex, true, "SMTP", host, port, 465, 25, 587);
 					}
 
 					secure = true;
@@ -1206,10 +1346,16 @@ namespace MailKit.Net.Smtp {
 
 				try {
 					if (doAsync) {
+#if NET5_0 || NETSTANDARD2_1
+						await ssl.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
+#else
 						await ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
+#endif
 					} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 						ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
+#elif NET5_0
+						ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 						ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
 #endif
@@ -1217,7 +1363,7 @@ namespace MailKit.Net.Smtp {
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
-					throw SslHandshakeException.Create (this, ex, false);
+					throw SslHandshakeException.Create (this, ex, false, "SMTP", host, port, 465, 25, 587);
 				}
 
 				network = ssl;
@@ -1262,16 +1408,22 @@ namespace MailKit.Net.Smtp {
 
 					try {
 						if (doAsync) {
+#if NET5_0 || NETSTANDARD2_1
+							await tls.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
+#else
 							await tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
+#endif
 						} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 							tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
+#elif NET5_0
+							tls.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 							tls.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
 #endif
 						}
 					} catch (Exception ex) {
-						throw SslHandshakeException.Create (this, ex, true);
+						throw SslHandshakeException.Create (this, ex, true, "SMTP", host, port, 465, 25, 587);
 					}
 
 					secure = true;
@@ -1692,23 +1844,16 @@ namespace MailKit.Net.Smtp {
 			get; set;
 		}
 
-		static string GetAddrspec (FormatOptions options, MailboxAddress mailbox)
-		{
-			if (options.International)
-				return MailboxAddress.DecodeAddrspec (mailbox.Address);
-
-			return MailboxAddress.EncodeAddrspec (mailbox.Address);
-		}
-
 		async Task MailFromAsync (FormatOptions options, MimeMessage message, MailboxAddress mailbox, SmtpExtension extensions, long size, bool doAsync, CancellationToken cancellationToken)
 		{
+			var idnEncode = (extensions & SmtpExtension.UTF8) == 0;
 			var builder = new StringBuilder ("MAIL FROM:<");
 
-			var addrspec = GetAddrspec (options, mailbox);
+			var addrspec = mailbox.GetAddress (idnEncode);
 			builder.Append (addrspec);
 			builder.Append ('>');
 
-			if ((extensions & SmtpExtension.UTF8) != 0)
+			if (!idnEncode)
 				builder.Append (" SMTPUTF8");
 
 			if ((Capabilities & SmtpCapabilities.Size) != 0 && size != -1)
@@ -1829,7 +1974,8 @@ namespace MailKit.Net.Smtp {
 
 		async Task<bool> RcptToAsync (FormatOptions options, MimeMessage message, MailboxAddress mailbox, bool doAsync, CancellationToken cancellationToken)
 		{
-			var command = string.Format ("RCPT TO:<{0}>", GetAddrspec (options, mailbox));
+			var idnEncode = (Capabilities & SmtpCapabilities.UTF8) == 0;
+			var command = string.Format ("RCPT TO:<{0}>", mailbox.GetAddress (idnEncode));
 
 			if ((capabilities & SmtpCapabilities.Dsn) != 0) {
 				var notify = GetDeliveryStatusNotifications (message, mailbox);
@@ -2109,7 +2255,7 @@ namespace MailKit.Net.Smtp {
 
 			var extensions = visitor.SmtpExtensions;
 
-			if (format.International)
+			if ((Capabilities & SmtpCapabilities.UTF8) != 0 && (format.International || sender.IsInternational || recipients.Any (x => x.IsInternational)))
 				extensions |= SmtpExtension.UTF8;
 
 			if ((Capabilities & (SmtpCapabilities.Chunking | SmtpCapabilities.Size)) != 0 || progress != null) {
@@ -2152,7 +2298,7 @@ namespace MailKit.Net.Smtp {
 				await ResetAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				throw;
 			} catch {
-				Disconnect (uri.Host, uri.Port, GetSecureSocketOptions (uri) , false);
+				Disconnect (uri.Host, uri.Port, GetSecureSocketOptions (uri), false);
 				throw;
 			}
 		}

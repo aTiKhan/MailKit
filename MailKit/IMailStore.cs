@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,10 +31,11 @@ using System.Collections.Generic;
 
 namespace MailKit {
 	/// <summary>
-	/// An interface for retreiving messages from a message store such as IMAP.
+	/// An interface for retreiving messages from a message store.
 	/// </summary>
 	/// <remarks>
-	/// Implemented by <see cref="MailKit.Net.Imap.ImapClient"/>.
+	/// <para>An interface for retreiving messages from a message store.</para>
+	/// <para>Implemented by <see cref="MailKit.Net.Imap.ImapClient"/>.</para>
 	/// </remarks>
 	public interface IMailStore : IMailService
 	{

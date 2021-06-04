@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Net.Sockets;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace MailKit.Net.Proxy
@@ -186,7 +187,7 @@ namespace MailKit.Net.Proxy
 
 				buffer[n++] = (byte) SocksVersion;
 				buffer[n++] = (byte) Socks4Command.Connect;
-				buffer[n++] = (byte)(port >> 8);
+				buffer[n++] = (byte) (port >> 8);
 				buffer[n++] = (byte) port;
 				Buffer.BlockCopy (addr, 0, buffer, n, 4);
 				n += 4;
@@ -214,7 +215,7 @@ namespace MailKit.Net.Proxy
 				} while (n < 8);
 
 				if (buffer[1] != (byte) Socks4Reply.RequestGranted)
-					throw new ProxyProtocolException (string.Format ("Failed to connect to {0}:{1}: {2}", host, port, GetFailureReason (buffer[1])));
+					throw new ProxyProtocolException (string.Format (CultureInfo.InvariantCulture, "Failed to connect to {0}:{1}: {2}", host, port, GetFailureReason (buffer[1])));
 
 				// TODO: do we care about BND.ADDR and BND.PORT?
 

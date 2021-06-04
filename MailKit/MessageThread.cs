@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,7 +59,7 @@ namespace MailKit {
 		{
 			Children = new List<MessageThread> ();
 			if (message != null && message.UniqueId.IsValid)
-				UniqueId = message?.UniqueId;
+				UniqueId = message.UniqueId;
 			Message = message;
 		}
 

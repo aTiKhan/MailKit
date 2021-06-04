@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,11 +52,6 @@ namespace MailKit.Net
 			this.ownsSocket = ownsSocket;
 			connected = socket.Connected;
 			Socket = socket;
-		}
-
-		~NetworkStream ()
-		{
-			Dispose (false);
 		}
 
 		public Socket Socket {
@@ -135,6 +130,9 @@ namespace MailKit.Net
 		void Disconnect ()
 		{
 			try {
+#if !NETSTANDARD1_3 && !NETSTANDARD1_6
+				Socket.Disconnect (false);
+#endif
 				Socket.Dispose ();
 			} catch {
 				return;
@@ -175,9 +173,6 @@ namespace MailKit.Net
 							await tcs.Task.ConfigureAwait (false);
 							return recv.BytesTransferred;
 						} catch (OperationCanceledException) {
-							if (Socket.Connected)
-								Socket.Shutdown (SocketShutdown.Both);
-
 							Disconnect ();
 							throw;
 						} catch (Exception ex) {
@@ -218,9 +213,6 @@ namespace MailKit.Net
 						try {
 							await tcs.Task.ConfigureAwait (false);
 						} catch (OperationCanceledException) {
-							if (Socket.Connected)
-								Socket.Shutdown (SocketShutdown.Both);
-
 							Disconnect ();
 							throw;
 						} catch (Exception ex) {

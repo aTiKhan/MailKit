@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ namespace MailKit.Net.Imap
 			if (uids == null)
 				throw new ArgumentNullException (nameof (uids));
 
-			if (modseq.HasValue && !SupportsModSeq)
+			if (modseq.HasValue && !supportsModSeq)
 				throw new NotSupportedException ("The ImapFolder does not support mod-sequences.");
 
 			if (annotations == null)
@@ -306,7 +306,7 @@ namespace MailKit.Net.Imap
 			if (indexes == null)
 				throw new ArgumentNullException (nameof (indexes));
 
-			if (modseq.HasValue && !SupportsModSeq)
+			if (modseq.HasValue && !supportsModSeq)
 				throw new NotSupportedException ("The ImapFolder does not support mod-sequences.");
 
 			if (annotations == null)
@@ -320,7 +320,7 @@ namespace MailKit.Net.Imap
 			if (indexes.Count == 0 || annotations.Count == 0)
 				return new int[0];
 
-			var set = ImapUtils.FormatIndexSet (indexes);
+			var set = ImapUtils.FormatIndexSet (Engine, indexes);
 			var builder = new StringBuilder ("STORE ");
 			var values = new List<object> ();
 
