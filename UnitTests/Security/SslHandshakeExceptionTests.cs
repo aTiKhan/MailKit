@@ -52,6 +52,7 @@ namespace UnitTests.Security {
 		public void TestSerialization ()
 		{
 			var expected = new SslHandshakeException ("Bad boys, bad boys. Whatcha gonna do?", new IOException ("I/O Error."));
+			SslCertificateValidationInfo info = null;
 
 			Assert.AreEqual (HelpLink, expected.HelpLink, "Unexpected HelpLink.");
 
@@ -93,7 +94,7 @@ namespace UnitTests.Security {
 				Assert.AreEqual (expected.HelpLink, ex.HelpLink, "Unexpected HelpLink.");
 			}
 
-			expected = SslHandshakeException.Create (null, new AggregateException ("Aggregate errors.", new IOException (), new IOException ()), false, "IMAP", "localhost", 993, 993, 143);
+			expected = SslHandshakeException.Create (ref info, new AggregateException ("Aggregate errors.", new IOException (), new IOException ()), false, "IMAP", "localhost", 993, 993, 143);
 
 			Assert.AreEqual (HelpLink, expected.HelpLink, "Unexpected HelpLink.");
 
@@ -107,7 +108,7 @@ namespace UnitTests.Security {
 				Assert.AreEqual (expected.HelpLink, ex.HelpLink, "Unexpected HelpLink.");
 			}
 
-			expected = SslHandshakeException.Create (null, new AggregateException ("Aggregate errors.", new IOException (), new IOException ()), true, "IMAP", "localhost", 143, 993, 143);
+			expected = SslHandshakeException.Create (ref info, new AggregateException ("Aggregate errors.", new IOException (), new IOException ()), true, "IMAP", "localhost", 143, 993, 143);
 
 			Assert.AreEqual (HelpLink, expected.HelpLink, "Unexpected HelpLink.");
 
@@ -121,7 +122,7 @@ namespace UnitTests.Security {
 				Assert.AreEqual (expected.HelpLink, ex.HelpLink, "Unexpected HelpLink.");
 			}
 
-			expected = SslHandshakeException.Create (null, new AggregateException ("Aggregate errors.", new IOException ()), false, "IMAP", "localhost", 993, 993, 143);
+			expected = SslHandshakeException.Create (ref info, new AggregateException ("Aggregate errors.", new IOException ()), false, "IMAP", "localhost", 993, 993, 143);
 
 			Assert.AreEqual (HelpLink, expected.HelpLink, "Unexpected HelpLink.");
 
@@ -135,7 +136,7 @@ namespace UnitTests.Security {
 				Assert.AreEqual (expected.HelpLink, ex.HelpLink, "Unexpected HelpLink.");
 			}
 
-			expected = SslHandshakeException.Create (null, new AggregateException ("Aggregate errors.", new IOException ()), true, "IMAP", "localhost", 143, 993, 143);
+			expected = SslHandshakeException.Create (ref info, new AggregateException ("Aggregate errors.", new IOException ()), true, "IMAP", "localhost", 143, 993, 143);
 
 			Assert.AreEqual (HelpLink, expected.HelpLink, "Unexpected HelpLink.");
 
@@ -152,6 +153,7 @@ namespace UnitTests.Security {
 
 		class FakeClient : MailService
 		{
+			SslCertificateValidationInfo sslValidationInfo;
 			int timeout = 2 * 60 * 1000;
 			string hostName;
 
@@ -216,18 +218,35 @@ namespace UnitTests.Security {
 
 			bool ValidateRemoteCertificate (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 			{
-				if (ServerCertificateValidationCallback != null)
-					return ServerCertificateValidationCallback (hostName, certificate, chain, sslPolicyErrors);
+				bool valid;
 
-				return DefaultServerCertificateValidationCallback (hostName, certificate, chain, sslPolicyErrors);
+				sslValidationInfo?.Dispose ();
+				sslValidationInfo = null;
+
+				if (ServerCertificateValidationCallback != null) {
+					valid = ServerCertificateValidationCallback (hostName, certificate, chain, sslPolicyErrors);
+#if !NETSTANDARD1_3 && !NETSTANDARD1_6
+				} else if (ServicePointManager.ServerCertificateValidationCallback != null) {
+					valid = ServicePointManager.ServerCertificateValidationCallback (hostName, certificate, chain, sslPolicyErrors);
+#endif
+				} else {
+					valid = DefaultServerCertificateValidationCallback (hostName, certificate, chain, sslPolicyErrors);
+				}
+
+				if (!valid) {
+					// Note: The SslHandshakeException.Create() method will nullify this once it's done using it.
+					sslValidationInfo = new SslCertificateValidationInfo (sender, certificate, chain, sslPolicyErrors);
+				}
+
+				return valid;
 			}
 
 			async Task ConnectAsync (string host, int port, SecureSocketOptions options, bool doAsync, CancellationToken cancellationToken)
 			{
-				using (var socket = await ConnectSocket (host, port, doAsync, cancellationToken).ConfigureAwait (false)) {
+				using (var stream = await ConnectNetwork (host, port, doAsync, cancellationToken).ConfigureAwait (false)) {
 					hostName = host;
 
-					var ssl = new SslStream (new NetworkStream (socket, false), false, ValidateRemoteCertificate);
+					var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
 
 					try {
 						if (doAsync) {
@@ -238,7 +257,7 @@ namespace UnitTests.Security {
 					} catch (Exception ex) {
 						ssl.Dispose ();
 
-						throw SslHandshakeException.Create (this, ex, false, "HTTP", host, port, 443, 80);
+						throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "HTTP", host, port, 443, 80);
 					}
 				}
 			}
@@ -294,7 +313,7 @@ namespace UnitTests.Security {
 			}
 		}
 
-		static void AssertServerCertificate (X509Certificate2 certificate)
+		public static void AssertServerCertificate (X509Certificate2 certificate)
 		{
 			Assert.AreEqual ("*.badssl.com", certificate.GetNameInfo (X509NameType.SimpleName, false), "CommonName");
 			Assert.AreEqual ("CN=BadSSL Untrusted Root Certificate Authority, O=BadSSL, L=San Francisco, S=California, C=US", certificate.Issuer, "Issuer");
@@ -302,7 +321,7 @@ namespace UnitTests.Security {
 			Assert.AreEqual ("69D6DC42A2D60A20CF2B384D3A7763EDABC2E144", certificate.Thumbprint, "Thumbprint");
 		}
 
-		static void AssertRootCertificate (X509Certificate2 certificate)
+		public static void AssertRootCertificate (X509Certificate2 certificate)
 		{
 			Assert.AreEqual ("BadSSL Untrusted Root Certificate Authority", certificate.GetNameInfo (X509NameType.SimpleName, false), "CommonName");
 			Assert.AreEqual ("CN=BadSSL Untrusted Root Certificate Authority, O=BadSSL, L=San Francisco, S=California, C=US", certificate.Issuer, "Issuer");

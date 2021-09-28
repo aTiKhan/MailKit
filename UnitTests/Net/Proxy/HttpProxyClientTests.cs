@@ -25,8 +25,8 @@
 //
 
 using System;
+using System.IO;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 
 using NUnit.Framework;
@@ -77,11 +77,10 @@ namespace UnitTests.Net.Proxy {
 		public void TestMethodNotAllowed ()
 		{
 			var proxy = new HttpProxyClient ("www.google.com", 80);
-			Socket socket = null;
+			Stream stream = null;
 
 			try {
-				socket = proxy.Connect ("www.google.com", 80);
-				socket.Disconnect (false);
+				stream = proxy.Connect ("www.google.com", 80);
 				Assert.Fail ("www.google.com is not an HTTP proxy, so CONNECT should have failed.");
 			} catch (ProxyProtocolException ex) {
 				// This is expected since this proxy does not support Socks4a
@@ -91,8 +90,7 @@ namespace UnitTests.Net.Proxy {
 			} catch (Exception ex) {
 				Assert.Fail (ex.Message);
 			} finally {
-				if (socket != null)
-					socket.Dispose ();
+				stream?.Dispose ();
 			}
 		}
 
@@ -100,11 +98,10 @@ namespace UnitTests.Net.Proxy {
 		public async Task TestMethodNotAllowedAsync ()
 		{
 			var proxy = new HttpProxyClient ("www.google.com", 80);
-			Socket socket = null;
+			Stream stream = null;
 
 			try {
-				socket = await proxy.ConnectAsync ("www.google.com", 80);
-				socket.Disconnect (false);
+				stream = await proxy.ConnectAsync ("www.google.com", 80);
 				Assert.Fail ("www.google.com is not an HTTP proxy, so CONNECT should have failed.");
 			} catch (ProxyProtocolException ex) {
 				// This is expected since this proxy does not support Socks4a
@@ -114,8 +111,51 @@ namespace UnitTests.Net.Proxy {
 			} catch (Exception ex) {
 				Assert.Fail (ex.Message);
 			} finally {
-				if (socket != null)
-					socket.Dispose ();
+				stream?.Dispose ();
+			}
+		}
+
+		[Test]
+		public void TestConnectWithCredentials ()
+		{
+			using (var server = new HttpProxyListener ()) {
+				server.Start (IPAddress.Loopback, 0);
+
+				var credentials = new NetworkCredential ("username", "password");
+				var proxy = new HttpProxyClient (server.IPAddress.ToString (), server.Port, credentials);
+				Stream stream = null;
+
+				try {
+					stream = proxy.Connect ("www.google.com", 80, ConnectTimeout);
+				} catch (TimeoutException) {
+					Assert.Inconclusive ("Timed out.");
+				} catch (Exception ex) {
+					Assert.Fail (ex.Message);
+				} finally {
+					stream?.Dispose ();
+				}
+			}
+		}
+
+		[Test]
+		public async Task TestConnectWithCredentialsAsync ()
+		{
+			using (var server = new HttpProxyListener ()) {
+				server.Start (IPAddress.Loopback, 0);
+
+				var credentials = new NetworkCredential ("username", "password");
+				var proxy = new HttpProxyClient (server.IPAddress.ToString (), server.Port, credentials);
+				Stream stream = null;
+
+				try {
+					stream = await proxy.ConnectAsync ("www.google.com", 80, ConnectTimeout);
+				} catch (TimeoutException) {
+					Assert.Inconclusive ("Timed out.");
+				} catch (Exception ex) {
+					Assert.Fail (ex.Message);
+				} finally {
+					stream?.Dispose ();
+				}
 			}
 		}
 	}

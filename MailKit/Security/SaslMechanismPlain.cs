@@ -27,6 +27,7 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 namespace MailKit.Security {
 	/// <summary>
@@ -41,98 +42,6 @@ namespace MailKit.Security {
 	public class SaslMechanismPlain : SaslMechanism
 	{
 		readonly Encoding encoding;
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismPlain"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new PLAIN SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="encoding">The encoding to use for the user's credentials.</param>
-		/// <param name="credentials">The user's credentials.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="encoding"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismPlain(Encoding, NetworkCredential) instead.")]
-		public SaslMechanismPlain (Uri uri, Encoding encoding, ICredentials credentials) : base (uri, credentials)
-		{
-			if (encoding == null)
-				throw new ArgumentNullException (nameof (encoding));
-
-			this.encoding = encoding;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismPlain"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new PLAIN SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="encoding">The encoding to use for the user's credentials.</param>
-		/// <param name="userName">The user name.</param>
-		/// <param name="password">The password.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="encoding"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismPlain(Encoding, string, string) instead.")]
-		public SaslMechanismPlain (Uri uri, Encoding encoding, string userName, string password) : base (uri, userName, password)
-		{
-			if (encoding == null)
-				throw new ArgumentNullException (nameof (encoding));
-
-			this.encoding = encoding;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismPlain"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new PLAIN SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="credentials">The user's credentials.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismPlain(NetworkCredential) instead.")]
-		public SaslMechanismPlain (Uri uri, ICredentials credentials) : this (uri, Encoding.UTF8, credentials)
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismPlain"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new PLAIN SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="userName">The user name.</param>
-		/// <param name="password">The password.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismPlain(string, string) instead.")]
-		public SaslMechanismPlain (Uri uri, string userName, string password) : this (uri, Encoding.UTF8, userName, password)
-		{
-		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismPlain"/> class.
@@ -211,7 +120,7 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Gets or sets the authorization identifier.
+		/// Get or set the authorization identifier.
 		/// </summary>
 		/// <remarks>
 		/// The authorization identifier is the desired user account that the server should use
@@ -223,22 +132,23 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Gets the name of the mechanism.
+		/// Get the name of the SASL mechanism.
 		/// </summary>
 		/// <remarks>
-		/// Gets the name of the mechanism.
+		/// Gets the name of the SASL mechanism.
 		/// </remarks>
-		/// <value>The name of the mechanism.</value>
+		/// <value>The name of the SASL mechanism.</value>
 		public override string MechanismName {
 			get { return "PLAIN"; }
 		}
 
 		/// <summary>
-		/// Gets whether or not the mechanism supports an initial response (SASL-IR).
+		/// Get whether or not the mechanism supports an initial response (SASL-IR).
 		/// </summary>
 		/// <remarks>
-		/// SASL mechanisms that support sending an initial client response to the server
-		/// should return <value>true</value>.
+		/// <para>Gets whether or not the mechanism supports an initial response (SASL-IR).</para>
+		/// <para>SASL mechanisms that support sending an initial client response to the server
+		/// should return <value>true</value>.</para>
 		/// </remarks>
 		/// <value><c>true</c> if the mechanism supports an initial response; otherwise, <c>false</c>.</value>
 		public override bool SupportsInitialResponse {
@@ -246,7 +156,7 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Parses the server's challenge token and returns the next challenge response.
+		/// Parse the server's challenge token and return the next challenge response.
 		/// </summary>
 		/// <remarks>
 		/// Parses the server's challenge token and returns the next challenge response.
@@ -255,13 +165,17 @@ namespace MailKit.Security {
 		/// <param name="token">The server's challenge token.</param>
 		/// <param name="startIndex">The index into the token specifying where the server's challenge begins.</param>
 		/// <param name="length">The length of the server's challenge.</param>
-		/// <exception cref="System.InvalidOperationException">
-		/// The SASL mechanism is already authenticated.
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <exception cref="System.NotSupportedException">
+		/// The SASL mechanism does not support SASL-IR.
+		/// </exception>
+		/// <exception cref="System.OperationCanceledException">
+		/// The operation was canceled via the cancellation token.
 		/// </exception>
 		/// <exception cref="SaslException">
 		/// An error has occurred while parsing the server's challenge token.
 		/// </exception>
-		protected override byte[] Challenge (byte[] token, int startIndex, int length)
+		protected override byte[] Challenge (byte[] token, int startIndex, int length, CancellationToken cancellationToken)
 		{
 			if (IsAuthenticated)
 				return null;

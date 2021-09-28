@@ -1339,6 +1339,9 @@ namespace MailKit.Net.Imap {
 				case ImapResponseCodeType.Alert:
 					OnAlert (code.Message);
 					break;
+				case ImapResponseCodeType.WebAlert:
+					OnWebAlert (((WebAlertResponseCode) code).WebUri, code.Message);
+					break;
 				case ImapResponseCodeType.NotificationOverflow:
 					OnNotificationOverflow ();
 					break;
@@ -1437,6 +1440,7 @@ namespace MailKit.Net.Imap {
 			case "NONEXISTENT":          return ImapResponseCodeType.NonExistent;
 			case "USEATTR":              return ImapResponseCodeType.UseAttr;
 			case "MAILBOXID":            return ImapResponseCodeType.MailboxId;
+			case "WEBALERT":             return ImapResponseCodeType.WebAlert;
 			default:                     return ImapResponseCodeType.Unknown;
 			}
 		}
@@ -1497,7 +1501,7 @@ namespace MailKit.Net.Imap {
 				var perm = (PermanentFlagsResponseCode) code;
 
 				Stream.UngetToken (token);
-				perm.Flags = await ImapUtils.ParseFlagsListAsync (this, "PERMANENTFLAGS", null, doAsync, cancellationToken).ConfigureAwait (false);
+				perm.Flags = await ImapUtils.ParseFlagsListAsync (this, "PERMANENTFLAGS", perm.Keywords, doAsync, cancellationToken).ConfigureAwait (false);
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				break;
 			case ImapResponseCodeType.UidNext:
@@ -1745,6 +1749,15 @@ namespace MailKit.Net.Imap {
 
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				break;
+			case ImapResponseCodeType.WebAlert:
+				var webalert = (WebAlertResponseCode) code;
+
+				AssertToken (token, ImapTokenType.Atom, GenericResponseCodeSyntaxErrorFormat, "WEBALERT", token);
+
+				Uri.TryCreate ((string) token.Value, UriKind.Absolute, out webalert.WebUri);
+
+				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
+				break;
 			default:
 				// Note: This code-path handles: [ALERT], [CLOSED], [READ-ONLY], [READ-WRITE], etc.
 
@@ -1979,7 +1992,9 @@ namespace MailKit.Net.Imap {
 				} while (true);
 				break;
 			case "FLAGS":
-				folder.UpdateAcceptedFlags (await ImapUtils.ParseFlagsListAsync (this, atom, null, doAsync, cancellationToken).ConfigureAwait (false));
+				var keywords = new HashSet<string> (StringComparer.Ordinal);
+				var flags = await ImapUtils.ParseFlagsListAsync (this, atom, keywords, doAsync, cancellationToken).ConfigureAwait (false);
+				folder.UpdateAcceptedFlags (flags, keywords);
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 				AssertToken (token, ImapTokenType.Eoln, GenericUntaggedResponseSyntaxErrorFormat, atom, token);
@@ -2867,6 +2882,19 @@ namespace MailKit.Net.Imap {
 
 			if (handler != null)
 				handler (this, new AlertEventArgs (message));
+		}
+
+		/// <summary>
+		/// Occurs when the engine receives a webalert message from the server.
+		/// </summary>
+		public event EventHandler<WebAlertEventArgs> WebAlert;
+
+		internal void OnWebAlert (Uri uri, string message)
+		{
+			var handler = WebAlert;
+
+			if (handler != null)
+				handler (this, new WebAlertEventArgs (uri, message));
 		}
 
 		/// <summary>

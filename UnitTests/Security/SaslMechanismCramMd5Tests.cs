@@ -40,16 +40,10 @@ namespace UnitTests.Security {
 		public void TestArgumentExceptions ()
 		{
 			var credentials = new NetworkCredential ("username", "password");
-			var uri = new Uri ("smtp://localhost");
 
 			var sasl = new SaslMechanismCramMd5 (credentials);
 			Assert.Throws<NotSupportedException> (() => sasl.Challenge (null));
 
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (null, credentials));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (uri, null));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (null, "username", "password"));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (uri, null, "password"));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (uri, "username", null));
 			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (null));
 			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 (null, "password"));
 			Assert.Throws<ArgumentNullException> (() => new SaslMechanismCramMd5 ("username", null));
@@ -60,6 +54,7 @@ namespace UnitTests.Security {
 			const string serverToken = "<1896.697170952@postoffice.example.net>";
 			const string expected = "joe 3dbc88f0624776a737b39093f6eb6427";
 
+			Assert.IsFalse (sasl.SupportsChannelBinding, "{0}: SupportsChannelBinding", prefix);
 			Assert.IsFalse (sasl.SupportsInitialResponse, "{0}: SupportsInitialResponse", prefix);
 
 			var token = Encoding.ASCII.GetBytes (serverToken);
@@ -69,6 +64,9 @@ namespace UnitTests.Security {
 
 			Assert.AreEqual (expected, result, "{0}: challenge response does not match the expected string.", prefix);
 			Assert.IsTrue (sasl.IsAuthenticated, "{0}: should be authenticated now.", prefix);
+			Assert.IsFalse (sasl.NegotiatedChannelBinding, "{0}: NegotiatedChannelBinding", prefix);
+			Assert.IsFalse (sasl.NegotiatedSecurityLayer, "{0}: NegotiatedSecurityLayer", prefix);
+
 			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
 		}
 
@@ -84,14 +82,6 @@ namespace UnitTests.Security {
 			sasl = new SaslMechanismCramMd5 ("joe", "tanstaaftanstaaf");
 
 			AssertExampleFromRfc2195 (sasl, "user/pass");
-
-			sasl = new SaslMechanismCramMd5 (uri, credentials);
-
-			AssertExampleFromRfc2195 (sasl, "uri/credentials");
-
-			sasl = new SaslMechanismCramMd5 (uri, "joe", "tanstaaftanstaaf");
-
-			AssertExampleFromRfc2195 (sasl, "uri/user/pass");
 		}
 	}
 }

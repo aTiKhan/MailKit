@@ -29,6 +29,12 @@ using System.Collections.Generic;
 
 using MimeKit;
 
+#if NET5_0_OR_GREATER
+using IReadOnlySetOfStrings = System.Collections.Generic.IReadOnlySet<string>;
+#else
+using IReadOnlySetOfStrings = System.Collections.Generic.ISet<string>;
+#endif
+
 namespace MailKit {
 	/// <summary>
 	/// A summary of a message.
@@ -234,22 +240,7 @@ namespace MailKit {
 		/// methods.</para>
 		/// </remarks>
 		/// <value>The user-defined message flags.</value>
-		HashSet<string> Keywords { get; }
-
-		/// <summary>
-		/// Gets the user-defined message flags, if available.
-		/// </summary>
-		/// <remarks>
-		/// <para>Gets the user-defined message flags, if available.</para>
-		/// <para>This property will only be set if the
-		/// <see cref="MessageSummaryItems.Flags"/> flag is passed to
-		/// one of the <a href="Overload_MailKit_IMailFolder_Fetch.htm">Fetch</a>
-		/// or <a href="Overload_MailKit_IMailFolder_FetchAsync.htm">FetchAsync</a>
-		/// methods.</para>
-		/// </remarks>
-		/// <value>The user-defined message flags.</value>
-		[Obsolete ("Use Keywords instead.")]
-		HashSet<string> UserFlags { get; }
+		IReadOnlySetOfStrings Keywords { get; }
 
 		/// <summary>
 		/// Gets the message annotations, if available.
@@ -263,20 +254,17 @@ namespace MailKit {
 		/// methods.</para>
 		/// </remarks>
 		/// <value>The message annotations.</value>
-		IList<Annotation> Annotations { get; }
+		IReadOnlyList<Annotation> Annotations { get; }
 
 		/// <summary>
 		/// Gets the list of headers, if available.
 		/// </summary>
 		/// <remarks>
 		/// <para>Gets the list of headers, if available.</para>
-		/// <para>This property will only be set if <see cref="MessageSummaryItems.Headers"/>
-		/// is specified in a call to one of the
-		/// <a href="Overload_MailKit_IMailFolder_Fetch.htm">Fetch</a>
-		/// or <a href="Overload_MailKit_IMailFolder_FetchAsync.htm">FetchAsync</a>
-		/// methods or specific headers are requested via a one of the Fetch or FetchAsync methods
-		/// that accept list of specific headers to request for each message such as
-		/// <see cref="IMailFolder.Fetch(System.Collections.Generic.IList&lt;UniqueId&gt;,MessageSummaryItems,System.Collections.Generic.IEnumerable&lt;MimeKit.HeaderId&gt;,System.Threading.CancellationToken)"/>.
+		/// <para>This property will only be set if the <see cref="IFetchRequest"/> used with
+		/// <a href="Overload_MailKit_IMailFolder_Fetch.htm">Fetch</a> or
+		/// <a href="Overload_MailKit_IMailFolder_FetchAsync.htm">FetchAsync</a> has the <see cref="MessageSummaryItems.Headers"/>
+		/// flag set on <see cref="IFetchRequest.Items"/> or if the <see cref="IFetchRequest.Headers"/> list is non-empty.
 		/// </para>
 		/// </remarks>
 		/// <value>The list of headers.</value>
@@ -367,23 +355,6 @@ namespace MailKit {
 		/// </remarks>
 		/// <value>The globally unique message identifier.</value>
 		string EmailId { get; }
-
-		/// <summary>
-		/// Get the globally unique identifier for the message, if available.
-		/// </summary>
-		/// <remarks>
-		/// <para>Gets the globally unique identifier of the message, if available.</para>
-		/// <para>This property will only be set if the
-		/// <see cref="MessageSummaryItems.EmailId"/> flag is passed to
-		/// one of the <a href="Overload_MailKit_IMailFolder_Fetch.htm">Fetch</a>
-		/// or <a href="Overload_MailKit_IMailFolder_FetchAsync.htm">FetchAsync</a>
-		/// methods.</para>
-		/// <note type="info">This property maps to the <c>EMAILID</c> value defined in the
-		/// <a href="https://tools.ietf.org/html/rfc8474">OBJECTID</a> extension.</note>
-		/// </remarks>
-		/// <value>The globally unique message identifier.</value>
-		[Obsolete ("Use EmailId instead.")]
-		string Id { get; }
 
 		/// <summary>
 		/// Get the globally unique thread identifier for the message, if available.

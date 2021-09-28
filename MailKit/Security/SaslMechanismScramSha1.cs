@@ -43,45 +43,6 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// Creates a new SCRAM-SHA-1 SASL context.
 		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="credentials">The user's credentials.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismScramSha1(NetworkCredential) instead.")]
-		public SaslMechanismScramSha1 (Uri uri, ICredentials credentials) : base (uri, credentials)
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismScramSha1"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new SCRAM-SHA-1 SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="userName">The user name.</param>
-		/// <param name="password">The password.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismScramSha1(string, string) instead.")]
-		public SaslMechanismScramSha1 (Uri uri, string userName, string password) : base (uri, userName, password)
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismScramSha1"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new SCRAM-SHA-1 SASL context.
-		/// </remarks>
 		/// <param name="credentials">The user's credentials.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="credentials"/> is <c>null</c>.
@@ -108,7 +69,7 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Gets the name of the mechanism.
+		/// Get the name of the mechanism.
 		/// </summary>
 		/// <remarks>
 		/// Gets the name of the mechanism.
@@ -146,6 +107,68 @@ namespace MailKit.Security {
 		{
 			using (var sha1 = SHA1.Create ())
 				return sha1.ComputeHash (str);
+		}
+	}
+
+	/// <summary>
+	/// The SCRAM-SHA-1-PLUS SASL mechanism.
+	/// </summary>
+	/// <remarks>
+	/// A salted challenge/response SASL mechanism that uses the HMAC SHA-1 algorithm and Transport Layer Security (TLS) channel binding.
+	/// </remarks>
+	public class SaslMechanismScramSha1Plus : SaslMechanismScramSha1
+	{
+		/// <summary>
+		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismScramSha1Plus"/> class.
+		/// </summary>
+		/// <remarks>
+		/// Creates a new SCRAM-SHA-1-PLUS SASL context.
+		/// </remarks>
+		/// <param name="credentials">The user's credentials.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <paramref name="credentials"/> is <c>null</c>.
+		/// </exception>
+		public SaslMechanismScramSha1Plus (NetworkCredential credentials) : base (credentials)
+		{
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismScramSha1Plus"/> class.
+		/// </summary>
+		/// <remarks>
+		/// Creates a new SCRAM-SHA-1-PLUS SASL context.
+		/// </remarks>
+		/// <param name="userName">The user name.</param>
+		/// <param name="password">The password.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="userName"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="password"/> is <c>null</c>.</para>
+		/// </exception>
+		public SaslMechanismScramSha1Plus (string userName, string password) : base (userName, password)
+		{
+		}
+
+		/// <summary>
+		/// Get the name of the SASL mechanism.
+		/// </summary>
+		/// <remarks>
+		/// Gets the name of the SASL mechanism.
+		/// </remarks>
+		/// <value>The name of the SASL mechanism.</value>
+		public override string MechanismName {
+			get { return "SCRAM-SHA-1-PLUS"; }
+		}
+
+		/// <summary>
+		/// Get whether or not the SASL mechanism supports channel binding.
+		/// </summary>
+		/// <remarks>
+		/// Gets whether or not the SASL mechanism supports channel binding.
+		/// </remarks>
+		/// <value><c>true</c> if the SASL mechanism supports channel binding; otherwise, <c>false</c>.</value>
+		public override bool SupportsChannelBinding {
+			get { return true; }
 		}
 	}
 }

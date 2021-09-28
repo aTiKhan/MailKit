@@ -1,5 +1,5 @@
 ﻿//
-// FetchFlags.cs
+// MessageSummaryItems.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -33,9 +33,9 @@ namespace MailKit {
 	/// <remarks>
 	/// <see cref="MessageSummaryItems"/> are used to specify which properties
 	/// of <see cref="MessageSummary"/> should be populated by calls to
-	/// <see cref="IMailFolder.Fetch(System.Collections.Generic.IList&lt;UniqueId&gt;, MessageSummaryItems, System.Threading.CancellationToken)"/>,
-	/// <see cref="IMailFolder.Fetch(System.Collections.Generic.IList&lt;int&gt;, MessageSummaryItems, System.Threading.CancellationToken)"/>, or
-	/// <see cref="IMailFolder.Fetch(int, int, MessageSummaryItems, System.Threading.CancellationToken)"/>.
+	/// <see cref="IMailFolderExtensions.Fetch(IMailFolder,System.Collections.Generic.IList&lt;UniqueId&gt;, MessageSummaryItems, System.Threading.CancellationToken)"/>,
+	/// <see cref="IMailFolderExtensions.Fetch(IMailFolder,System.Collections.Generic.IList&lt;int&gt;, MessageSummaryItems, System.Threading.CancellationToken)"/>, or
+	/// <see cref="IMailFolderExtensions.Fetch(IMailFolder,int, int, MessageSummaryItems, System.Threading.CancellationToken)"/>.
 	/// </remarks>
 	[Flags]
 	public enum MessageSummaryItems {
@@ -130,14 +130,6 @@ namespace MailKit {
 		/// <a href="https://tools.ietf.org/html/rfc8474">rfc8474</a>.</para>
 		/// </summary>
 		EmailId        = 1 << 10,
-
-		/// <summary>
-		/// <para></para>Fetch the <see cref="IMessageSummary.EmailId"/>.
-		/// <para>Fetches the <c>EMAILID</c> value as defined in
-		/// <a href="https://tools.ietf.org/html/rfc8474">rfc8474</a>.</para>
-		/// </summary>
-		[Obsolete ("Use EmailId instead.")]
-		Id             = EmailId,
 
 		/// <summary>
 		/// <para>Fetch the <see cref="IMessageSummary.ThreadId"/>.</para>

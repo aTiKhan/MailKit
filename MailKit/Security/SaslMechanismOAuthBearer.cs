@@ -27,6 +27,7 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Globalization;
 
 namespace MailKit.Security {
@@ -46,45 +47,6 @@ namespace MailKit.Security {
 		const string AuthBearer = "auth=Bearer ";
 		const string HostEquals = "host=";
 		const string PortEquals = "port=";
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismOAuthBearer"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new OAUTHBEARER SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="credentials">The user's credentials.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismOAuthBearer(NetworkCredential) instead.")]
-		public SaslMechanismOAuthBearer (Uri uri, ICredentials credentials) : base (uri, credentials)
-		{
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismOAuthBearer"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new OAUTHBEARER SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="userName">The user name.</param>
-		/// <param name="auth_token">The auth token.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="auth_token"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismOAuthBearer(string, string) instead.")]
-		public SaslMechanismOAuthBearer (Uri uri, string userName, string auth_token) : base (uri, userName, auth_token)
-		{
-		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismOAuthBearer"/> class.
@@ -122,22 +84,23 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Gets the name of the mechanism.
+		/// Get the name of the SASL mechanism.
 		/// </summary>
 		/// <remarks>
-		/// Gets the name of the mechanism.
+		/// Gets the name of the SASL mechanism.
 		/// </remarks>
-		/// <value>The name of the mechanism.</value>
+		/// <value>The name of the SASL mechanism.</value>
 		public override string MechanismName {
 			get { return "OAUTHBEARER"; }
 		}
 
 		/// <summary>
-		/// Gets whether or not the mechanism supports an initial response (SASL-IR).
+		/// Get whether or not the mechanism supports an initial response (SASL-IR).
 		/// </summary>
 		/// <remarks>
-		/// SASL mechanisms that support sending an initial client response to the server
-		/// should return <value>true</value>.
+		/// <para>Gets whether or not the mechanism supports an initial response (SASL-IR).</para>
+		/// <para>SASL mechanisms that support sending an initial client response to the server
+		/// should return <value>true</value>.</para>
 		/// </remarks>
 		/// <value><c>true</c> if the mechanism supports an initial response; otherwise, <c>false</c>.</value>
 		public override bool SupportsInitialResponse {
@@ -171,7 +134,7 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Parses the server's challenge token and returns the next challenge response.
+		/// Parse the server's challenge token and return the next challenge response.
 		/// </summary>
 		/// <remarks>
 		/// Parses the server's challenge token and returns the next challenge response.
@@ -180,13 +143,17 @@ namespace MailKit.Security {
 		/// <param name="token">The server's challenge token.</param>
 		/// <param name="startIndex">The index into the token specifying where the server's challenge begins.</param>
 		/// <param name="length">The length of the server's challenge.</param>
-		/// <exception cref="System.InvalidOperationException">
-		/// The SASL mechanism is already authenticated.
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <exception cref="System.NotSupportedException">
+		/// The SASL mechanism does not support SASL-IR.
+		/// </exception>
+		/// <exception cref="System.OperationCanceledException">
+		/// The operation was canceled via the cancellation token.
 		/// </exception>
 		/// <exception cref="SaslException">
 		/// An error has occurred while parsing the server's challenge token.
 		/// </exception>
-		protected override byte[] Challenge (byte[] token, int startIndex, int length)
+		protected override byte[] Challenge (byte[] token, int startIndex, int length, CancellationToken cancellationToken)
 		{
 			if (IsAuthenticated)
 				return ErrorResponse;

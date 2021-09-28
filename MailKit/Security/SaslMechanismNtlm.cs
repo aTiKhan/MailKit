@@ -24,8 +24,12 @@
 // THE SOFTWARE.
 //
 
+// https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nlmp/b38c36ed-2804-4868-a9ff-8dd3182128e4
+
 using System;
 using System.Net;
+using System.Threading;
+using System.Security.Authentication.ExtendedProtection;
 
 using MailKit.Security.Ntlm;
 
@@ -39,52 +43,13 @@ namespace MailKit.Security {
 	public class SaslMechanismNtlm : SaslMechanism
 	{
 		enum LoginState {
-			Initial,
+			Negotiate,
 			Challenge
 		}
 
+		NtlmNegotiateMessage negotiate;
+		bool negotiatedChannelBinding;
 		LoginState state;
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismNtlm"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new NTLM SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="credentials">The user's credentials.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismNtlm(NetworkCredential) instead.")]
-		public SaslMechanismNtlm (Uri uri, ICredentials credentials) : base (uri, credentials)
-		{
-			Level = NtlmAuthLevel.NTLMv2_only;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismNtlm"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new NTLM SASL context.
-		/// </remarks>
-		/// <param name="uri">The URI of the service.</param>
-		/// <param name="userName">The user name.</param>
-		/// <param name="password">The password.</param>
-		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="uri"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
-		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
-		/// </exception>
-		[Obsolete ("Use SaslMechanismNtlm(string, string) instead.")]
-		public SaslMechanismNtlm (Uri uri, string userName, string password) : base (uri, userName, password)
-		{
-			Level = NtlmAuthLevel.NTLMv2_only;
-		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismNtlm"/> class.
@@ -98,7 +63,9 @@ namespace MailKit.Security {
 		/// </exception>
 		public SaslMechanismNtlm (NetworkCredential credentials) : base (credentials)
 		{
-			Level = NtlmAuthLevel.NTLMv2_only;
+			if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+				OSVersion = Environment.OSVersion.Version;
+			Workstation = Environment.MachineName;
 		}
 
 		/// <summary>
@@ -116,48 +83,99 @@ namespace MailKit.Security {
 		/// </exception>
 		public SaslMechanismNtlm (string userName, string password) : base (userName, password)
 		{
-			Level = NtlmAuthLevel.NTLMv2_only;
+			if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+				OSVersion = Environment.OSVersion.Version;
+			Workstation = Environment.MachineName;
 		}
 
 		/// <summary>
-		/// Gets the name of the mechanism.
+		/// This is only used for unit testing purposes.
+		/// </summary>
+		internal byte[] Nonce {
+			get; set;
+		}
+
+		/// <summary>
+		/// This is only used for unit testing purposes.
+		/// </summary>
+		internal long? Timestamp {
+			get; set;
+		}
+
+		/// <summary>
+		/// Get the name of the SASL mechanism.
 		/// </summary>
 		/// <remarks>
-		/// Gets the name of the mechanism.
+		/// Gets the name of the SASL mechanism.
 		/// </remarks>
-		/// <value>The name of the mechanism.</value>
+		/// <value>The name of the SASL mechanism.</value>
 		public override string MechanismName {
 			get { return "NTLM"; }
 		}
 
 		/// <summary>
-		/// Gets whether or not the mechanism supports an initial response (SASL-IR).
+		/// Get whether or not the SASL mechanism supports channel binding.
 		/// </summary>
 		/// <remarks>
-		/// SASL mechanisms that support sending an initial client response to the server
-		/// should return <value>true</value>.
+		/// Gets whether or not the SASL mechanism supports channel binding.
+		/// </remarks>
+		/// <value><c>true</c> if the SASL mechanism supports channel binding; otherwise, <c>false</c>.</value>
+		public override bool SupportsChannelBinding {
+			get { return true; }
+		}
+
+		/// <summary>
+		/// Get whether or not channel-binding was negotiated by the SASL mechanism.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets whether or not channel-binding has been negotiated by the SASL mechanism.</para>
+		/// <note type="note">Some SASL mechanisms, such as SCRAM-SHA1-PLUS and NTLM, are able to negotiate
+		/// channel-bindings.</note>
+		/// </remarks>
+		/// <value><c>true</c> if channel-binding was negotiated; otherwise, <c>false</c>.</value>
+		public override bool NegotiatedChannelBinding {
+			get { return negotiatedChannelBinding; }
+		}
+
+		/// <summary>
+		/// Get whether or not the mechanism supports an initial response (SASL-IR).
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets whether or not the mechanism supports an initial response (SASL-IR).</para>
+		/// <para>SASL mechanisms that support sending an initial client response to the server
+		/// should return <value>true</value>.</para>
 		/// </remarks>
 		/// <value><c>true</c> if the mechanism supports an initial response; otherwise, <c>false</c>.</value>
 		public override bool SupportsInitialResponse {
 			get { return true; }
 		}
 
-		internal NtlmAuthLevel Level {
+		/// <summary>
+		/// Get or set a value indicating whether or not the NTLM SASL mechanism should allow channel-binding.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets or sets a value indicating whether or not the NTLM SASL mechanism should allow channel-binding.</para>
+		/// <note type="note">In the future, this option will disappear as channel-binding will become the default. For now,
+		/// it is only an option because this feature has not been thoroughly tested.</note>
+		/// </remarks>
+		/// <value><c>true</c> if the NTLM SASL mechanism should allow channel-binding; otherwise, <c>false</c>.</value>
+		public bool AllowChannelBinding {
 			get; set;
 		}
 
 		/// <summary>
-		/// Gets or sets the Windows OS version to use in the NTLM negotiation (used for debuigging purposes).
+		/// Get or set the Windows OS version to use in the NTLM negotiation (used for debugging purposes).
 		/// </summary>
 		/// <remarks>
-		/// Gets or sets the Windows OS version to use in the NTLM negotiation (used for debuigging purposes).
+		/// Gets or sets the Windows OS version to use in the NTLM negotiation (used for debugging purposes).
 		/// </remarks>
+		/// <value>The Windows OS version.</value>
 		public Version OSVersion {
 			get; set;
 		}
 
 		/// <summary>
-		/// Gets or sets the workstation name to use for authentication.
+		/// Get or set the workstation name to use for authentication.
 		/// </summary>
 		/// <remarks>
 		/// Gets or sets the workstation name to use for authentication.
@@ -168,7 +186,30 @@ namespace MailKit.Security {
 		}
 
 		/// <summary>
-		/// Parses the server's challenge token and returns the next challenge response.
+		/// Get or set the service principal name (SPN) of the service that the client wishes to authenticate with.
+		/// </summary>
+		/// <remarks>
+		/// <para>Get or set the service principal name (SPN) of the service that the client wishes to authenticate with.</para>
+		/// <note type="note">This value is optional.</note>
+		/// </remarks>
+		/// <value>The service principal name (SPN) of the service that the client wishes to authenticate with.</value>
+		public string ServicePrincipalName {
+			get; set;
+		}
+
+		/// <summary>
+		/// Get or set a value indicating that the caller generated the target's SPN from an untrusted source.
+		/// </summary>
+		/// <remarks>
+		/// Gets or sets a value indicating that the caller generated the target's SPN from an untrusted source.
+		/// </remarks>
+		/// <value><c>true</c> if the <see cref="ServicePrincipalName"/> is unverified; otherwise, <c>false</c>.</value>
+		public bool IsUnverifiedServicePrincipalName {
+			get; set;
+		}
+
+		/// <summary>
+		/// Parse the server's challenge token and return the next challenge response.
 		/// </summary>
 		/// <remarks>
 		/// Parses the server's challenge token and returns the next challenge response.
@@ -177,35 +218,45 @@ namespace MailKit.Security {
 		/// <param name="token">The server's challenge token.</param>
 		/// <param name="startIndex">The index into the token specifying where the server's challenge begins.</param>
 		/// <param name="length">The length of the server's challenge.</param>
-		/// <exception cref="System.InvalidOperationException">
-		/// The SASL mechanism is already authenticated.
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <exception cref="System.NotSupportedException">
+		/// The SASL mechanism does not support SASL-IR.
+		/// </exception>
+		/// <exception cref="System.OperationCanceledException">
+		/// The operation was canceled via the cancellation token.
 		/// </exception>
 		/// <exception cref="SaslException">
 		/// An error has occurred while parsing the server's challenge token.
 		/// </exception>
-		protected override byte[] Challenge (byte[] token, int startIndex, int length)
+		protected override byte[] Challenge (byte[] token, int startIndex, int length, CancellationToken cancellationToken)
 		{
 			if (IsAuthenticated)
 				return null;
 
 			string userName = Credentials.UserName;
 			string domain = Credentials.Domain;
-			MessageBase message = null;
+			NtlmMessageBase message = null;
 
 			if (string.IsNullOrEmpty (domain)) {
-				int index = userName.IndexOf ('\\');
-				if (index == -1)
-					index = userName.IndexOf ('/');
+				int index;
 
-				if (index >= 0) {
-					domain = userName.Substring (0, index);
-					userName = userName.Substring (index + 1);
+				if ((index = userName.LastIndexOf ('@')) != -1) {
+					domain = userName.Substring (index + 1);
+					userName = userName.Substring (0, index);
+				} else {
+					if ((index = userName.IndexOf ('\\')) == -1)
+						index = userName.IndexOf ('/');
+
+					if (index >= 0) {
+						domain = userName.Substring (0, index);
+						userName = userName.Substring (index + 1);
+					}
 				}
 			}
 
 			switch (state) {
-			case LoginState.Initial:
-				message = new Type1Message (Workstation, domain, OSVersion);
+			case LoginState.Negotiate:
+				message = negotiate = new NtlmNegotiateMessage (domain, Workstation, OSVersion);
 				state = LoginState.Challenge;
 				break;
 			case LoginState.Challenge:
@@ -218,22 +269,43 @@ namespace MailKit.Security {
 			return message?.Encode ();
 		}
 
-		MessageBase GetChallengeResponse (string userName, string password, byte[] token, int startIndex, int length)
+		NtlmAuthenticateMessage GetChallengeResponse (string userName, string password, byte[] token, int startIndex, int length)
 		{
-			var type2 = new Type2Message (token, startIndex, length);
+			var challenge = new NtlmChallengeMessage (token, startIndex, length);
+			var authenticate = new NtlmAuthenticateMessage (negotiate, challenge, userName, password, Workstation) {
+				ClientChallenge = Nonce,
+				Timestamp = Timestamp
+			};
+			byte[] channelBindingToken = null;
 
-			return new Type3Message (type2, OSVersion, Level, userName, password, Workstation);
+			if (AllowChannelBinding && challenge.TargetInfo != null) {
+				// Only bother with attempting to channel-bind if the CHALLENGE_MESSAGE's TargetInfo is not NULL.
+				// Not sure which channel-binding types are supported by NTLM, but I am told that supposedly the
+				// System.Net.Mail.SmtpClient uses tls-unique, so we'll go with that...
+				negotiatedChannelBinding = TryGetChannelBindingToken (ChannelBindingKind.Endpoint, out channelBindingToken);
+			}
+
+			authenticate.ComputeNtlmV2 (ServicePrincipalName, IsUnverifiedServicePrincipalName, channelBindingToken);
+
+			if (channelBindingToken != null)
+				Array.Clear (channelBindingToken, 0, channelBindingToken.Length);
+
+			negotiate = null;
+
+			return authenticate;
 		}
 
 		/// <summary>
-		/// Resets the state of the SASL mechanism.
+		/// Reset the state of the SASL mechanism.
 		/// </summary>
 		/// <remarks>
 		/// Resets the state of the SASL mechanism.
 		/// </remarks>
 		public override void Reset ()
 		{
-			state = LoginState.Initial;
+			negotiatedChannelBinding = false;
+			state = LoginState.Negotiate;
+			negotiate = null;
 			base.Reset ();
 		}
 	}

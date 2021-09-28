@@ -195,11 +195,6 @@ namespace MailKit.Net.Imap {
 			return true;
 		}
 
-		static Exception InvalidInternalDateFormat (string text)
-		{
-			return new FormatException ("Invalid INTERNALDATE format: " + text);
-		}
-
 		/// <summary>
 		/// Parses the internal date string.
 		/// </summary>
@@ -215,37 +210,37 @@ namespace MailKit.Net.Imap {
 				index++;
 
 			if (index >= text.Length || !TryGetInt32 (text, ref index, '-', out day) || day < 1 || day > 31)
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			index++;
 			if (index >= text.Length || !TryGetMonth (text, ref index, '-', out month))
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			index++;
 			if (index >= text.Length || !TryGetInt32 (text, ref index, ' ', out year) || year < 1969)
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			index++;
 			if (index >= text.Length || !TryGetInt32 (text, ref index, ':', out hour) || hour > 23)
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			index++;
 			if (index >= text.Length || !TryGetInt32 (text, ref index, ':', out minute) || minute > 59)
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			index++;
 			if (index >= text.Length || !TryGetInt32 (text, ref index, ' ', out second) || second > 59)
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			index++;
 			if (index >= text.Length || !TryGetTimeZone (text, ref index, out timezone))
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			while (index < text.Length && char.IsWhiteSpace (text[index]))
 				index++;
 
 			if (index < text.Length)
-				throw InvalidInternalDateFormat (text);
+				return DateTimeOffset.MinValue;
 
 			// return DateTimeOffset.ParseExact (text.Trim (), "d-MMM-yyyy HH:mm:ss zzz", CultureInfo.InvariantCulture.DateTimeFormat);
 			return new DateTimeOffset (year, month, day, hour, minute, second, timezone);
@@ -604,8 +599,8 @@ namespace MailKit.Net.Imap {
 
 			if (folder != null || engine.GetCachedFolder (encodedName, out folder)) {
 				if ((attrs & FolderAttributes.NonExistent) != 0) {
-					folder.UpdatePermanentFlags (MessageFlags.None);
-					folder.UpdateAcceptedFlags (MessageFlags.None);
+					folder.UnsetPermanentFlags ();
+					folder.UnsetAcceptedFlags ();
 					folder.UpdateUidNext (UniqueId.Invalid);
 					folder.UpdateHighestModSeq (0);
 					folder.UpdateUidValidity (0);
@@ -792,7 +787,7 @@ namespace MailKit.Net.Imap {
 				builder.Append ("; ").Append (name).Append ('=');
 
 				if (NeedsQuoting (value))
-					builder.Append (MimeUtils.Quote (value));
+					MimeUtils.AppendQuoted (builder, value);
 				else
 					builder.Append (value);
 			} while (true);

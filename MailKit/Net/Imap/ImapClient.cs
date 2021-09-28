@@ -40,7 +40,6 @@ using System.Security.Cryptography.X509Certificates;
 using MailKit.Security;
 
 using SslStream = MailKit.Net.SslStream;
-using NetworkStream = MailKit.Net.NetworkStream;
 using AuthenticationException = MailKit.Security.AuthenticationException;
 
 namespace MailKit.Net.Imap {
@@ -66,7 +65,9 @@ namespace MailKit.Net.Imap {
 		static readonly char[] ReservedUriCharacters = { ';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '%' };
 		const string HexAlphabet = "0123456789ABCDEF";
 
+		readonly ImapAuthenticationSecretDetector detector = new ImapAuthenticationSecretDetector ();
 		readonly ImapEngine engine;
+		SslCertificateValidationInfo sslValidationInfo;
 		int timeout = 2 * 60 * 1000;
 		string identifier;
 		bool disconnecting;
@@ -110,11 +111,14 @@ namespace MailKit.Net.Imap {
 		/// </exception>
 		public ImapClient (IProtocolLogger protocolLogger) : base (protocolLogger)
 		{
+			protocolLogger.AuthenticationSecretDetector = detector;
+
 			// FIXME: should this take a ParserOptions argument?
 			engine = new ImapEngine (CreateImapFolder);
 			engine.MetadataChanged += OnEngineMetadataChanged;
 			engine.FolderCreated += OnEngineFolderCreated;
 			engine.Disconnected += OnEngineDisconnected;
+			engine.WebAlert += OnEngineWebAlert;
 			engine.Alert += OnEngineAlert;
 		}
 
@@ -251,15 +255,27 @@ namespace MailKit.Net.Imap {
 
 		bool ValidateRemoteCertificate (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 		{
-			if (ServerCertificateValidationCallback != null)
-				return ServerCertificateValidationCallback (engine.Uri.Host, certificate, chain, sslPolicyErrors);
+			bool valid;
 
+			sslValidationInfo?.Dispose ();
+			sslValidationInfo = null;
+
+			if (ServerCertificateValidationCallback != null) {
+				valid = ServerCertificateValidationCallback (engine.Uri.Host, certificate, chain, sslPolicyErrors);
 #if !NETSTANDARD1_3 && !NETSTANDARD1_6
-			if (ServicePointManager.ServerCertificateValidationCallback != null)
-				return ServicePointManager.ServerCertificateValidationCallback (engine.Uri.Host, certificate, chain, sslPolicyErrors);
+			} else if (ServicePointManager.ServerCertificateValidationCallback != null) {
+				valid = ServicePointManager.ServerCertificateValidationCallback (engine.Uri.Host, certificate, chain, sslPolicyErrors);
 #endif
+			} else {
+				valid = DefaultServerCertificateValidationCallback (engine.Uri.Host, certificate, chain, sslPolicyErrors);
+			}
 
-			return DefaultServerCertificateValidationCallback (engine.Uri.Host, certificate, chain, sslPolicyErrors);
+			if (!valid) {
+				// Note: The SslHandshakeException.Create() method will nullify this once it's done using it.
+				sslValidationInfo = new SslCertificateValidationInfo (sender, certificate, chain, sslPolicyErrors);
+			}
+
+			return valid;
 		}
 
 		async Task CompressAsync (bool doAsync, CancellationToken cancellationToken)
@@ -273,6 +289,10 @@ namespace MailKit.Net.Imap {
 			if (engine.State >= ImapEngineState.Selected)
 				throw new InvalidOperationException ("Compression must be enabled before selecting a folder.");
 
+#if MAILKIT_LITE
+			await Task.Delay (0).ConfigureAwait (false);
+			throw new NotSupportedException ("MailKitLite does not support the COMPRESS extension.");
+#else
 			int capabilitiesVersion = engine.CapabilitiesVersion;
 			var ic = engine.QueueCommand (cancellationToken, null, "COMPRESS DEFLATE\r\n");
 
@@ -288,6 +308,7 @@ namespace MailKit.Net.Imap {
 			}
 
 			engine.Stream.Stream = new CompressedStream (engine.Stream.Stream);
+#endif
 		}
 
 		/// <summary>
@@ -672,6 +693,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// <para>Gets the negotiated SSL or TLS protocol version once an SSL or TLS connection has been made.</para>
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS protocol version.</value>
 		public override SslProtocols SslProtocol {
 			get {
@@ -688,6 +712,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets the negotiated SSL or TLS cipher algorithm once an SSL or TLS connection has been made.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS cipher algorithm.</value>
 		public override CipherAlgorithmType? SslCipherAlgorithm {
 			get {
@@ -704,6 +731,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets the negotiated SSL or TLS cipher algorithm strength once an SSL or TLS connection has been made.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS cipher algorithm strength.</value>
 		public override int? SslCipherStrength {
 			get {
@@ -720,6 +750,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets the negotiated SSL or TLS hash algorithm once an SSL or TLS connection has been made.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS hash algorithm.</value>
 		public override HashAlgorithmType? SslHashAlgorithm {
 			get {
@@ -736,6 +769,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets the negotiated SSL or TLS hash algorithm strength once an SSL or TLS connection has been made.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS hash algorithm strength.</value>
 		public override int? SslHashStrength {
 			get {
@@ -752,6 +788,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets the negotiated SSL or TLS key exchange algorithm once an SSL or TLS connection has been made.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS key exchange algorithm.</value>
 		public override ExchangeAlgorithmType? SslKeyExchangeAlgorithm {
 			get {
@@ -768,6 +807,9 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets the negotiated SSL or TLS key exchange algorithm strength once an SSL or TLS connection has been made.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapExamples.cs" region="SslConnectionInformation"/>
+		/// </example>
 		/// <value>The negotiated SSL or TLS key exchange algorithm strength.</value>
 		public override int? SslKeyExchangeStrength {
 			get {
@@ -947,18 +989,24 @@ namespace MailKit.Net.Imap {
 
 			int capabilitiesVersion = engine.CapabilitiesVersion;
 			var uri = new Uri ("imap://" + engine.Uri.Host);
-			NetworkCredential cred;
 			ImapCommand ic = null;
 			string id;
 
 			cancellationToken.ThrowIfCancellationRequested ();
 
+			mechanism.ChannelBindingContext = engine.Stream.Stream as IChannelBindingContext;
 			mechanism.Uri = uri;
 
 			var command = string.Format ("AUTHENTICATE {0}", mechanism.MechanismName);
 
 			if ((engine.Capabilities & ImapCapabilities.SaslIR) != 0 && mechanism.SupportsInitialResponse) {
-				var ir = mechanism.Challenge (null);
+				string ir;
+
+				if (doAsync)
+					ir = await mechanism.ChallengeAsync (null, cancellationToken).ConfigureAwait (false);
+				else
+					ir = mechanism.Challenge (null, cancellationToken);
+
 				command += " " + ir + "\r\n";
 			} else {
 				command += "\r\n";
@@ -966,7 +1014,13 @@ namespace MailKit.Net.Imap {
 
 			ic = engine.QueueCommand (cancellationToken, null, command);
 			ic.ContinuationHandler = async (imap, cmd, text, xdoAsync) => {
-				var challenge = mechanism.Challenge (text);
+				string challenge;
+
+				if (xdoAsync)
+					challenge = await mechanism.ChallengeAsync (text, cmd.CancellationToken).ConfigureAwait (false);
+				else
+					challenge = mechanism.Challenge (text, cmd.CancellationToken);
+
 				var buf = Encoding.ASCII.GetBytes (challenge + "\r\n");
 
 				if (xdoAsync) {
@@ -978,7 +1032,13 @@ namespace MailKit.Net.Imap {
 				}
 			};
 
-			await engine.RunAsync (ic, doAsync).ConfigureAwait (false);
+			detector.IsAuthenticating = true;
+
+			try {
+				await engine.RunAsync (ic, doAsync).ConfigureAwait (false);
+			} finally {
+				detector.IsAuthenticating = false;
+			}
 
 			if (ic.Response != ImapCommandResponse.Ok) {
 				EmitAndThrowOnAlert (ic);
@@ -988,8 +1048,7 @@ namespace MailKit.Net.Imap {
 
 			engine.State = ImapEngineState.Authenticated;
 
-			cred = mechanism.Credentials.GetCredential (mechanism.Uri, mechanism.MechanismName);
-			id = GetSessionIdentifier (cred.UserName);
+			id = GetSessionIdentifier (mechanism.Credentials.UserName);
 			if (id != identifier) {
 				engine.FolderCache.Clear ();
 				identifier = id;
@@ -1070,19 +1129,27 @@ namespace MailKit.Net.Imap {
 			SaslMechanism sasl;
 			string id;
 
-			foreach (var authmech in SaslMechanism.AuthMechanismRank) {
-				if (!engine.AuthenticationMechanisms.Contains (authmech))
+			foreach (var authmech in SaslMechanism.Rank (engine.AuthenticationMechanisms)) {
+				cred = credentials.GetCredential (uri, authmech);
+
+				if ((sasl = SaslMechanism.Create (authmech, encoding, cred)) == null)
 					continue;
 
-				if ((sasl = SaslMechanism.Create (authmech, uri, encoding, credentials)) == null)
-					continue;
+				sasl.ChannelBindingContext = engine.Stream.Stream as IChannelBindingContext;
+				sasl.Uri = uri;
 
 				cancellationToken.ThrowIfCancellationRequested ();
 
 				var command = string.Format ("AUTHENTICATE {0}", sasl.MechanismName);
 
 				if ((engine.Capabilities & ImapCapabilities.SaslIR) != 0 && sasl.SupportsInitialResponse) {
-					var ir = sasl.Challenge (null);
+					string ir;
+
+					if (doAsync)
+						ir = await sasl.ChallengeAsync (null, cancellationToken).ConfigureAwait (false);
+					else
+						ir = sasl.Challenge (null, cancellationToken);
+
 					command += " " + ir + "\r\n";
 				} else {
 					command += "\r\n";
@@ -1090,7 +1157,13 @@ namespace MailKit.Net.Imap {
 
 				ic = engine.QueueCommand (cancellationToken, null, command);
 				ic.ContinuationHandler = async (imap, cmd, text, xdoAsync) => {
-					var challenge = sasl.Challenge (text);
+					string challenge;
+
+					if (xdoAsync)
+						challenge = await sasl.ChallengeAsync (text, cmd.CancellationToken).ConfigureAwait (false);
+					else
+						challenge = sasl.Challenge (text, cmd.CancellationToken);
+
 					var buf = Encoding.ASCII.GetBytes (challenge + "\r\n");
 
 					if (xdoAsync) {
@@ -1102,7 +1175,13 @@ namespace MailKit.Net.Imap {
 					}
 				};
 
-				await engine.RunAsync (ic, doAsync).ConfigureAwait (false);
+				detector.IsAuthenticating = true;
+
+				try {
+					await engine.RunAsync (ic, doAsync).ConfigureAwait (false);
+				} finally {
+					detector.IsAuthenticating = false;
+				}
 
 				if (ic.Response != ImapCommandResponse.Ok) {
 					EmitAndThrowOnAlert (ic);
@@ -1141,7 +1220,13 @@ namespace MailKit.Net.Imap {
 
 			ic = engine.QueueCommand (cancellationToken, null, "LOGIN %S %S\r\n", cred.UserName, cred.Password);
 
-			await engine.RunAsync (ic, doAsync).ConfigureAwait (false);
+			detector.IsAuthenticating = true;
+
+			try {
+				await engine.RunAsync (ic, doAsync).ConfigureAwait (false);
+			} finally {
+				detector.IsAuthenticating = false;
+			}
 
 			if (ic.Response != ImapCommandResponse.Ok)
 				throw CreateAuthenticationException (ic);
@@ -1332,11 +1417,9 @@ namespace MailKit.Net.Imap {
 
 			ComputeDefaultValues (host, ref port, ref options, out var uri, out var starttls);
 
-			var socket = await ConnectSocket (host, port, doAsync, cancellationToken).ConfigureAwait (false);
-			Stream stream = new NetworkStream (socket, true) {
-				WriteTimeout = timeout,
-				ReadTimeout = timeout
-			};
+			var stream = await ConnectNetwork (host, port, doAsync, cancellationToken).ConfigureAwait (false);
+			stream.WriteTimeout = timeout;
+			stream.ReadTimeout = timeout;
 
 			engine.Uri = uri;
 
@@ -1345,7 +1428,7 @@ namespace MailKit.Net.Imap {
 
 				try {
 					if (doAsync) {
-#if NET5_0 || NETSTANDARD2_1
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 						await ssl.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
 #else
 						await ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
@@ -1353,7 +1436,7 @@ namespace MailKit.Net.Imap {
 					} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 						ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
-#elif NET5_0
+#elif NET5_0_OR_GREATER
 						ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 						ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
@@ -1362,7 +1445,7 @@ namespace MailKit.Net.Imap {
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
-					throw SslHandshakeException.Create (this, ex, false, "IMAP", host, port, 993, 143);
+					throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "IMAP", host, port, 993, 143);
 				}
 
 				secure = true;
@@ -1408,7 +1491,7 @@ namespace MailKit.Net.Imap {
 							engine.Stream.Stream = tls;
 
 							if (doAsync) {
-#if NET5_0 || NETSTANDARD2_1
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 								await tls.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
 #else
 								await tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
@@ -1416,14 +1499,14 @@ namespace MailKit.Net.Imap {
 							} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 								tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
-#elif NET5_0
+#elif NET5_0_OR_GREATER
 								tls.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 								tls.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
 #endif
 							}
 						} catch (Exception ex) {
-							throw SslHandshakeException.Create (this, ex, true, "IMAP", host, port, 993, 143);
+							throw SslHandshakeException.Create (ref sslValidationInfo, ex, true, "IMAP", host, port, 993, 143);
 						}
 
 						secure = true;
@@ -1551,7 +1634,7 @@ namespace MailKit.Net.Imap {
 
 				try {
 					if (doAsync) {
-#if NET5_0 || NETSTANDARD2_1
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 						await ssl.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
 #else
 						await ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
@@ -1559,7 +1642,7 @@ namespace MailKit.Net.Imap {
 					} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 						ssl.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
-#elif NET5_0
+#elif NET5_0_OR_GREATER
 						ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 						ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
@@ -1568,7 +1651,7 @@ namespace MailKit.Net.Imap {
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
-					throw SslHandshakeException.Create (this, ex, false, "IMAP", host, port, 993, 143);
+					throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "IMAP", host, port, 993, 143);
 				}
 
 				network = ssl;
@@ -1619,7 +1702,7 @@ namespace MailKit.Net.Imap {
 
 						try {
 							if (doAsync) {
-#if NET5_0 || NETSTANDARD2_1
+#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 								await tls.AuthenticateAsClientAsync (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate), cancellationToken).ConfigureAwait (false);
 #else
 								await tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).ConfigureAwait (false);
@@ -1627,14 +1710,14 @@ namespace MailKit.Net.Imap {
 							} else {
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 								tls.AuthenticateAsClientAsync (host, ClientCertificates, SslProtocols, CheckCertificateRevocation).GetAwaiter ().GetResult ();
-#elif NET5_0
+#elif NET5_0_OR_GREATER
 								tls.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
 #else
 								tls.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
 #endif
 							}
 						} catch (Exception ex) {
-							throw SslHandshakeException.Create (this, ex, true, "IMAP", host, port, 993, 143);
+							throw SslHandshakeException.Create (ref sslValidationInfo, ex, true, "IMAP", host, port, 993, 143);
 						}
 
 						secure = true;
@@ -2714,6 +2797,41 @@ namespace MailKit.Net.Imap {
 			OnAlert (e.Message);
 		}
 
+		void OnEngineWebAlert (object sender, WebAlertEventArgs e)
+		{
+			OnWebAlert (e.WebUri, e.Message);
+		}
+
+		/// <summary>
+		/// Occurs when a Google Mail server sends a WEBALERT response code to the client.
+		/// </summary>
+		/// <remarks>
+		/// The <see cref="WebAlert"/> event is raised whenever the Google Mail server sends a
+		/// WEBALERT message.
+		/// </remarks>
+		public event EventHandler<WebAlertEventArgs> WebAlert;
+
+		/// <summary>
+		/// Raise the web alert event.
+		/// </summary>
+		/// <remarks>
+		/// Raises the web alert event.
+		/// </remarks>
+		/// <param name="uri">The web alert URI.</param>
+		/// <param name="message">The web alert message.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="uri"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// </exception>
+		protected virtual void OnWebAlert (Uri uri, string message)
+		{
+			var handler = WebAlert;
+
+			if (handler != null)
+				handler (this, new WebAlertEventArgs (uri, message));
+		}
+
 		void OnEngineDisconnected (object sender, EventArgs e)
 		{
 			if (connecting)
@@ -2744,6 +2862,7 @@ namespace MailKit.Net.Imap {
 				engine.MetadataChanged -= OnEngineMetadataChanged;
 				engine.FolderCreated -= OnEngineFolderCreated;
 				engine.Disconnected -= OnEngineDisconnected;
+				engine.WebAlert -= OnEngineWebAlert;
 				engine.Alert -= OnEngineAlert;
 				engine.Dispose ();
 				disposed = true;

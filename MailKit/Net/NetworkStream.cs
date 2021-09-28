@@ -127,6 +127,23 @@ namespace MailKit.Net
 			tcs.TrySetException (new SocketException ((int) args.SocketError));
 		}
 
+		void Cleanup ()
+		{
+			if (send != null) {
+				send.Completed -= AsyncOperationCompleted;
+				send.AcceptSocket = null;
+				send?.Dispose ();
+				send = null;
+			}
+
+			if (recv != null) {
+				recv.Completed -= AsyncOperationCompleted;
+				recv.AcceptSocket = null;
+				recv.Dispose ();
+				recv = null;
+			}
+		}
+
 		void Disconnect ()
 		{
 			try {
@@ -138,10 +155,7 @@ namespace MailKit.Net
 				return;
 			} finally {
 				connected = false;
-				send.Dispose ();
-				send = null;
-				recv.Dispose ();
-				recv = null;
+				Cleanup ();
 			}
 		}
 
@@ -247,8 +261,10 @@ namespace MailKit.Net
 
 		public static NetworkStream Get (Stream stream)
 		{
+#if !MAILKIT_LITE
 			if (stream is CompressedStream compressed)
 				stream = compressed.InnerStream;
+#endif
 
 			if (stream is SslStream ssl)
 				stream = ssl.InnerStream;
@@ -276,11 +292,7 @@ namespace MailKit.Net
 					ownsSocket = false;
 					Disconnect ();
 				} else {
-					send?.Dispose ();
-					send = null;
-
-					recv?.Dispose ();
-					recv = null;
+					Cleanup ();
 				}
 			}
 

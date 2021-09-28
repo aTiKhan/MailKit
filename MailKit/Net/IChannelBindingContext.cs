@@ -1,10 +1,9 @@
+﻿//
+// IChannelBindingContext.cs
 //
-// NtlmAuthLevel.cs
+// Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Author:
-//       Martin Baulig <martin.baulig@xamarin.com>
-//
-// Copyright (c) 2012 Xamarin Inc. (http://www.xamarin.com)
+// Copyright (c) 2013-2021 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +22,28 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+//
 
-namespace MailKit.Security.Ntlm {
-	/*
-	 * On Windows, this is controlled by a registry setting
-	 * (http://msdn.microsoft.com/en-us/library/ms814176.aspx)
-	 *
-	 * This can be configured by setting the static
-	 * Type3Message.DefaultAuthLevel property, the default value
-	 * is LM_and_NTLM_and_try_NTLMv2_Session.
-	 */
-	enum NtlmAuthLevel {
-		/* Use LM and NTLM, never use NTLMv2 session security. */
-		LM_and_NTLM,
+using System.Security.Authentication.ExtendedProtection;
 
-		/* Use NTLMv2 session security if the server supports it,
-		 * otherwise fall back to LM and NTLM. */
-		LM_and_NTLM_and_try_NTLMv2_Session,
-
-		/* Use NTLMv2 session security if the server supports it,
-		 * otherwise fall back to NTLM.  Never use LM. */
-		NTLM_only,
-
-		/* Use NTLMv2 only. */
-		NTLMv2_only,
+namespace MailKit.Net {
+	/// <summary>
+	/// An interface for resources that support acquiring channel-binding tokens.
+	/// </summary>
+	/// <remarks>
+	/// An interface for resources that support acquiring channel-binding tokens.
+	/// </remarks>
+	interface IChannelBindingContext
+	{
+		/// <summary>
+		/// Try to get a channel-binding token.
+		/// </summary>
+		/// <remarks>
+		/// Tries to get the specified channel-binding.
+		/// </remarks>
+		/// <param name="kind">The kind of channel-binding desired.</param>
+		/// <param name="token">The channel-binding token.</param>
+		/// <returns><c>true</c> if the channel-binding token was acquired; otherwise, <c>false</c>.</returns>
+		bool TryGetChannelBindingToken (ChannelBindingKind kind, out byte[] token);
 	}
 }

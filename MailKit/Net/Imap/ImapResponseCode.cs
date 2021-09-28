@@ -24,6 +24,9 @@
 // THE SOFTWARE.
 //
 
+using System;
+using System.Collections.Generic;
+
 namespace MailKit.Net.Imap {
 	enum ImapResponseCodeType : byte {
 		Alert,
@@ -121,6 +124,9 @@ namespace MailKit.Net.Imap {
 		// RESP-CODES introduced in rfc8474:
 		MailboxId,
 
+		// GMail-specific RESP-CODES
+		WebAlert,
+
 		Unknown       = 255
 	}
 
@@ -195,6 +201,7 @@ namespace MailKit.Net.Imap {
 			case ImapResponseCodeType.NonExistent:          return new ImapResponseCode (type, true);
 			case ImapResponseCodeType.UseAttr:              return new ImapResponseCode (type, true);
 			case ImapResponseCodeType.MailboxId:            return new MailboxIdResponseCode (type);
+			case ImapResponseCodeType.WebAlert:             return new WebAlertResponseCode (type);
 			default:                                        return new ImapResponseCode (type, true);
 			}
 		}
@@ -212,10 +219,12 @@ namespace MailKit.Net.Imap {
 
 	class PermanentFlagsResponseCode : ImapResponseCode
 	{
+		public HashSet<string> Keywords;
 		public MessageFlags Flags;
 
 		internal PermanentFlagsResponseCode (ImapResponseCodeType type) : base (type, false)
 		{
+			Keywords = new HashSet<string> (StringComparer.Ordinal);
 		}
 	}
 
@@ -367,6 +376,15 @@ namespace MailKit.Net.Imap {
 		public string MailboxId;
 
 		internal MailboxIdResponseCode (ImapResponseCodeType type) : base (type, false)
+		{
+		}
+	}
+
+	class WebAlertResponseCode : ImapResponseCode
+	{
+		public Uri WebUri;
+
+		internal WebAlertResponseCode (ImapResponseCodeType type) : base (type, false)
 		{
 		}
 	}

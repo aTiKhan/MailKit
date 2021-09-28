@@ -33,6 +33,12 @@ using System.Collections.Generic;
 using MimeKit;
 using MailKit.Search;
 
+#if NET5_0_OR_GREATER
+using IReadOnlySetOfStrings = System.Collections.Generic.IReadOnlySet<string>;
+#else
+using IReadOnlySetOfStrings = System.Collections.Generic.ISet<string>;
+#endif
+
 namespace MailKit {
 	/// <summary>
 	/// An interface for a mailbox folder as used by <see cref="IMailStore"/>.
@@ -108,6 +114,17 @@ namespace MailKit {
 		MessageFlags PermanentFlags { get; }
 
 		/// <summary>
+		/// Get the permanent keywords.
+		/// </summary>
+		/// <remarks>
+		/// <para>The permanent keywords are the keywords that will persist between sessions.</para>
+		/// <para>If the <see cref="MessageFlags.UserDefined"/> flag is set in <see cref="PermanentFlags"/>,
+		/// then the folder allows storing of user-defined keywords as well.</para>
+		/// </remarks>
+		/// <value>The permanent keywords.</value>
+		IReadOnlySetOfStrings PermanentKeywords { get; }
+
+		/// <summary>
 		/// Get the accepted flags.
 		/// </summary>
 		/// <remarks>
@@ -117,6 +134,17 @@ namespace MailKit {
 		/// </remarks>
 		/// <value>The accepted flags.</value>
 		MessageFlags AcceptedFlags { get; }
+
+		/// <summary>
+		/// Get the accepted keywords.
+		/// </summary>
+		/// <remarks>
+		/// The accepted keywords are the keywords that will be accepted and persist
+		/// for the current session. For the set of keywords that will persist between
+		/// sessions, see the <see cref="PermanentKeywords"/> property.
+		/// </remarks>
+		/// <value>The accepted keywords.</value>
+		IReadOnlySetOfStrings AcceptedKeywords { get; }
 
 		/// <summary>
 		/// Get the directory separator.
@@ -202,18 +230,6 @@ namespace MailKit {
 		/// </remarks>
 		/// <value><c>true</c> if the folder exists; otherwise, <c>false</c>.</value>
 		bool Exists { get; }
-
-		/// <summary>
-		/// Get whether or not the folder supports mod-sequences.
-		/// </summary>
-		/// <remarks>
-		/// <para>Gets whether or not the folder supports mod-sequences.</para>
-		/// <para>If mod-sequences are not supported by the folder, then all of the APIs that take a modseq
-		/// argument will throw <see cref="System.NotSupportedException"/> and should not be used.</para>
-		/// </remarks>
-		/// <value><c>true</c> if the folder supports mod-sequences; otherwise, <c>false</c>.</value>
-		[Obsolete ("Use Supports(FolderFeature.ModSequences) instead.")]
-		bool SupportsModSeq { get; }
 
 		/// <summary>
 		/// Get the highest mod-sequence value of all messages in the mailbox.
@@ -1047,530 +1063,212 @@ namespace MailKit {
 		Task ExpungeAsync (IList<UniqueId> uids, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Append the specified message to the folder.
+		/// Append a message to the folder.
 		/// </summary>
 		/// <remarks>
-		/// Appends the specified message to the folder and returns the UniqueId assigned to the message.
+		/// Appends a message to the folder and returns the UniqueId assigned to the message.
 		/// </remarks>
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Append (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
-		/// Asynchronously append the specified message to the folder.
+		/// Asynchronously append a message to the folder.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously appends the specified message to the folder and returns the UniqueId assigned to the message.
+		/// Asynchronously appends a message to the folder and returns the UniqueId assigned to the message.
 		/// </remarks>
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> AppendAsync (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
-		/// Append the specified message to the folder.
+		/// Append a message to the folder.
 		/// </summary>
 		/// <remarks>
-		/// Appends the specified message to the folder and returns the UniqueId assigned to the message.
-		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified message to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified message to the folder and returns the UniqueId assigned to the message.
-		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified message to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified message to the folder and returns the UniqueId assigned to the message.
-		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="annotations">The message annotations.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (MimeMessage message, MessageFlags flags, DateTimeOffset? date, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified message to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified message to the folder and returns the UniqueId assigned to the message.
-		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="annotations">The message annotations.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (MimeMessage message, MessageFlags flags, DateTimeOffset? date, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified message to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified message to the folder and returns the UniqueId assigned to the message.
+		/// Appends a message to the folder and returns the UniqueId assigned to the message.
 		/// </remarks>
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (FormatOptions options, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Append (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
-		/// Asynchronously append the specified message to the folder.
+		/// Asynchronously append a message to the folder.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously appends the specified message to the folder and returns the UniqueId assigned to the message.
+		/// Asynchronously appends a message to the folder and returns the UniqueId assigned to the message.
 		/// </remarks>
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (FormatOptions options, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> AppendAsync (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
-		/// Append the specified message to the folder.
+		/// Append multiple messages to the folder.
 		/// </summary>
 		/// <remarks>
-		/// Appends the specified message to the folder and returns the UniqueId assigned to the message.
+		/// Appends multiple messages to the folder and returns the UniqueIds assigned to each of the messages.
 		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
+		/// <returns>The UIDs of the appended messages, if available; otherwise, an empty array.</returns>
+		/// <param name="requests">The append requests.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <param name="progress">The progress reporting mechanism.</param>
+		IList<UniqueId> Append (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+
+		/// <summary>
+		/// Asynchronously append multiple messages to the folder.
+		/// </summary>
+		/// <remarks>
+		/// Asynchronously appends multiple messages to the folder and returns the UniqueIds assigned to each of the messages.
+		/// </remarks>
+		/// <returns>The UID of the appended message, if available; otherwise, an empty array.</returns>
+		/// <param name="requests">The append requests.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <param name="progress">The progress reporting mechanism.</param>
+		Task<IList<UniqueId>> AppendAsync (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+
+		/// <summary>
+		/// Append multiple messages to the folder.
+		/// </summary>
+		/// <remarks>
+		/// Appends multiple messages to the folder and returns the UniqueIds assigned to each of the messages.
+		/// </remarks>
+		/// <returns>The UIDs of the appended messages, if available; otherwise, an empty array.</returns>
 		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
+		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (FormatOptions options, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		IList<UniqueId> Append (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
-		/// Asynchronously append the specified message to the folder.
+		/// Asynchronously append multiple messages to the folder.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously appends the specified message to the folder and returns the UniqueId assigned to the message.
+		/// Asynchronously appends multiple messages to the folder and returns the UniqueIds assigned to each of the messages.
 		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
+		/// <returns>The UID of the appended message, if available; otherwise, an empty array.</returns>
 		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
+		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (FormatOptions options, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified message to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified message to the folder and returns the UniqueId assigned to the message.
-		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="annotations">The message annotations.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (FormatOptions options, MimeMessage message, MessageFlags flags, DateTimeOffset? date, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified message to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified message to the folder and returns the UniqueId assigned to the message.
-		/// </remarks>
-		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="annotations">The message annotations.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (FormatOptions options, MimeMessage message, MessageFlags flags, DateTimeOffset? date, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		IList<UniqueId> Append (IList<MimeMessage> messages, IList<MessageFlags> flags, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<IList<UniqueId>> AppendAsync (IList<MimeMessage> messages, IList<MessageFlags> flags, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each of the messages.</param>
-		/// <param name="dates">The received dates to use for each of the messages.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		IList<UniqueId> Append (IList<MimeMessage> messages, IList<MessageFlags> flags, IList<DateTimeOffset> dates, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each of the messages.</param>
-		/// <param name="dates">The received dates to use for each of the messages.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<IList<UniqueId>> AppendAsync (IList<MimeMessage> messages, IList<MessageFlags> flags, IList<DateTimeOffset> dates, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		IList<UniqueId> Append (FormatOptions options, IList<MimeMessage> messages, IList<MessageFlags> flags, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<MimeMessage> messages, IList<MessageFlags> flags, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each of the messages.</param>
-		/// <param name="dates">The received dates to use for each of the messages.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		IList<UniqueId> Append (FormatOptions options, IList<MimeMessage> messages, IList<MessageFlags> flags, IList<DateTimeOffset> dates, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously append the specified messages to the folder.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously appends the specified messages to the folder and returns the UniqueIds assigned to the messages.
-		/// </remarks>
-		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="messages">The list of messages to append to the folder.</param>
-		/// <param name="flags">The message flags to use for each of the messages.</param>
-		/// <param name="dates">The received dates to use for each of the messages.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<MimeMessage> messages, IList<MessageFlags> flags, IList<DateTimeOffset> dates, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
 		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (UniqueId uid, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Asynchronously replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
+		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (UniqueId uid, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
 		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
+		/// <param name="options">The formatting options.</param>
 		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (UniqueId uid, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Asynchronously replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
 		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
+		/// <param name="options">The formatting options.</param>
 		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (UniqueId uid, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
 		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="index">The index of the message to be replaced.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (FormatOptions options, UniqueId uid, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Asynchronously replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
+		/// <param name="index">The index of the message to be replaced.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
 		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="options">The formatting options.</param>
-		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
+		/// <param name="index">The index of the message to be replaced.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (FormatOptions options, UniqueId uid, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
 		/// </summary>
 		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="uid">The UID of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (int index, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>;
-		Task<UniqueId?> ReplaceAsync (int index, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (int index, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (int index, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
+		/// Asynchronously replaces a message in the folder and returns the UniqueId assigned to the new message.
 		/// </remarks>
 		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
+		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (FormatOptions options, int index, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, MimeMessage message, MessageFlags flags = MessageFlags.None, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (FormatOptions options, int index, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
-
-		/// <summary>
-		/// Asynchronously replace a message in the folder.
-		/// </summary>
-		/// <remarks>
-		/// Replaces the specified message in the folder and returns the UniqueId assigned to the new message.
-		/// </remarks>
-		/// <returns>The UID of the new message, if available; otherwise, <c>null</c>.</returns>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="index">The index of the message to be replaced.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="flags">The message flags.</param>
-		/// <param name="date">The received date of the message.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, MimeMessage message, MessageFlags flags, DateTimeOffset date, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
 		/// Copy the specified message to the destination folder.
@@ -1777,9 +1475,9 @@ namespace MailKit {
 		/// </example>
 		/// <returns>An enumeration of summaries for the requested messages.</returns>
 		/// <param name="uids">The UIDs.</param>
-		/// <param name="items">The message summary items to fetch.</param>
+		/// <param name="request">The fetch request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<UniqueId> uids, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
+		IList<IMessageSummary> Fetch (IList<UniqueId> uids, IFetchRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously fetch the message summaries for the specified message UIDs.
@@ -1796,241 +1494,9 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>An enumeration of summaries for the requested messages.</returns>
 		/// <param name="uids">The UIDs.</param>
-		/// <param name="items">The message summary items to fetch.</param>
+		/// <param name="request">The fetch request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message UIDs.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message UIDs.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<UniqueId> uids, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message UIDs.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// UIDs.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message UIDs.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message UIDs.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<UniqueId> uids, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message UIDs.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// UIDs.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message UIDs that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message UIDs that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>If the mail store supports quick resynchronization and the application has
-		/// enabled this feature via <see cref="MailStore.EnableQuickResync(CancellationToken)"/>,
-		/// then this method will emit <see cref="MessagesVanished"/> events for messages that
-		/// have vanished since the specified mod-sequence value.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<UniqueId> uids, ulong modseq, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message UIDs that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message UIDs that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>If the mail store supports quick resynchronization and the application has
-		/// enabled this feature via <see cref="MailStore.EnableQuickResync(CancellationToken)"/>,
-		/// then this method will emit <see cref="MessagesVanished"/> events for messages that
-		/// have vanished since the specified mod-sequence value.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, ulong modseq, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message UIDs that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message UIDs that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>If the mail store supports quick resynchronization and the application has
-		/// enabled this feature via <see cref="MailStore.EnableQuickResync(CancellationToken)"/>,
-		/// then this method will emit <see cref="MessagesVanished"/> events for messages that
-		/// have vanished since the specified mod-sequence value.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<UniqueId> uids, ulong modseq, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message UIDs that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message UIDs that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>If the mail store supports quick resynchronization and the application has
-		/// enabled this feature via <see cref="MailStore.EnableQuickResync(CancellationToken)"/>,
-		/// then this method will emit <see cref="MessagesVanished"/> events for messages that
-		/// have vanished since the specified mod-sequence value.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, ulong modseq, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message UIDs that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message UIDs that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>If the mail store supports quick resynchronization and the application has
-		/// enabled this feature via <see cref="MailStore.EnableQuickResync(CancellationToken)"/>,
-		/// then this method will emit <see cref="MessagesVanished"/> events for messages that
-		/// have vanished since the specified mod-sequence value.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<UniqueId> uids, ulong modseq, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message UIDs that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message UIDs that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>If the mail store supports quick resynchronization and the application has
-		/// enabled this feature via <see cref="MailStore.EnableQuickResync(CancellationToken)"/>,
-		/// then this method will emit <see cref="MessagesVanished"/> events for messages that
-		/// have vanished since the specified mod-sequence value.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="uids">The UIDs.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, ulong modseq, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
+		Task<IList<IMessageSummary>> FetchAsync (IList<UniqueId> uids, IFetchRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Fetch the message summaries for the specified message indexes.
@@ -2046,9 +1512,9 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>An enumeration of summaries for the requested messages.</returns>
 		/// <param name="indexes">The indexes.</param>
-		/// <param name="items">The message summary items to fetch.</param>
+		/// <param name="request">The fetch request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<int> indexes, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
+		IList<IMessageSummary> Fetch (IList<int> indexes, IFetchRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously fetch the message summaries for the specified message indexes.
@@ -2065,217 +1531,9 @@ namespace MailKit {
 		/// </remarks>
 		/// <returns>An enumeration of summaries for the requested messages.</returns>
 		/// <param name="indexes">The indexes.</param>
-		/// <param name="items">The message summary items to fetch.</param>
+		/// <param name="request">The fetch request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message indexes.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message indexes.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<int> indexes, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message indexes.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// indexes.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message indexes.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message indexes.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<int> indexes, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message indexes.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// indexes.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message indexes that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message indexes that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<int> indexes, ulong modseq, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message indexes that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// indexes that have a higher mod-sequence value than the one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, ulong modseq, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message indexes that have a
-		/// higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message indexes that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<int> indexes, ulong modseq, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message indexes
-		/// that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// indexes that have a higher mod-sequence value than the one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, ulong modseq, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the specified message indexes that
-		/// have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the specified message indexes that
-		/// have a higher mod-sequence value than the one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (IList<int> indexes, ulong modseq, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the specified message indexes
-		/// that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the specified message
-		/// indexes that have a higher mod-sequence value than the one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="indexes">The indexes.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, ulong modseq, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
+		Task<IList<IMessageSummary>> FetchAsync (IList<int> indexes, IFetchRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Fetch the message summaries for the messages between the two indexes, inclusive.
@@ -2293,9 +1551,9 @@ namespace MailKit {
 		/// <returns>An enumeration of summaries for the requested messages.</returns>
 		/// <param name="min">The minimum index.</param>
 		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="items">The message summary items to fetch.</param>
+		/// <param name="request">The fetch request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (int min, int max, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
+		IList<IMessageSummary> Fetch (int min, int max, IFetchRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously fetch the message summaries for the messages between the two indexes, inclusive.
@@ -2313,235 +1571,9 @@ namespace MailKit {
 		/// <returns>An enumeration of summaries for the requested messages.</returns>
 		/// <param name="min">The minimum index.</param>
 		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="items">The message summary items to fetch.</param>
+		/// <param name="request">The fetch request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (int min, int max, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the messages between the two indexes, inclusive.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the messages between the two
-		/// indexes, inclusive.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (int min, int max, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the messages between the two indexes, inclusive.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the messages between
-		/// the two indexes, inclusive.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (int min, int max, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the messages between the two indexes, inclusive.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the messages between the two
-		/// indexes, inclusive.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (int min, int max, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the messages between the two indexes, inclusive.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the messages between
-		/// the two indexes, inclusive.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (int min, int max, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the messages between the two indexes (inclusive)
-		/// that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the messages between the two
-		/// indexes (inclusive) that have a higher mod-sequence value than the one
-		/// specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (int min, int max, ulong modseq, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the messages between the two indexes
-		/// (inclusive) that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the messages between
-		/// the two indexes (inclusive) that have a higher mod-sequence value than the
-		/// one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (int min, int max, ulong modseq, MessageSummaryItems items, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the messages between the two indexes (inclusive)
-		/// that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the messages between the two
-		/// indexes (inclusive) that have a higher mod-sequence value than the one
-		/// specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (int min, int max, ulong modseq, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the messages between the two indexes
-		/// (inclusive) that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the messages between
-		/// the two indexes (inclusive) that have a higher mod-sequence value than the
-		/// one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (int min, int max, ulong modseq, MessageSummaryItems items, IEnumerable<HeaderId> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Fetch the message summaries for the messages between the two indexes (inclusive)
-		/// that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Fetches the message summaries for the messages between the two
-		/// indexes (inclusive) that have a higher mod-sequence value than the one
-		/// specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<IMessageSummary> Fetch (int min, int max, ulong modseq, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously fetch the message summaries for the messages between the two indexes
-		/// (inclusive) that have a higher mod-sequence value than the one specified.
-		/// </summary>
-		/// <remarks>
-		/// <para>Asynchronously fetches the message summaries for the messages between
-		/// the two indexes (inclusive) that have a higher mod-sequence value than the
-		/// one specified.</para>
-		/// <para>It should be noted that if another client has modified any message
-		/// in the folder, the mail service may choose to return information that was
-		/// not explicitly requested. It is therefore important to be prepared to
-		/// handle both additional fields on a <see cref="IMessageSummary"/> for
-		/// messages that were requested as well as summaries for messages that were
-		/// not requested at all.</para>
-		/// </remarks>
-		/// <returns>An enumeration of summaries for the requested messages.</returns>
-		/// <param name="min">The minimum index.</param>
-		/// <param name="max">The maximum index, or <c>-1</c> to specify no upper bound.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="items">The message summary items to fetch.</param>
-		/// <param name="headers">The desired header fields.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<IMessageSummary>> FetchAsync (int min, int max, ulong modseq, MessageSummaryItems items, IEnumerable<string> headers, CancellationToken cancellationToken = default (CancellationToken));
+		Task<IList<IMessageSummary>> FetchAsync (int min, int max, IFetchRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Get the specified message headers.
@@ -3027,1444 +2059,194 @@ namespace MailKit {
 		Task<Stream> GetStreamAsync (int index, string section, int offset, int count, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
 
 		/// <summary>
-		/// Add a set of flags to the specified message.
+		/// Store message flags and keywords for a message.
 		/// </summary>
 		/// <remarks>
-		/// Adds a set of flags to the specified message.
+		/// Updates the message flags and keywords for a message.
 		/// </remarks>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
 		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (UniqueId uid, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		bool Store (UniqueId uid, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously add a set of flags to the specified message.
+		/// Asynchronously store message flags and keywords for a message.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified message.
+		/// Asynchronously updates the message flags and keywords for a message.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UIDs of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (UniqueId uid, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified message.
-		/// </remarks>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
 		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (UniqueId uid, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<bool> StoreAsync (UniqueId uid, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously add a set of flags to the specified message.
+		/// Store message flags and keywords for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified message.
+		/// Updates the message flags and keywords for a set of messages.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UIDs of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <returns>The UIDs of the messages that were not updated.</returns>
+		/// <param name="uids">The message UIDs.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (UniqueId uid, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		IList<UniqueId> Store (IList<UniqueId> uids, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Add a set of flags to the specified messages.
+		/// Asynchronously store message flags and keywords for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Adds a set of flags to the specified messages.
+		/// Asynchronously updates the message flags and keywords for a set of messages.
 		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <returns>The UIDs of the messages that were not updated.</returns>
+		/// <param name="uids">The message UIDs.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (IList<UniqueId> uids, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages.
+		/// Store message flags and keywords for a message.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages.
+		/// Updates the message flags and keywords for a message.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
+		/// <param name="index">The index of the message.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (IList<UniqueId> uids, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		bool Store (int index, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Add a set of flags to the specified messages.
+		/// Asynchronously store message flags and keywords for a message.
 		/// </summary>
 		/// <remarks>
-		/// Adds a set of flags to the specified messages.
+		/// Asynchronously updates the message flags and keywords for a message.
 		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
+		/// <param name="index">The index of the message.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (IList<UniqueId> uids, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<bool> StoreAsync (int index, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages.
+		/// Store message flags and keywords for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages.
+		/// Updates the message flags and keywords for a set of messages.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="indexes">The message indexes.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (IList<UniqueId> uids, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		IList<int> Store (IList<int> indexes, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Remove a set of flags from the specified message.
+		/// Asynchronously store message flags and keywords for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Removes a set of flags from the specified message.
+		/// Asynchronously updates the message flags and keywords for a set of message.
 		/// </remarks>
+		/// <returns>The indexes of the messages that were not updated.</returns>
+		/// <param name="indexes">The message indexes.</param>
+		/// <param name="request">The message flags and keywords to store.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
+		Task<IList<int>> StoreAsync (IList<int> indexes, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken));
+
+		/// <summary>
+		/// Store GMail-style labels for a message.
+		/// </summary>
+		/// <remarks>
+		/// Updates the GMail-style labels for a message.
+		/// </remarks>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
 		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (UniqueId uid, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		bool Store (UniqueId uid, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously remove a set of flags from the specified message.
+		/// Asynchronously store GMail-style labels for a message.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified message.
+		/// Asynchronously updates the GMail-style labels for a message.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
 		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (UniqueId uid, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<bool> StoreAsync (UniqueId uid, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Remove a set of flags from the specified message.
+		/// Store GMail-style labels for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Removes a set of flags from the specified message.
+		/// Updates the GMail-style labels for a set of messages.
 		/// </remarks>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <returns>The UIDs of the messages that were not updated.</returns>
+		/// <param name="uids">The message UIDs.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (UniqueId uid, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		IList<UniqueId> Store (IList<UniqueId> uids, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously remove a set of flags from the specified message.
+		/// Asynchronously store GMail-style labels for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified message.
+		/// Asynchronously updates the GMail-style labels for a set of messages.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <returns>The UIDs of the messages that were not updated.</returns>
+		/// <param name="uids">The message UIDs.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (UniqueId uid, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Remove a set of flags from the specified messages.
+		/// Store GMail-style labels for a message.
 		/// </summary>
 		/// <remarks>
-		/// Removes a set of flags from the specified messages.
+		/// Updates the GMail-style labels for a message.
 		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (IList<UniqueId> uids, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (IList<UniqueId> uids, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (IList<UniqueId> uids, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (IList<UniqueId> uids, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified message.
-		/// </remarks>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (UniqueId uid, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (UniqueId uid, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified message.
-		/// </remarks>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (UniqueId uid, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (UniqueId uid, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages.
-		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (IList<UniqueId> uids, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (IList<UniqueId> uids, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages.
-		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (IList<UniqueId> uids, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (IList<UniqueId> uids, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> AddFlags (IList<UniqueId> uids, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> AddFlagsAsync (IList<UniqueId> uids, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> AddFlags (IList<UniqueId> uids, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> AddFlagsAsync (IList<UniqueId> uids, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> RemoveFlags (IList<UniqueId> uids, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> RemoveFlagsAsync (IList<UniqueId> uids, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> RemoveFlags (IList<UniqueId> uids, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> RemoveFlagsAsync (IList<UniqueId> uids, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> SetFlags (IList<UniqueId> uids, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> SetFlagsAsync (IList<UniqueId> uids, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> SetFlags (IList<UniqueId> uids, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> SetFlagsAsync (IList<UniqueId> uids, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified message.
-		/// </remarks>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
 		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (int index, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		bool Store (int index, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously add a set of flags to the specified message.
+		/// Asynchronously store GMail-style labels for a message.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified message.
+		/// Asynchronously updates the GMail-style labels for a message.
 		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
+		/// <returns><c>true</c> if the store operation was successful; otherwise, <c>false</c>.</returns>
 		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (int index, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<bool> StoreAsync (int index, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Add a set of flags to the specified message.
+		/// Store GMail-style labels for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Adds a set of flags to the specified message.
+		/// Updates the GMail-style labels for a set of messages.
 		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="indexes">The message indexes.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (int index, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		IList<int> Store (IList<int> indexes, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously add a set of flags to the specified message.
+		/// Asynchronously store GMail-style labels for a set of messages.
 		/// </summary>
 		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (int index, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (IList<int> indexes, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (IList<int> indexes, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddFlags (IList<int> indexes, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddFlagsAsync (IList<int> indexes, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (int index, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (int index, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (int index, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (int index, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (IList<int> indexes, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (IList<int> indexes, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveFlags (IList<int> indexes, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveFlagsAsync (IList<int> indexes, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (int index, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (int index, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (int index, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (int index, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (IList<int> indexes, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (IList<int> indexes, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetFlags (IList<int> indexes, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetFlagsAsync (IList<int> indexes, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
+		/// Asynchronously updates the GMail-style labels for a set of message.
 		/// </remarks>
 		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
+		/// <param name="indexes">The message indexes.</param>
+		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> AddFlags (IList<int> indexes, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> AddFlagsAsync (IList<int> indexes, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> AddFlags (IList<int> indexes, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of flags to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to add.</param>
-		/// <param name="keywords">A set of user-defined flags to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> AddFlagsAsync (IList<int> indexes, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> RemoveFlags (IList<int> indexes, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> RemoveFlagsAsync (IList<int> indexes, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> RemoveFlags (IList<int> indexes, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of flags from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to remove.</param>
-		/// <param name="keywords">A set of user-defined flags to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> RemoveFlagsAsync (IList<int> indexes, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> SetFlags (IList<int> indexes, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> SetFlagsAsync (IList<int> indexes, ulong modseq, MessageFlags flags, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> SetFlags (IList<int> indexes, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the flags of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="flags">The message flags to set.</param>
-		/// <param name="keywords">A set of user-defined flags to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> SetFlagsAsync (IList<int> indexes, ulong modseq, MessageFlags flags, HashSet<string> keywords, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of labels to the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of labels to the specified message.
-		/// </remarks>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageFlagsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddLabels (UniqueId uid, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of labels to the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of labels to the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UIDs of the message.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddLabelsAsync (UniqueId uid, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of labels to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of labels to the specified messages.
-		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddLabels (IList<UniqueId> uids, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of labels to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of labels to the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddLabelsAsync (IList<UniqueId> uids, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of labels from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of labels from the specified message.
-		/// </remarks>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveLabels (UniqueId uid, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of labels from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of labels from the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveLabelsAsync (UniqueId uid, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of labels from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of labels from the specified messages.
-		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveLabels (IList<UniqueId> uids, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of labels from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of labels from the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveLabelsAsync (IList<UniqueId> uids, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the labels of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Sets the labels of the specified message.
-		/// </remarks>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetLabels (UniqueId uid, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the labels of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the labels of the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uid">The UID of the message.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetLabelsAsync (UniqueId uid, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the labels of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Sets the labels of the specified messages.
-		/// </remarks>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetLabels (IList<UniqueId> uids, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the labels of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the labels of the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetLabelsAsync (IList<UniqueId> uids, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> AddLabels (IList<UniqueId> uids, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> AddLabelsAsync (IList<UniqueId> uids, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> RemoveLabels (IList<UniqueId> uids, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> RemoveLabelsAsync (IList<UniqueId> uids, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Sets the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<UniqueId> SetLabels (IList<UniqueId> uids, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The unique IDs of the messages that were not updated.</returns>
-		/// <param name="uids">The UIDs of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<UniqueId>> SetLabelsAsync (IList<UniqueId> uids, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of labels to the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of labels to the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddLabels (int index, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of labels to the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of labels to the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddLabelsAsync (int index, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of labels to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of labels to the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void AddLabels (IList<int> indexes, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of labels to the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of labels to the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task AddLabelsAsync (IList<int> indexes, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of labels from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of labels from the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveLabels (int index, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of labels from the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of labels from the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveLabelsAsync (int index, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of labels from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of labels from the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void RemoveLabels (IList<int> indexes, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of labels from the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of labels from the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task RemoveLabelsAsync (IList<int> indexes, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the labels of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Sets the labels of the specified message.
-		/// </remarks>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetLabels (int index, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the labels of the specified message.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the labels of the specified message.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="index">The index of the message.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetLabelsAsync (int index, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the labels of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Sets the labels of the specified messages.
-		/// </remarks>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		void SetLabels (IList<int> indexes, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the labels of the specified messages.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the labels of the specified messages.
-		/// </remarks>
-		/// <returns>An asynchronous task context.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task SetLabelsAsync (IList<int> indexes, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Add a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Adds a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> AddLabels (IList<int> indexes, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously add a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously adds a set of labels to the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to add.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> AddLabelsAsync (IList<int> indexes, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Remove a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Removes a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> RemoveLabels (IList<int> indexes, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously remove a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously removes a set of labels from the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to remove.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> RemoveLabelsAsync (IList<int> indexes, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Set the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Sets the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		IList<int> SetLabels (IList<int> indexes, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
-
-		/// <summary>
-		/// Asynchronously set the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously sets the labels of the specified messages only if their mod-sequence value is less than the specified value.
-		/// </remarks>
-		/// <returns>The indexes of the messages that were not updated.</returns>
-		/// <param name="indexes">The indexes of the messages.</param>
-		/// <param name="modseq">The mod-sequence value.</param>
-		/// <param name="labels">The labels to set.</param>
-		/// <param name="silent">If set to <c>true</c>, no <see cref="MessageLabelsChanged"/> events will be emitted.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		Task<IList<int>> SetLabelsAsync (IList<int> indexes, ulong modseq, IList<string> labels, bool silent, CancellationToken cancellationToken = default (CancellationToken));
+		Task<IList<int>> StoreAsync (IList<int> indexes, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Store the annotations for the specified message.

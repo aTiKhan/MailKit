@@ -27,6 +27,7 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Security.Authentication.ExtendedProtection;
 
 using NUnit.Framework;
 
@@ -40,19 +41,20 @@ namespace UnitTests.Security {
 		public void TestArgumentExceptions ()
 		{
 			var credentials = new NetworkCredential ("username", "password");
-			var uri = new Uri ("smtp://localhost");
 
 			var sasl = new SaslMechanismScramSha256 (credentials);
 			Assert.DoesNotThrow (() => sasl.Challenge (null));
 
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (null, credentials));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (uri, null));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (null, "username", "password"));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (uri, (string) null, "password"));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (uri, "username", null));
 			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (null));
-			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 ((string) null, "password"));
+			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 (null, "password"));
 			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256 ("username", null));
+
+			sasl = new SaslMechanismScramSha256Plus (credentials);
+			Assert.DoesNotThrow (() => sasl.Challenge (null));
+
+			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256Plus (null));
+			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256Plus (null, "password"));
+			Assert.Throws<ArgumentNullException> (() => new SaslMechanismScramSha256Plus ("username", null));
 		}
 
 		static void AssertScramSha256 (SaslMechanismScramSha256 sasl, string prefix)
@@ -65,6 +67,7 @@ namespace UnitTests.Security {
 
 			sasl.cnonce = entropy;
 
+			Assert.IsFalse (sasl.SupportsChannelBinding, "{0}: SupportsChannelBinding", prefix);
 			Assert.IsTrue (sasl.SupportsInitialResponse, "{0}: SupportsInitialResponse", prefix);
 
 			var challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (null)));
@@ -82,7 +85,10 @@ namespace UnitTests.Security {
 			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
 			Assert.AreEqual (string.Empty, challenge, "{0}: third SCRAM-SHA-256 challenge should be an empty string.", prefix);
 			Assert.IsTrue (sasl.IsAuthenticated, "{0}: SCRAM-SHA-256 should be authenticated now.", prefix);
-			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty));
+			Assert.IsFalse (sasl.NegotiatedChannelBinding, "{0}: NegotiatedChannelBinding", prefix);
+			Assert.IsFalse (sasl.NegotiatedSecurityLayer, "{0}: NegotiatedSecurityLayer", prefix);
+
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
 		}
 
 		[Test]
@@ -97,14 +103,6 @@ namespace UnitTests.Security {
 			sasl = new SaslMechanismScramSha256 ("user", "pencil");
 
 			AssertScramSha256 (sasl, "user/pass");
-
-			sasl = new SaslMechanismScramSha256 (uri, credentials);
-
-			AssertScramSha256 (sasl, "uri/credentials");
-
-			sasl = new SaslMechanismScramSha256 (uri, "user", "pencil");
-
-			AssertScramSha256 (sasl, "uri/user/pass");
 		}
 
 		static void AssertSaslException (SaslMechanismScramSha256 sasl, string challenge, SaslErrorCode code)
@@ -162,7 +160,107 @@ namespace UnitTests.Security {
 			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
 			Assert.AreEqual (string.Empty, challenge, "third SCRAM-SHA-256 challenge should be an empty string.");
 			Assert.IsTrue (sasl.IsAuthenticated, "SCRAM-SHA-256 should be authenticated now.");
-			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty));
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "challenge while authenticated.");
+		}
+
+		static void AssertScramSha256PlusTlsServerEndpoint (SaslMechanismScramSha256Plus sasl, string prefix)
+		{
+			const string expected = "c=cD10bHMtc2VydmVyLWVuZC1wb2ludCwsaW1hcDovL2Vsd29vZC5pbm5vc29mdC5jb20v,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=5mTXE52q6omlPLhl1OBywbbmUZoqUb8TZ0rQcSODGrg=";
+			const string challenge1 = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
+			const string challenge2 = "v=iTfhTdj45V52spZKUcXtZGOkyhurIJ8/UAxKKJZcmRQ=";
+			const string entropy = "rOprNGfwEbeRWgbNEkqO";
+			string token;
+
+			sasl.cnonce = entropy;
+
+			Assert.IsTrue (sasl.SupportsChannelBinding, "{0}: SupportsChannelBinding", prefix);
+			Assert.IsTrue (sasl.SupportsInitialResponse, "{0}: SupportsInitialResponse", prefix);
+
+			var challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (null)));
+
+			Assert.AreEqual ("p=tls-server-end-point,,n=user,r=" + entropy, challenge, "{0}: initial SCRAM-SHA-256-PLUS challenge response does not match the expected string.", prefix);
+			Assert.IsFalse (sasl.IsAuthenticated, "{0}: should not be authenticated yet.", prefix);
+
+			token = Convert.ToBase64String (Encoding.UTF8.GetBytes (challenge1));
+			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
+
+			Assert.AreEqual (expected, challenge, "{0}: second SCRAM-SHA-256-PLUS challenge response does not match the expected string.", prefix);
+			Assert.IsFalse (sasl.IsAuthenticated, "{0}: should not be authenticated yet.", prefix);
+
+			token = Convert.ToBase64String (Encoding.UTF8.GetBytes (challenge2));
+			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
+			Assert.AreEqual (string.Empty, challenge, "{0}: third SCRAM-SHA-256-PLUS challenge should be an empty string.", prefix);
+			Assert.IsTrue (sasl.IsAuthenticated, "{0}: SCRAM-SHA-256-PLUS should be authenticated now.", prefix);
+			Assert.IsTrue (sasl.NegotiatedChannelBinding, "{0}: NegotiatedChannelBinding", prefix);
+			Assert.IsFalse (sasl.NegotiatedSecurityLayer, "{0}: NegotiatedSecurityLayer", prefix);
+
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
+		}
+
+		[Test]
+		public void TestScramSha256PlusTlsServerEndpoint ()
+		{
+			var credentials = new NetworkCredential ("user", "pencil");
+			var uri = new Uri ("imap://elwood.innosoft.com");
+			var context = new ChannelBindingContext (ChannelBindingKind.Endpoint, uri.ToString ());
+
+			var sasl = new SaslMechanismScramSha256Plus (credentials) { ChannelBindingContext = context };
+
+			AssertScramSha256PlusTlsServerEndpoint (sasl, "NetworkCredential");
+
+			sasl = new SaslMechanismScramSha256Plus ("user", "pencil") { ChannelBindingContext = context };
+
+			AssertScramSha256PlusTlsServerEndpoint (sasl, "user/pass");
+		}
+
+		static void AssertScramSha256PlusTlsUnique (SaslMechanismScramSha256Plus sasl, string prefix)
+		{
+			const string expected = "c=cD10bHMtdW5pcXVlLCxpbWFwOi8vZWx3b29kLmlubm9zb2Z0LmNvbS8=,r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,p=r034Wumf+g5Cw9QvuK2TBTWHLa9hsT0TpUvksIr3P0I=";
+			const string challenge1 = "r=rOprNGfwEbeRWgbNEkqO%hvYDpWUa2RaTCAfuxFIlj)hNlF$k0,s=W22ZaJ0SNY7soEsUEjb6gQ==,i=4096";
+			const string challenge2 = "v=ZfK3fb1tbWoyTuaEXvUTM2va2RSQgBVJ8QYsympnk8o=";
+			const string entropy = "rOprNGfwEbeRWgbNEkqO";
+			string token;
+
+			sasl.cnonce = entropy;
+
+			Assert.IsTrue (sasl.SupportsChannelBinding, "{0}: SupportsChannelBinding", prefix);
+			Assert.IsTrue (sasl.SupportsInitialResponse, "{0}: SupportsInitialResponse", prefix);
+
+			var challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (null)));
+
+			Assert.AreEqual ("p=tls-unique,,n=user,r=" + entropy, challenge, "{0}: initial SCRAM-SHA-256-PLUS challenge response does not match the expected string.", prefix);
+			Assert.IsFalse (sasl.IsAuthenticated, "{0}: should not be authenticated yet.", prefix);
+
+			token = Convert.ToBase64String (Encoding.UTF8.GetBytes (challenge1));
+			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
+
+			Assert.AreEqual (expected, challenge, "{0}: second SCRAM-SHA-256-PLUS challenge response does not match the expected string.", prefix);
+			Assert.IsFalse (sasl.IsAuthenticated, "{0}: should not be authenticated yet.", prefix);
+
+			token = Convert.ToBase64String (Encoding.UTF8.GetBytes (challenge2));
+			challenge = Encoding.UTF8.GetString (Convert.FromBase64String (sasl.Challenge (token)));
+			Assert.AreEqual (string.Empty, challenge, "{0}: third SCRAM-SHA-256-PLUS challenge should be an empty string.", prefix);
+			Assert.IsTrue (sasl.IsAuthenticated, "{0}: SCRAM-SHA-256-PLUS should be authenticated now.", prefix);
+			Assert.IsTrue (sasl.NegotiatedChannelBinding, "{0}: NegotiatedChannelBinding", prefix);
+			Assert.IsFalse (sasl.NegotiatedSecurityLayer, "{0}: NegotiatedSecurityLayer", prefix);
+
+			Assert.AreEqual (string.Empty, sasl.Challenge (string.Empty), "{0}: challenge while authenticated.", prefix);
+		}
+
+		[Test]
+		public void TestScramSha256PlusTlsUnique ()
+		{
+			var credentials = new NetworkCredential ("user", "pencil");
+			var uri = new Uri ("imap://elwood.innosoft.com");
+			var context = new ChannelBindingContext (ChannelBindingKind.Unique, uri.ToString ());
+
+			var sasl = new SaslMechanismScramSha256Plus (credentials) { ChannelBindingContext = context };
+
+			AssertScramSha256PlusTlsUnique (sasl, "NetworkCredential");
+
+			sasl = new SaslMechanismScramSha256Plus ("user", "pencil") { ChannelBindingContext = context };
+
+			AssertScramSha256PlusTlsUnique (sasl, "user/pass");
 		}
 	}
 }
