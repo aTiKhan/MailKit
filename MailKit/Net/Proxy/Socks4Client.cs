@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,9 +40,9 @@ namespace MailKit.Net.Proxy
 	/// <summary>
 	/// A SOCKS4 proxy client.
 	/// </summary>
-	/// <remarkas>
+	/// <remarks>
 	/// A SOCKS4 proxy client.
-	/// </remarkas>
+	/// </remarks>
 	public class Socks4Client : SocksClient
 	{
 		static readonly byte[] InvalidIPAddress = { 0, 0, 0, 1 };
@@ -129,7 +129,7 @@ namespace MailKit.Net.Proxy
 			}
 		}
 
-		async Task<IPAddress> ResolveAsync (string host, bool doAsync, CancellationToken cancellationToken)
+		static async Task<IPAddress> ResolveAsync (string host, bool doAsync, CancellationToken cancellationToken)
 		{
 			IPAddress[] ipAddresses;
 
@@ -154,11 +154,10 @@ namespace MailKit.Net.Proxy
 		async Task<Stream> ConnectAsync (string host, int port, bool doAsync, CancellationToken cancellationToken)
 		{
 			byte[] addr, domain = null;
-			IPAddress ip;
 
 			ValidateArguments (host, port);
 
-			if (!IPAddress.TryParse (host, out ip)) {
+			if (!IPAddress.TryParse (host, out var ip)) {
 				if (IsSocks4a) {
 					domain = Encoding.UTF8.GetBytes (host);
 					addr = InvalidIPAddress;

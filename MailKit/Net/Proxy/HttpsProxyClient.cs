@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,9 +46,9 @@ namespace MailKit.Net.Proxy {
 	/// <summary>
 	/// An HTTPS proxy client.
 	/// </summary>
-	/// <remarkas>
+	/// <remarks>
 	/// An HTTPS proxy client.
-	/// </remarkas>
+	/// </remarks>
 	public class HttpsProxyClient : ProxyClient
 	{
 #if NET48 || NET5_0_OR_GREATER
@@ -188,14 +188,14 @@ namespace MailKit.Net.Proxy {
 		}
 
 		// Note: This is used by SslHandshakeException to build the exception message.
-		SslCertificateValidationInfo SslCertificateValidationInfo;
+		SslCertificateValidationInfo sslValidationInfo;
 
 		bool ValidateRemoteCertificate (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 		{
 			bool valid;
 
-			SslCertificateValidationInfo?.Dispose ();
-			SslCertificateValidationInfo = null;
+			sslValidationInfo?.Dispose ();
+			sslValidationInfo = null;
 
 			if (ServerCertificateValidationCallback != null) {
 				valid = ServerCertificateValidationCallback (ProxyHost, certificate, chain, sslPolicyErrors);
@@ -209,7 +209,7 @@ namespace MailKit.Net.Proxy {
 
 			if (!valid) {
 				// Note: The SslHandshakeException.Create() method will nullify this once it's done using it.
-				SslCertificateValidationInfo = new SslCertificateValidationInfo (sender, certificate, chain, sslPolicyErrors);
+				sslValidationInfo = new SslCertificateValidationInfo (sender, certificate, chain, sslPolicyErrors);
 			}
 
 			return valid;
@@ -269,7 +269,7 @@ namespace MailKit.Net.Proxy {
 			} catch (Exception ex) {
 				ssl.Dispose ();
 
-				throw SslHandshakeException.Create (ref SslCertificateValidationInfo, ex, false, "HTTP", host, port, 443, 80);
+				throw SslHandshakeException.Create (ref sslValidationInfo, ex, false, "HTTP", host, port, 443, 80);
 			}
 
 			var command = HttpProxyClient.GetConnectCommand (host, port, ProxyCredentials);

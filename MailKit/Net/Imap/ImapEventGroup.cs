@@ -4,7 +4,7 @@
 // Authors: Steffen Kieß <s-kiess@web.de>
 //          Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -612,7 +612,7 @@ namespace MailKit.Net.Imap {
 		/// <see cref="IMailFolder.MessageSummaryFetched"/> event containing the information requested by the client.</para>
 		/// <note type="note">These events will not be emitted for any message created by the client on this particular folder
 		/// as a result of, for example, a call to
-		/// <see cref="IMailFolder.Append(IAppendRequest, System.Threading.CancellationToken, ITransferProgress)"/>
+		/// <see cref="IMailFolder.Append(IAppendRequest, System.Threading.CancellationToken)"/>
 		/// or <see cref="IMailFolder.CopyTo(IList{UniqueId}, IMailFolder, System.Threading.CancellationToken)"/>.</note>
 		/// </remarks>
 		public class MessageNew : ImapEvent
@@ -711,7 +711,7 @@ namespace MailKit.Net.Imap {
 					throw new InvalidOperationException ("The MessageNew event cannot have any parameters for mailbox filters other than SELECTED and SELECTED-DELAYED.");
 
 				command.Append (" ");
-				command.Append (ImapFolder.FormatSummaryItems (engine, request, out var previewText, isNotify: true));
+				command.Append (ImapFolder.FormatSummaryItems (engine, request, out _, isNotify: true));
 			}
 		}
 	}

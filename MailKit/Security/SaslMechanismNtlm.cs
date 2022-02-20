@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,18 @@ namespace MailKit.Security {
 		NtlmNegotiateMessage negotiate;
 		bool negotiatedChannelBinding;
 		LoginState state;
+
+#if NET48_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD2_0_OR_GREATER
+		/// <summary>
+		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismNtlm"/> class.
+		/// </summary>
+		/// <remarks>
+		/// Creates a new SASL context using the default network credentials.
+		/// </remarks>
+		public SaslMechanismNtlm () : this (CredentialCache.DefaultNetworkCredentials)
+		{
+		}
+#endif
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismNtlm"/> class.
@@ -260,8 +272,8 @@ namespace MailKit.Security {
 				state = LoginState.Challenge;
 				break;
 			case LoginState.Challenge:
-				var password = Credentials.Password ?? string.Empty;
-				message = GetChallengeResponse (userName, password, token, startIndex, length);
+				var password = Credentials.Password;
+				message = GetChallengeResponse (domain, userName, password, token, startIndex, length);
 				IsAuthenticated = true;
 				break;
 			}
@@ -269,10 +281,10 @@ namespace MailKit.Security {
 			return message?.Encode ();
 		}
 
-		NtlmAuthenticateMessage GetChallengeResponse (string userName, string password, byte[] token, int startIndex, int length)
+		NtlmAuthenticateMessage GetChallengeResponse (string domain, string userName, string password, byte[] token, int startIndex, int length)
 		{
 			var challenge = new NtlmChallengeMessage (token, startIndex, length);
-			var authenticate = new NtlmAuthenticateMessage (negotiate, challenge, userName, password, Workstation) {
+			var authenticate = new NtlmAuthenticateMessage (negotiate, challenge, userName, password, domain, Workstation) {
 				ClientChallenge = Nonce,
 				Timestamp = Timestamp
 			};

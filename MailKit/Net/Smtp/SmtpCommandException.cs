@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -101,11 +101,9 @@ namespace MailKit.Net.Smtp {
 		[SecuritySafeCritical]
 		protected SmtpCommandException (SerializationInfo info, StreamingContext context) : base (info, context)
 		{
-			MailboxAddress mailbox;
-			string value;
+			var value = info.GetString ("Mailbox");
 
-			value = info.GetString ("Mailbox");
-			if (!string.IsNullOrEmpty (value) && MailboxAddress.TryParse (value, out mailbox))
+			if (!string.IsNullOrEmpty (value) && MailboxAddress.TryParse (value, out var mailbox))
 				Mailbox = mailbox;
 
 			ErrorCode = (SmtpErrorCode) info.GetValue ("ErrorCode", typeof (SmtpErrorCode));

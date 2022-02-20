@@ -3,14 +3,15 @@
   <PropertyGroup>
     <Description>An Open Source cross-platform .NET mail-client library that is based on MimeKit and optimized for mobile devices.</Description>
     <AssemblyTitle>MailKit</AssemblyTitle>
-    <VersionPrefix>2.15.0</VersionPrefix>
+    <VersionPrefix>3.1.1</VersionPrefix>
     <Authors>Jeffrey Stedfast</Authors>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net45;net46;net47;net48;net50</TargetFrameworks>
+    <LangVersion>8</LangVersion>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net452;net46;net47;net48;net5.0;net6.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <AssemblyName>MailKitLite</AssemblyName>
     <PackageId>MailKitLite</PackageId>
-    <PackageTags>smtp;pop3;imap;mime;security;dkim;smime;s/mime;openpgp;pgp;mbox;mail;email;parser;tnef;net45;net46;net47;net48;net50;netstandard;netstandard2.0</PackageTags>
+    <PackageTags>smtp;pop3;imap;mime;security;dkim;smime;s/mime;openpgp;pgp;mbox;mail;email;parser;tnef;net452;net46;net47;net48;net5.0;net6.0;netstandard;netstandard2.0;netstandard2.1</PackageTags>
     <PackageProjectUrl>https://github.com/jstedfast/MailKit</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/jstedfast/MailKit/blob/master/License.md</PackageLicenseUrl>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
@@ -28,6 +29,7 @@
     <DefineConstants>$(DefineConstants);MAILKIT_LITE</DefineConstants>
     <SignAssembly>true</SignAssembly>
     <DebugSymbols>true</DebugSymbols>
+    <NoWarn>1701;1702;CA1835;IDE0016;IDE0056;IDE0057;IDE0063;IDE0066;IDE0090</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -42,7 +44,7 @@
     <DebugType>full</DebugType>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" $(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('net5')) ">
+  <PropertyGroup Condition=" $(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('net5')) Or $(TargetFramework.StartsWith('net6')) ">
     <DefineConstants>$(DefineConstants);SERIALIZABLE</DefineConstants>
   </PropertyGroup>
 
@@ -191,6 +193,7 @@
     <Compile Include="BodyPartMultipart.cs" />
     <Compile Include="BodyPartText.cs" />
     <Compile Include="BodyPartVisitor.cs" />
+    <Compile Include="ByteArrayBuilder.cs" />
     <Compile Include="CommandException.cs" />
     <Compile Include="ConnectedEventArgs.cs" />
     <Compile Include="DeliveryStatusNotification.cs" />
@@ -263,6 +266,7 @@
     <Compile Include="StoreAction.cs" />
     <Compile Include="StoreFlagsRequest.cs" />
     <Compile Include="StoreLabelsRequest.cs" />
+    <Compile Include="TextEncodings.cs" />
     <Compile Include="ThreadingAlgorithm.cs" />
     <Compile Include="UniqueId.cs" />
     <Compile Include="UniqueIdMap.cs" />

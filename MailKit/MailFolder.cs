@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -123,6 +123,7 @@ namespace MailKit {
 		/// If annotations are supported, this property can be used to determine whether or not
 		/// the <see cref="IMailFolder"/> supports reading and writing annotations.
 		/// </remarks>
+		/// <value>The annotation access level.</value>
 		public AnnotationAccess AnnotationAccess {
 			get; internal protected set;
 		}
@@ -134,6 +135,7 @@ namespace MailKit {
 		/// If annotations are supported, this property can be used to determine which
 		/// annotation scopes are supported by the <see cref="IMailFolder"/>.
 		/// </remarks>
+		/// <value>The supported annotation scopes.</value>
 		public AnnotationScope AnnotationScopes {
 			get; internal protected set;
 		}
@@ -145,6 +147,7 @@ namespace MailKit {
 		/// If annotations are supported, this property can be used to determine the
 		/// maximum size of annotation values supported by the <see cref="IMailFolder"/>.
 		/// </remarks>
+		/// <value>The maximum size of annotation values supported by the folder.</value>
 		public uint MaxAnnotationSize {
 			get; internal protected set;
 		}
@@ -2796,7 +2799,6 @@ namespace MailKit {
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="request"/> is <c>null</c>.
 		/// </exception>
@@ -2832,9 +2834,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public virtual UniqueId? Append (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual UniqueId? Append (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return Append (FormatOptions.Default, request, cancellationToken, progress);
+			return Append (FormatOptions.Default, request, cancellationToken);
 		}
 
 		/// <summary>
@@ -2846,7 +2848,6 @@ namespace MailKit {
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="request"/> is <c>null</c>.
 		/// </exception>
@@ -2882,9 +2883,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public virtual Task<UniqueId?> AppendAsync (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual Task<UniqueId?> AppendAsync (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return AppendAsync (FormatOptions.Default, request, cancellationToken, progress);
+			return AppendAsync (FormatOptions.Default, request, cancellationToken);
 		}
 
 		/// <summary>
@@ -2897,7 +2898,6 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -2935,7 +2935,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public abstract UniqueId? Append (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract UniqueId? Append (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously append a message to the folder.
@@ -2947,7 +2947,6 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -2985,7 +2984,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public abstract Task<UniqueId?> AppendAsync (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract Task<UniqueId?> AppendAsync (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Append multiple messages to the folder.
@@ -2996,7 +2995,6 @@ namespace MailKit {
 		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="requests"/> is <c>null</c>.
 		/// </exception>
@@ -3035,9 +3033,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public virtual IList<UniqueId> Append (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual IList<UniqueId> Append (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return Append (FormatOptions.Default, requests, cancellationToken, progress);
+			return Append (FormatOptions.Default, requests, cancellationToken);
 		}
 
 		/// <summary>
@@ -3049,7 +3047,6 @@ namespace MailKit {
 		/// <returns>The UIDs of the appended messages, if available; otherwise an empty array.</returns>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="requests"/> is <c>null</c>.
 		/// </exception>
@@ -3088,9 +3085,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public virtual Task<IList<UniqueId>> AppendAsync (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual Task<IList<UniqueId>> AppendAsync (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return AppendAsync (FormatOptions.Default, requests, cancellationToken, progress);
+			return AppendAsync (FormatOptions.Default, requests, cancellationToken);
 		}
 
 		/// <summary>
@@ -3103,7 +3100,6 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -3144,7 +3140,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public abstract IList<UniqueId> Append (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract IList<UniqueId> Append (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously append multiple messages to the folder.
@@ -3156,7 +3152,6 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -3197,7 +3192,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The command failed.
 		/// </exception>
-		public abstract Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Replace a message in the folder.
@@ -3209,7 +3204,6 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="request"/> is <c>null</c>.</para>
 		/// </exception>
@@ -3248,9 +3242,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public virtual UniqueId? Replace (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual UniqueId? Replace (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return Replace (FormatOptions.Default, uid, request, cancellationToken, progress);
+			return Replace (FormatOptions.Default, uid, request, cancellationToken);
 		}
 
 		/// <summary>
@@ -3263,7 +3257,6 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="request"/> is <c>null</c>.</para>
 		/// </exception>
@@ -3302,9 +3295,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public virtual Task<UniqueId?> ReplaceAsync (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual Task<UniqueId?> ReplaceAsync (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return ReplaceAsync (FormatOptions.Default, uid, request, cancellationToken, progress);
+			return ReplaceAsync (FormatOptions.Default, uid, request, cancellationToken);
 		}
 
 		/// <summary>
@@ -3318,7 +3311,6 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -3362,7 +3354,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public abstract UniqueId? Replace (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract UniqueId? Replace (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
@@ -3375,7 +3367,6 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -3419,7 +3410,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public abstract Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Replace a message in the folder.
@@ -3431,7 +3422,6 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="request"/> is <c>null</c>.</para>
 		/// </exception>
@@ -3471,9 +3461,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public virtual UniqueId? Replace (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual UniqueId? Replace (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return Replace (FormatOptions.Default, index, request, cancellationToken, progress);
+			return Replace (FormatOptions.Default, index, request, cancellationToken);
 		}
 
 		/// <summary>
@@ -3486,7 +3476,6 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="request"/> is <c>null</c>.</para>
 		/// </exception>
@@ -3526,9 +3515,9 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public virtual Task<UniqueId?> ReplaceAsync (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public virtual Task<UniqueId?> ReplaceAsync (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return ReplaceAsync (FormatOptions.Default, index, request, cancellationToken, progress);
+			return ReplaceAsync (FormatOptions.Default, index, request, cancellationToken);
 		}
 
 		/// <summary>
@@ -3542,7 +3531,6 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -3587,7 +3575,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public abstract UniqueId? Replace (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract UniqueId? Replace (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
@@ -3600,7 +3588,6 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="options"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
@@ -3645,7 +3632,7 @@ namespace MailKit {
 		/// <exception cref="CommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public abstract Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		public abstract Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Copy the specified message to the destination folder.

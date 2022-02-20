@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,9 @@ namespace MailKit.Search {
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Search.OrderByAnnotation"/> class.
 		/// </summary>
+		/// <remarks>
+		/// Creates a new <see cref="OrderByAnnotation"/>.
+		/// </remarks>
 		/// <param name="entry">The annotation entry to sort by.</param>
 		/// <param name="attribute">The annotation attribute to use for sorting.</param>
 		/// <param name="order">The sort order.</param>

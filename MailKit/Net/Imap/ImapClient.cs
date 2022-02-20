@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -744,6 +744,24 @@ namespace MailKit.Net.Imap {
 			}
 		}
 
+#if NET5_0_OR_GREATER
+		/// <summary>
+		/// Get the negotiated SSL or TLS cipher suite.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS cipher suite once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS cipher suite.</value>
+		public override TlsCipherSuite? SslCipherSuite {
+			get {
+				if (IsSecure && (engine.Stream.Stream is SslStream sslStream))
+					return sslStream.NegotiatedCipherSuite;
+
+				return null;
+			}
+		}
+#endif
+
 		/// <summary>
 		/// Get the negotiated SSL or TLS hash algorithm.
 		/// </summary>
@@ -903,14 +921,13 @@ namespace MailKit.Net.Imap {
 
 		internal static string UnescapeUserName (string escaped)
 		{
-			StringBuilder userName;
-			int startIndex, index;
+			int index;
 
 			if ((index = escaped.IndexOf ('%')) == -1)
 				return escaped;
 
-			userName = new StringBuilder ();
-			startIndex = 0;
+			var userName = new StringBuilder (escaped.Length);
+			int startIndex = 0;
 
 			do {
 				userName.Append (escaped, startIndex, index - startIndex);
@@ -929,44 +946,46 @@ namespace MailKit.Net.Imap {
 			return userName.ToString ();
 		}
 
-		static string HexEscape (char c)
+		static void HexEscape (StringBuilder builder, char c)
 		{
-			return "%" + HexAlphabet[(c >> 4) & 0xF] + HexAlphabet[c & 0xF];
+			builder.Append ('%');
+			builder.Append (HexAlphabet[(c >> 4) & 0xF]);
+			builder.Append (HexAlphabet[c & 0xF]);
 		}
 
-		internal static string EscapeUserName (string userName)
+		internal static void EscapeUserName (StringBuilder builder, string userName)
 		{
-			StringBuilder escaped;
-			int startIndex, index;
+			int index = userName.IndexOfAny (ReservedUriCharacters);
+			int startIndex = 0;
 
-			if ((index = userName.IndexOfAny (ReservedUriCharacters)) == -1)
-				return userName;
-
-			escaped = new StringBuilder ();
-			startIndex = 0;
-
-			do {
-				escaped.Append (userName, startIndex, index - startIndex);
-				escaped.Append (HexEscape (userName[index++]));
+			while (index != -1) {
+				builder.Append (userName, startIndex, index - startIndex);
+				HexEscape (builder, userName[index++]);
 				startIndex = index;
 
 				if (startIndex >= userName.Length)
 					break;
 
 				index = userName.IndexOfAny (ReservedUriCharacters, startIndex);
-			} while (index != -1);
+			}
 
-			if (index == -1)
-				escaped.Append (userName, startIndex, userName.Length - startIndex);
-
-			return escaped.ToString ();
+			builder.Append (userName, startIndex, userName.Length - startIndex);
 		}
 
 		string GetSessionIdentifier (string userName)
 		{
+			var builder = new StringBuilder ();
 			var uri = engine.Uri;
 
-			return string.Format (CultureInfo.InvariantCulture, "{0}://{1}@{2}:{3}", uri.Scheme, EscapeUserName (userName), uri.Host, uri.Port);
+			builder.Append (uri.Scheme);
+			builder.Append ("://");
+			EscapeUserName (builder, userName);
+			builder.Append ('@');
+			builder.Append (uri.Host);
+			builder.Append (':');
+			builder.Append (uri.Port.ToString (CultureInfo.InvariantCulture));
+
+			return builder.ToString ();
 		}
 
 		async Task OnAuthenticatedAsync (string message, bool doAsync, CancellationToken cancellationToken)
@@ -1622,10 +1641,8 @@ namespace MailKit.Net.Imap {
 				throw new InvalidOperationException ("The ImapClient is already connected.");
 
 			Stream network;
-			bool starttls;
-			Uri uri;
 
-			ComputeDefaultValues (host, ref port, ref options, out uri, out starttls);
+			ComputeDefaultValues (host, ref port, ref options, out var uri, out var starttls);
 
 			engine.Uri = uri;
 
@@ -2394,9 +2411,8 @@ namespace MailKit.Net.Imap {
 			CheckAuthenticated ();
 
 			var encodedName = engine.EncodeMailboxName (@namespace.Path);
-			ImapFolder folder;
 
-			if (engine.GetCachedFolder (encodedName, out folder))
+			if (engine.GetCachedFolder (encodedName, out var folder))
 				return folder;
 
 			throw new FolderNotFoundException (@namespace.Path);
@@ -2606,10 +2622,16 @@ namespace MailKit.Net.Imap {
 
 			if (options.MaxSize.HasValue || options.Depth != 0) {
 				command.Append (" (");
-				if (options.MaxSize.HasValue)
-					command.AppendFormat ("MAXSIZE {0} ", options.MaxSize.Value);
-				if (options.Depth > 0)
-					command.AppendFormat ("DEPTH {0} ", options.Depth == int.MaxValue ? "infinity" : "1");
+				if (options.MaxSize.HasValue) {
+					command.Append ("MAXSIZE ");
+					command.Append (options.MaxSize.Value.ToString (CultureInfo.InvariantCulture));
+					command.Append (' ');
+				}
+				if (options.Depth > 0) {
+					command.Append ("DEPTH ");
+					command.Append (options.Depth == int.MaxValue ? "infinity" : "1");
+					command.Append (' ');
+				}
 				command[command.Length - 1] = ')';
 				command.Append (' ');
 				hasOptions = true;
@@ -2826,10 +2848,7 @@ namespace MailKit.Net.Imap {
 		/// </exception>
 		protected virtual void OnWebAlert (Uri uri, string message)
 		{
-			var handler = WebAlert;
-
-			if (handler != null)
-				handler (this, new WebAlertEventArgs (uri, message));
+			WebAlert?.Invoke (this, new WebAlertEventArgs (uri, message));
 		}
 
 		void OnEngineDisconnected (object sender, EventArgs e)

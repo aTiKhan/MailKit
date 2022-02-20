@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -176,14 +176,13 @@ namespace MailKit {
 		/// Gets the remapped unique identifier.
 		/// </remarks>
 		/// <param name="index">The unique identifier of the message in the source folder.</param>
+		/// <value>The remapped unique identifier.</value>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="index"/> is out of range.
 		/// </exception>
 		public UniqueId this [UniqueId index] {
 			get {
-				UniqueId uid;
-
-				if (!TryGetValue (index, out uid))
+				if (!TryGetValue (index, out var uid))
 					throw new ArgumentOutOfRangeException (nameof (index));
 
 				return uid;

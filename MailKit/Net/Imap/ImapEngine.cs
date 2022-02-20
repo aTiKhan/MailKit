@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -140,8 +140,6 @@ namespace MailKit.Net.Imap {
 		const string GreetingSyntaxErrorFormat = "Syntax error in IMAP server greeting. {0}";
 		const int BufferSize = 4096;
 
-		internal static readonly Encoding Latin1;
-		internal static readonly Encoding UTF8;
 		static int TagPrefixIndex;
 
 		internal readonly Dictionary<string, ImapFolder> FolderCache;
@@ -154,17 +152,6 @@ namespace MailKit.Net.Imap {
 		MimeParser parser;
 		internal int Tag;
 		bool disposed;
-
-		static ImapEngine ()
-		{
-			UTF8 = Encoding.GetEncoding (65001, new EncoderExceptionFallback (), new DecoderExceptionFallback ());
-
-			try {
-				Latin1 = Encoding.GetEncoding (28591);
-			} catch (NotSupportedException) {
-				Latin1 = Encoding.GetEncoding (1252);
-			}
-		}
 
 		public ImapEngine (CreateImapFolderDelegate createImapFolderDelegate)
 		{
@@ -573,11 +560,9 @@ namespace MailKit.Net.Imap {
 
 		internal static uint ParseNumber (ImapToken token, bool nonZero, string format, params object[] args)
 		{
-			uint value;
-
 			AssertToken (token, ImapTokenType.Atom, format, args);
 
-			if (!uint.TryParse ((string) token.Value, NumberStyles.None, CultureInfo.InvariantCulture, out value) || (nonZero && value == 0))
+			if (!uint.TryParse ((string) token.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || (nonZero && value == 0))
 				throw UnexpectedToken (format, args);
 
 			return value;
@@ -585,23 +570,19 @@ namespace MailKit.Net.Imap {
 
 		internal static ulong ParseNumber64 (ImapToken token, bool nonZero, string format, params object[] args)
 		{
-			ulong value;
-
 			AssertToken (token, ImapTokenType.Atom, format, args);
 
-			if (!ulong.TryParse ((string) token.Value, NumberStyles.None, CultureInfo.InvariantCulture, out value) || (nonZero && value == 0))
+			if (!ulong.TryParse ((string) token.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || (nonZero && value == 0))
 				throw UnexpectedToken (format, args);
 
 			return value;
 		}
 
-		internal static UniqueIdSet ParseUidSet (ImapToken token, uint validity, string format, params object[] args)
+		internal static UniqueIdSet ParseUidSet (ImapToken token, uint validity, out UniqueId? minValue, out UniqueId? maxValue, string format, params object[] args)
 		{
-			UniqueIdSet uids;
-
 			AssertToken (token, ImapTokenType.Atom, format, args);
 
-			if (!UniqueIdSet.TryParse ((string) token.Value, validity, out uids))
+			if (!UniqueIdSet.TryParse ((string) token.Value, validity, out var uids, out minValue, out maxValue))
 				throw UnexpectedToken (format, args);
 
 			return uids;
@@ -766,30 +747,20 @@ namespace MailKit.Net.Imap {
 
 		internal async Task<string> ReadLineAsync (bool doAsync, CancellationToken cancellationToken)
 		{
-			using (var memory = new MemoryStream ()) {
+			using (var builder = new ByteArrayBuilder (64)) {
 				bool complete;
-				byte[] buf;
-				int count;
 
 				do {
 					if (doAsync)
-						complete = await Stream.ReadLineAsync (memory, cancellationToken).ConfigureAwait (false);
+						complete = await Stream.ReadLineAsync (builder, cancellationToken).ConfigureAwait (false);
 					else
-						complete = Stream.ReadLine (memory, cancellationToken);
+						complete = Stream.ReadLine (builder, cancellationToken);
 				} while (!complete);
 
-				count = (int) memory.Length;
-#if !NETSTANDARD1_3 && !NETSTANDARD1_6
-				buf = memory.GetBuffer ();
-#else
-				buf = memory.ToArray ();
-#endif
+				// FIXME: All callers expect CRLF to be trimmed, but many also want all trailing whitespace trimmed.
+				builder.TrimNewLine ();
 
-				try {
-					return UTF8.GetString (buf, 0, count);
-				} catch (DecoderFallbackException) {
-					return Latin1.GetString (buf, 0, count);
-				}
+				return builder.ToString ();
 			}
 		}
 
@@ -1004,30 +975,27 @@ namespace MailKit.Net.Imap {
 			if (Stream.Mode != ImapStreamMode.Literal)
 				throw new InvalidOperationException ();
 
-			using (var memory = new MemoryStream (Stream.LiteralLength)) {
-				var buf = ArrayPool<byte>.Shared.Rent (BufferSize);
-				int nread;
+			int literalLength = Stream.LiteralLength;
+			var buf = ArrayPool<byte>.Shared.Rent (literalLength);
 
-				try {
-					if (doAsync) {
-						while ((nread = await Stream.ReadAsync (buf, 0, BufferSize, cancellationToken).ConfigureAwait (false)) > 0)
-							memory.Write (buf, 0, nread);
-					} else {
-						while ((nread = Stream.Read (buf, 0, BufferSize, cancellationToken)) > 0)
-							memory.Write (buf, 0, nread);
-					}
-				} finally {
-					ArrayPool<byte>.Shared.Return (buf);
+			try {
+				int n, nread = 0;
+
+				if (doAsync) {
+					do {
+						if ((n = await Stream.ReadAsync (buf, nread, literalLength - nread, cancellationToken).ConfigureAwait (false)) > 0)
+							nread += n;
+					} while (nread < literalLength);
+				} else {
+					do {
+						if ((n = Stream.Read (buf, nread, literalLength - nread, cancellationToken)) > 0)
+							nread += n;
+					} while (nread < literalLength);
 				}
 
-				nread = (int) memory.Length;
-#if !NETSTANDARD1_3 && !NETSTANDARD1_6
-				buf = memory.GetBuffer ();
-#else
-				buf = memory.ToArray ();
-#endif
-
-				return Latin1.GetString (buf, 0, nread);
+				return TextEncodings.Latin1.GetString (buf, 0, nread);
+			} finally {
+				ArrayPool<byte>.Shared.Return (buf);
 			}
 		}
 
@@ -1096,6 +1064,17 @@ namespace MailKit.Net.Imap {
 			} while (token.Type != ImapTokenType.Eoln);
 		}
 
+		static bool TryParseUInt32 (string text, int startIndex, out uint value)
+		{
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+			var token = text.AsSpan (startIndex);
+#else
+			var token = text.Substring (startIndex);
+#endif
+
+			return uint.TryParse (token, NumberStyles.None, CultureInfo.InvariantCulture, out value);
+		}
+
 		async Task UpdateCapabilitiesAsync (ImapTokenType sentinel, bool doAsync, CancellationToken cancellationToken)
 		{
 			// Clear the extensions except STARTTLS so that this capability stays set after a STARTTLS command.
@@ -1117,13 +1096,13 @@ namespace MailKit.Net.Imap {
 
 				if (atom.StartsWith ("AUTH=", StringComparison.OrdinalIgnoreCase)) {
 					AuthenticationMechanisms.Add (atom.Substring ("AUTH=".Length));
-				} else if (atom.StartsWith ("APPENDLIMIT=", StringComparison.OrdinalIgnoreCase)) {
-					uint limit;
+				} else if (atom.StartsWith ("APPENDLIMIT", StringComparison.OrdinalIgnoreCase)) {
+					if (atom.Length >= "APPENDLIMIT".Length) {
+						if (atom.Length >= "APPENDLIMIT=".Length && TryParseUInt32 (atom, "APPENDLIMIT=".Length, out uint limit))
+							AppendLimit = limit;
 
-					if (uint.TryParse (atom.Substring ("APPENDLIMIT=".Length), NumberStyles.None, CultureInfo.InvariantCulture, out limit))
-						AppendLimit = limit;
-
-					Capabilities |= ImapCapabilities.AppendLimit;
+						Capabilities |= ImapCapabilities.AppendLimit;
+					}
 				} else if (atom.StartsWith ("COMPRESS=", StringComparison.OrdinalIgnoreCase)) {
 					CompressionAlgorithms.Add (atom.Substring ("COMPRESS=".Length));
 					Capabilities |= ImapCapabilities.Compress;
@@ -1131,87 +1110,133 @@ namespace MailKit.Net.Imap {
 					SupportedContexts.Add (atom.Substring ("CONTEXT=".Length));
 					Capabilities |= ImapCapabilities.Context;
 				} else if (atom.StartsWith ("I18NLEVEL=", StringComparison.OrdinalIgnoreCase)) {
-					int level;
-
-					int.TryParse (atom.Substring ("I18NLEVEL=".Length), NumberStyles.None, CultureInfo.InvariantCulture, out level);
-					I18NLevel = level;
+					if (TryParseUInt32 (atom, "I18NLEVEL=".Length, out uint level))
+						I18NLevel = (int) level;
 
 					Capabilities |= ImapCapabilities.I18NLevel;
 				} else if (atom.StartsWith ("RIGHTS=", StringComparison.OrdinalIgnoreCase)) {
 					var rights = atom.Substring ("RIGHTS=".Length);
 					Rights.AddRange (rights);
 				} else if (atom.StartsWith ("THREAD=", StringComparison.OrdinalIgnoreCase)) {
-					var algorithm = atom.Substring ("THREAD=".Length);
-					switch (algorithm.ToUpperInvariant ()) {
-					case "ORDEREDSUBJECT":
+					if (string.Compare ("ORDEREDSUBJECT", 0, atom, "THREAD=".Length, "ORDEREDSUBJECT".Length, StringComparison.OrdinalIgnoreCase) == 0)
 						ThreadingAlgorithms.Add (ThreadingAlgorithm.OrderedSubject);
-						break;
-					case "REFERENCES":
+					else if (string.Compare ("REFERENCES", 0, atom, "THREAD=".Length, "REFERENCES".Length, StringComparison.OrdinalIgnoreCase) == 0)
 						ThreadingAlgorithms.Add (ThreadingAlgorithm.References);
-						break;
-					}
 
 					Capabilities |= ImapCapabilities.Thread;
-				} else {
-					switch (atom.ToUpperInvariant ()) {
-					case "IMAP4":                 Capabilities |= ImapCapabilities.IMAP4; break;
-					case "IMAP4REV1":             Capabilities |= ImapCapabilities.IMAP4rev1; break;
-					case "STATUS":                Capabilities |= ImapCapabilities.Status; break;
-					case "ACL":                   Capabilities |= ImapCapabilities.Acl; break;
-					case "QUOTA":                 Capabilities |= ImapCapabilities.Quota; break;
-					case "LITERAL+":              Capabilities |= ImapCapabilities.LiteralPlus; break;
-					case "IDLE":                  Capabilities |= ImapCapabilities.Idle; break;
-					case "MAILBOX-REFERRALS":     Capabilities |= ImapCapabilities.MailboxReferrals; break;
-					case "LOGIN-REFERRALS":       Capabilities |= ImapCapabilities.LoginReferrals; break;
-					case "NAMESPACE":             Capabilities |= ImapCapabilities.Namespace; break;
-					case "ID":                    Capabilities |= ImapCapabilities.Id; break;
-					case "CHILDREN":              Capabilities |= ImapCapabilities.Children; break;
-					case "LOGINDISABLED":         Capabilities |= ImapCapabilities.LoginDisabled; break;
-					case "STARTTLS":              Capabilities |= ImapCapabilities.StartTLS; break;
-					case "MULTIAPPEND":           Capabilities |= ImapCapabilities.MultiAppend; break;
-					case "BINARY":                Capabilities |= ImapCapabilities.Binary; break;
-					case "UNSELECT":              Capabilities |= ImapCapabilities.Unselect; break;
-					case "UIDPLUS":               Capabilities |= ImapCapabilities.UidPlus; break;
-					case "CATENATE":              Capabilities |= ImapCapabilities.Catenate; break;
-					case "CONDSTORE":             Capabilities |= ImapCapabilities.CondStore; break;
-					case "ESEARCH":               Capabilities |= ImapCapabilities.ESearch; break;
-					case "SASL-IR":               Capabilities |= ImapCapabilities.SaslIR; break;
-					case "WITHIN":                Capabilities |= ImapCapabilities.Within; break;
-					case "ENABLE":                Capabilities |= ImapCapabilities.Enable; break;
-					case "QRESYNC":               Capabilities |= ImapCapabilities.QuickResync; break;
-					case "SEARCHRES":             Capabilities |= ImapCapabilities.SearchResults; break;
-					case "SORT":                  Capabilities |= ImapCapabilities.Sort; break;
-					case "ANNOTATE-EXPERIMENT-1": Capabilities |= ImapCapabilities.Annotate; break;
-					case "LIST-EXTENDED":         Capabilities |= ImapCapabilities.ListExtended; break;
-					case "CONVERT":               Capabilities |= ImapCapabilities.Convert; break;
-					case "LANGUAGE":              Capabilities |= ImapCapabilities.Language; break;
-					case "ESORT":                 Capabilities |= ImapCapabilities.ESort; break;
-					case "METADATA":              Capabilities |= ImapCapabilities.Metadata; break;
-					case "METADATA-SERVER":       Capabilities |= ImapCapabilities.MetadataServer; break;
-					case "NOTIFY":                Capabilities |= ImapCapabilities.Notify; break;
-					case "LIST-STATUS":           Capabilities |= ImapCapabilities.ListStatus; break;
-					case "SORT=DISPLAY":          Capabilities |= ImapCapabilities.SortDisplay; break;
-					case "CREATE-SPECIAL-USE":    Capabilities |= ImapCapabilities.CreateSpecialUse; break;
-					case "SPECIAL-USE":           Capabilities |= ImapCapabilities.SpecialUse; break;
-					case "SEARCH=FUZZY":          Capabilities |= ImapCapabilities.FuzzySearch; break;
-					case "MULTISEARCH":           Capabilities |= ImapCapabilities.MultiSearch; break;
-					case "MOVE":                  Capabilities |= ImapCapabilities.Move; break;
-					case "UTF8=ACCEPT":           Capabilities |= ImapCapabilities.UTF8Accept; break;
-					case "UTF8=ONLY":             Capabilities |= ImapCapabilities.UTF8Only; break;
-					case "LITERAL-":              Capabilities |= ImapCapabilities.LiteralMinus; break;
-					case "APPENDLIMIT":           Capabilities |= ImapCapabilities.AppendLimit; break;
-					case "UNAUTHENTICATE":        Capabilities |= ImapCapabilities.Unauthenticate; break;
-					case "STATUS=SIZE":           Capabilities |= ImapCapabilities.StatusSize; break;
-					case "LIST-MYRIGHTS":         Capabilities |= ImapCapabilities.ListMyRights; break;
-					case "OBJECTID":              Capabilities |= ImapCapabilities.ObjectID; break;
-					case "REPLACE":               Capabilities |= ImapCapabilities.Replace; break;
-					case "SAVEDATE":              Capabilities |= ImapCapabilities.SaveDate; break;
-					case "XLIST":                 Capabilities |= ImapCapabilities.XList; break;
-					case "X-GM-EXT-1":            Capabilities |= ImapCapabilities.GMailExt1; QuirksMode = ImapQuirksMode.GMail; break;
-					case "XSTOP":                 QuirksMode = ImapQuirksMode.ProtonMail; break;
-					case "X-SUN-IMAP":            QuirksMode = ImapQuirksMode.SunMicrosystems; break;
-					case "XYMHIGHESTMODSEQ":      QuirksMode = ImapQuirksMode.Yahoo; break;
-					}
+				} else if (atom.Equals ("IMAP4", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.IMAP4;
+				} else if (atom.Equals ("IMAP4REV1", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.IMAP4rev1;
+				} else if (atom.Equals ("STATUS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Status;
+				} else if (atom.Equals ("ACL", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Acl;
+				} else if (atom.Equals ("QUOTA", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Quota;
+				} else if (atom.Equals ("LITERAL+", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.LiteralPlus;
+				} else if (atom.Equals ("IDLE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Idle;
+				} else if (atom.Equals ("MAILBOX-REFERRALS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.MailboxReferrals;
+				} else if (atom.Equals ("LOGIN-REFERRALS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.LoginReferrals;
+				} else if (atom.Equals ("NAMESPACE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Namespace;
+				} else if (atom.Equals ("ID", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Id;
+				} else if (atom.Equals ("CHILDREN", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Children;
+				} else if (atom.Equals ("LOGINDISABLED", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.LoginDisabled;
+				} else if (atom.Equals ("STARTTLS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.StartTLS;
+				} else if (atom.Equals ("MULTIAPPEND", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.MultiAppend;
+				} else if (atom.Equals ("BINARY", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Binary;
+				} else if (atom.Equals ("UNSELECT", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Unselect;
+				} else if (atom.Equals ("UIDPLUS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.UidPlus;
+				} else if (atom.Equals ("CATENATE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Catenate;
+				} else if (atom.Equals ("CONDSTORE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.CondStore;
+				} else if (atom.Equals ("ESEARCH", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.ESearch;
+				} else if (atom.Equals ("SASL-IR", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.SaslIR;
+				} else if (atom.Equals ("WITHIN", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Within;
+				} else if (atom.Equals ("ENABLE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Enable;
+				} else if (atom.Equals ("QRESYNC", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.QuickResync;
+				} else if (atom.Equals ("SEARCHRES", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.SearchResults;
+				} else if (atom.Equals ("SORT", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Sort;
+				} else if (atom.Equals ("ANNOTATE-EXPERIMENT-1", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Annotate;
+				} else if (atom.Equals ("LIST-EXTENDED", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.ListExtended;
+				} else if (atom.Equals ("CONVERT", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Convert;
+				} else if (atom.Equals ("LANGUAGE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Language;
+				} else if (atom.Equals ("ESORT", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.ESort;
+				} else if (atom.Equals ("METADATA", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Metadata;
+				} else if (atom.Equals ("METADATA-SERVER", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.MetadataServer;
+				} else if (atom.Equals ("NOTIFY", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Notify;
+				} else if (atom.Equals ("LIST-STATUS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.ListStatus;
+				} else if (atom.Equals ("SORT=DISPLAY", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.SortDisplay;
+				} else if (atom.Equals ("CREATE-SPECIAL-USE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.CreateSpecialUse;
+				} else if (atom.Equals ("SPECIAL-USE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.SpecialUse;
+				} else if (atom.Equals ("SEARCH=FUZZY", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.FuzzySearch;
+				} else if (atom.Equals ("MULTISEARCH", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.MultiSearch;
+				} else if (atom.Equals ("MOVE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Move;
+				} else if (atom.Equals ("UTF8=ACCEPT", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.UTF8Accept;
+				} else if (atom.Equals ("UTF8=ONLY", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.UTF8Only;
+				} else if (atom.Equals ("LITERAL-", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.LiteralMinus;
+				} else if (atom.Equals ("UNAUTHENTICATE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Unauthenticate;
+				} else if (atom.Equals ("STATUS=SIZE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.StatusSize;
+				} else if (atom.Equals ("LIST-MYRIGHTS", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.ListMyRights;
+				} else if (atom.Equals ("OBJECTID", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.ObjectID;
+				} else if (atom.Equals ("REPLACE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.Replace;
+				} else if (atom.Equals ("SAVEDATE", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.SaveDate;
+				} else if (atom.Equals ("XLIST", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.XList;
+				} else if (atom.Equals ("X-GM-EXT-1", StringComparison.OrdinalIgnoreCase)) {
+					Capabilities |= ImapCapabilities.GMailExt1;
+					QuirksMode = ImapQuirksMode.GMail;
+				} else if (atom.Equals ("XSTOP", StringComparison.OrdinalIgnoreCase)) {
+					QuirksMode = ImapQuirksMode.ProtonMail;
+				} else if (atom.Equals ("X-SUN-IMAP", StringComparison.OrdinalIgnoreCase)) {
+					QuirksMode = ImapQuirksMode.SunMicrosystems;
+				} else if (atom.Equals ("XYMHIGHESTMODSEQ", StringComparison.OrdinalIgnoreCase)) {
+					QuirksMode = ImapQuirksMode.Yahoo;
 				}
 
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
@@ -1241,7 +1266,6 @@ namespace MailKit.Net.Imap {
 			var namespaces = new List<FolderNamespaceCollection> {
 				PersonalNamespaces, OtherNamespaces, SharedNamespaces
 			};
-			ImapFolder folder;
 			ImapToken token;
 			string path;
 			char delim;
@@ -1284,7 +1308,7 @@ namespace MailKit.Net.Imap {
 
 						namespaces[n].Add (new FolderNamespace (delim, DecodeMailboxName (path)));
 
-						if (!GetCachedFolder (path, out folder)) {
+						if (!GetCachedFolder (path, out var folder)) {
 							folder = CreateImapFolder (path, FolderAttributes.None, delim);
 							CacheFolder (folder);
 						}
@@ -1352,11 +1376,10 @@ namespace MailKit.Net.Imap {
 		void EmitMetadataChanged (Metadata metadata)
 		{
 			var encodedName = metadata.EncodedName;
-			ImapFolder folder;
 
 			if (encodedName.Length == 0) {
 				OnMetadataChanged (metadata);
-			} else if (FolderCache.TryGetValue (encodedName, out folder)) {
+			} else if (FolderCache.TryGetValue (encodedName, out var folder)) {
 				folder.OnMetadataChanged (metadata);
 			}
 		}
@@ -1571,7 +1594,7 @@ namespace MailKit.Net.Imap {
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 				// The MULTIAPPEND extension redefines APPENDUID's second argument to be a uid-set instead of a single uid.
-				append.UidSet = ParseUidSet (token, append.UidValidity, GenericResponseCodeSyntaxErrorFormat, "APPENDUID", token);
+				append.UidSet = ParseUidSet (token, append.UidValidity, out _, out _, GenericResponseCodeSyntaxErrorFormat, "APPENDUID", token);
 
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				break;
@@ -1587,7 +1610,7 @@ namespace MailKit.Net.Imap {
 				// didn't exist or something? See https://github.com/jstedfast/MailKit/issues/555 for details.
 
 				if (token.Type != ImapTokenType.CloseBracket) {
-					copy.SrcUidSet = ParseUidSet (token, validity, GenericResponseCodeSyntaxErrorFormat, "COPYUID", token);
+					copy.SrcUidSet = ParseUidSet (token, validity, out _, out _, GenericResponseCodeSyntaxErrorFormat, "COPYUID", token);
 				} else {
 					copy.SrcUidSet = new UniqueIdSet ();
 					Stream.UngetToken (token);
@@ -1596,7 +1619,7 @@ namespace MailKit.Net.Imap {
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 				if (token.Type != ImapTokenType.CloseBracket) {
-					copy.DestUidSet = ParseUidSet (token, copy.UidValidity, GenericResponseCodeSyntaxErrorFormat, "COPYUID", token);
+					copy.DestUidSet = ParseUidSet (token, copy.UidValidity, out _, out _, GenericResponseCodeSyntaxErrorFormat, "COPYUID", token);
 				} else {
 					copy.DestUidSet = new UniqueIdSet ();
 					Stream.UngetToken (token);
@@ -1623,7 +1646,7 @@ namespace MailKit.Net.Imap {
 			case ImapResponseCodeType.Modified:
 				var modified = (ModifiedResponseCode) code;
 
-				modified.UidSet = ParseUidSet (token, validity, GenericResponseCodeSyntaxErrorFormat, "MODIFIED", token);
+				modified.UidSet = ParseUidSet (token, validity, out _, out _, GenericResponseCodeSyntaxErrorFormat, "MODIFIED", token);
 
 				token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 				break;
@@ -1783,7 +1806,6 @@ namespace MailKit.Net.Imap {
 		async Task UpdateStatusAsync (bool doAsync, CancellationToken cancellationToken)
 		{
 			var token = await ReadTokenAsync (ImapStream.AtomSpecials, doAsync, cancellationToken).ConfigureAwait (false);
-			ImapFolder folder;
 			uint count, uid;
 			ulong modseq;
 			string name;
@@ -1806,7 +1828,7 @@ namespace MailKit.Net.Imap {
 
 			// Note: if the folder is null, then it probably means the user is using NOTIFY
 			// and hasn't yet requested the folder. That's ok.
-			GetCachedFolder (name, out folder);
+			GetCachedFolder (name, out var folder);
 
 			token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
@@ -1928,7 +1950,6 @@ namespace MailKit.Net.Imap {
 			var folder = current.Folder ?? Selected;
 			var result = ImapUntaggedResult.Handled;
 			ImapUntaggedHandler handler;
-			uint number;
 			string atom;
 
 			// Note: work around broken IMAP servers such as home.pl which sends "* [COPYUID ...]" resp-codes
@@ -2024,7 +2045,7 @@ namespace MailKit.Net.Imap {
 				}
 				break;
 			default:
-				if (uint.TryParse (atom, NumberStyles.None, CultureInfo.InvariantCulture, out number)) {
+				if (uint.TryParse (atom, NumberStyles.None, CultureInfo.InvariantCulture, out uint number)) {
 					// we probably have something like "* 1 EXISTS"
 					token = await ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
@@ -2326,7 +2347,6 @@ namespace MailKit.Net.Imap {
 		{
 			var list = new List<ImapFolder> (folders);
 			string encodedName, pattern;
-			ImapFolder parent;
 			int index;
 
 			// Note: we use a for-loop instead of foreach because we conditionally add items to the list.
@@ -2347,7 +2367,7 @@ namespace MailKit.Net.Imap {
 					encodedName = string.Empty;
 				}
 
-				if (GetCachedFolder (encodedName, out parent)) {
+				if (GetCachedFolder (encodedName, out var parent)) {
 					folder.ParentFolder = parent;
 					continue;
 				}
@@ -2491,7 +2511,6 @@ namespace MailKit.Net.Imap {
 			var command = new StringBuilder ("LIST \"\" \"INBOX\"");
 			var list = new List<ImapFolder> ();
 			var returnsSubscribed = false;
-			ImapFolder folder;
 			ImapCommand ic;
 
 			if ((Capabilities & ImapCapabilities.ListExtended) != 0) {
@@ -2510,7 +2529,7 @@ namespace MailKit.Net.Imap {
 
 			await RunAsync (ic, doAsync).ConfigureAwait (false);
 
-			GetCachedFolder ("INBOX", out folder);
+			GetCachedFolder ("INBOX", out var folder);
 			Inbox = folder;
 
 			list.Clear ();
@@ -2571,9 +2590,7 @@ namespace MailKit.Net.Imap {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		public async Task<ImapFolder> GetQuotaRootFolderAsync (string quotaRoot, bool doAsync, CancellationToken cancellationToken)
 		{
-			ImapFolder folder;
-
-			if (GetCachedFolder (quotaRoot, out folder))
+			if (GetCachedFolder (quotaRoot, out var folder))
 				return folder;
 
 			var command = new StringBuilder ("LIST \"\" %S");
@@ -2620,9 +2637,8 @@ namespace MailKit.Net.Imap {
 		public async Task<ImapFolder> GetFolderAsync (string path, bool doAsync, CancellationToken cancellationToken)
 		{
 			var encodedName = EncodeMailboxName (path);
-			ImapFolder folder;
 
-			if (GetCachedFolder (encodedName, out folder))
+			if (GetCachedFolder (encodedName, out var folder))
 				return folder;
 
 			var command = new StringBuilder ("LIST \"\" %S");
@@ -2717,9 +2733,8 @@ namespace MailKit.Net.Imap {
 			var command = new StringBuilder ();
 			var returnsSubscribed = false;
 			var lsub = subscribedOnly;
-			ImapFolder folder;
 
-			if (!GetCachedFolder (encodedName, out folder))
+			if (!GetCachedFolder (encodedName, out var folder))
 				throw new FolderNotFoundException (@namespace.Path);
 
 			if (subscribedOnly) {
@@ -2748,8 +2763,9 @@ namespace MailKit.Net.Imap {
 						command.Append ("CHILDREN ");
 					}
 
-					command.AppendFormat ("STATUS ({0})", GetStatusQuery (items));
-					command.Append (')');
+					command.Append ("STATUS (");
+					command.Append (GetStatusQuery (items));
+					command.Append ("))");
 					status = false;
 				} else if ((Capabilities & ImapCapabilities.ListExtended) != 0) {
 					command.Append (" RETURN (");
@@ -2838,7 +2854,7 @@ namespace MailKit.Net.Imap {
 			if (parser == null)
 				parser = new MimeParser (ParserOptions.Default, stream, persistent);
 			else
-				parser.SetStream (ParserOptions.Default, stream, persistent);
+				parser.SetStream (stream, persistent);
 		}
 
 		public async Task<HeaderList> ParseHeadersAsync (Stream stream, bool doAsync, CancellationToken cancellationToken)
@@ -2878,10 +2894,7 @@ namespace MailKit.Net.Imap {
 
 		internal void OnAlert (string message)
 		{
-			var handler = Alert;
-
-			if (handler != null)
-				handler (this, new AlertEventArgs (message));
+			Alert?.Invoke (this, new AlertEventArgs (message));
 		}
 
 		/// <summary>
@@ -2891,10 +2904,7 @@ namespace MailKit.Net.Imap {
 
 		internal void OnWebAlert (Uri uri, string message)
 		{
-			var handler = WebAlert;
-
-			if (handler != null)
-				handler (this, new WebAlertEventArgs (uri, message));
+			WebAlert?.Invoke (this, new WebAlertEventArgs (uri, message));
 		}
 
 		/// <summary>
@@ -2904,10 +2914,7 @@ namespace MailKit.Net.Imap {
 
 		internal void OnFolderCreated (IMailFolder folder)
 		{
-			var handler = FolderCreated;
-
-			if (handler != null)
-				handler (this, new FolderCreatedEventArgs (folder));
+			FolderCreated?.Invoke (this, new FolderCreatedEventArgs (folder));
 		}
 
 		/// <summary>
@@ -2917,10 +2924,7 @@ namespace MailKit.Net.Imap {
 
 		internal void OnMetadataChanged (Metadata metadata)
 		{
-			var handler = MetadataChanged;
-
-			if (handler != null)
-				handler (this, new MetadataChangedEventArgs (metadata));
+			MetadataChanged?.Invoke (this, new MetadataChangedEventArgs (metadata));
 		}
 
 		/// <summary>
@@ -2933,20 +2937,14 @@ namespace MailKit.Net.Imap {
 			// [NOTIFICATIONOVERFLOW] will reset to NOTIFY NONE
 			NotifySelectedNewExpunge = false;
 
-			var handler = NotificationOverflow;
-
-			if (handler != null)
-				handler (this, EventArgs.Empty);
+			NotificationOverflow?.Invoke (this, EventArgs.Empty);
 		}
 
 		public event EventHandler<EventArgs> Disconnected;
 
 		void OnDisconnected ()
 		{
-			var handler = Disconnected;
-
-			if (handler != null)
-				handler (this, EventArgs.Empty);
+			Disconnected?.Invoke (this, EventArgs.Empty);
 		}
 
 		/// <summary>

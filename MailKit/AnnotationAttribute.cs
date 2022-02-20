@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -101,6 +101,9 @@ namespace MailKit {
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.AnnotationAttribute"/> class.
 		/// </summary>
+		/// <remarks>
+		/// Creates a new <see cref="AnnotationAttribute"/>.
+		/// </remarks>
 		/// <param name="specifier">The annotation attribute specifier.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="specifier"/> is <c>null</c>.
@@ -140,6 +143,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets the name of the annotation attribute.
 		/// </remarks>
+		/// <value>The name of the annotation attribute.</value>
 		public string Name {
 			get; private set;
 		}
@@ -150,6 +154,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets the scope of the annotation attribute.
 		/// </remarks>
+		/// <value>The scope of the annotation attribute.</value>
 		public AnnotationScope Scope {
 			get; private set;
 		}
@@ -160,6 +165,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets the annotation attribute specifier.
 		/// </remarks>
+		/// <value>The annotation attribute specifier.</value>
 		public string Specifier {
 			get; private set;
 		}
@@ -221,7 +227,7 @@ namespace MailKit {
 		/// <see cref="MailKit.AnnotationAttribute"/>; otherwise, <c>false</c>.</returns>
 		public override bool Equals (object obj)
 		{
-			return obj is AnnotationAttribute && ((AnnotationAttribute) obj).Specifier == Specifier;
+			return obj is AnnotationAttribute attribute && attribute.Specifier == Specifier;
 		}
 
 		/// <summary>

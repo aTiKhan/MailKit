@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -87,5 +87,14 @@ namespace MailKit {
 		/// </remarks>
 		/// <value>The list of annotations.</value>
 		IList<Annotation> Annotations { get; set; }
+
+		/// <summary>
+		/// Get or set the transfer progress reporting mechanism.
+		/// </summary>
+		/// <remarks>
+		/// Gets or sets the transfer progress reporting mechanism.
+		/// </remarks>
+		/// <value>The transfer progress mechanism.</value>
+		ITransferProgress TransferProgress { get; set; }
 	}
 }

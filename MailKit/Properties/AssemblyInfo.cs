@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration ("")]
 [assembly: AssemblyCompany (".NET Foundation")]
 [assembly: AssemblyProduct ("MailKit")]
-[assembly: AssemblyCopyright ("Copyright © 2013-2021 .NET Foundation and Contributors")]
+[assembly: AssemblyCopyright ("Copyright © 2013-2022 .NET Foundation and Contributors")]
 [assembly: AssemblyTrademark (".NET Foundation")]
 [assembly: AssemblyCulture ("")]
 
@@ -79,6 +79,6 @@ using System.Runtime.InteropServices;
 //
 // If there have only been bug fixes, bump the Micro Version and/or the Build Number
 //    in the AssemblyFileVersion attribute.
-[assembly: AssemblyInformationalVersion ("2.15.0.0")]
-[assembly: AssemblyFileVersion ("2.15.0.0")]
-[assembly: AssemblyVersion ("2.15.0.0")]
+[assembly: AssemblyInformationalVersion ("3.1.1.0")]
+[assembly: AssemblyFileVersion ("3.1.1.0")]
+[assembly: AssemblyVersion ("3.1.0.0")]

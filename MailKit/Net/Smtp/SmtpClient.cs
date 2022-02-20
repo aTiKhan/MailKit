@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ using System.Net.Security;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 
@@ -69,6 +70,7 @@ namespace MailKit.Net.Smtp {
 	public partial class SmtpClient : MailTransport, ISmtpClient
 	{
 		static readonly byte[] EndData = Encoding.ASCII.GetBytes (".\r\n");
+		internal static string DefaultLocalDomain;
 		const int MaxLineLength = 998;
 
 		enum SmtpCommand {
@@ -87,6 +89,31 @@ namespace MailKit.Net.Smtp {
 		bool disposed;
 		bool secure;
 		Uri uri;
+
+		static SmtpClient ()
+		{
+			string hostName = IPGlobalProperties.GetIPGlobalProperties ().HostName;
+			var idn = new IdnMapping ();
+
+			if (!string.IsNullOrEmpty (hostName)) {
+				try {
+					hostName = idn.GetAscii (hostName);
+				} catch (ArgumentException) {
+					// This can happen if the hostName contains illegal unicode characters.
+					var ascii = new StringBuilder ();
+					for (int i = 0; i < hostName.Length; i++) {
+						if (hostName[i] <= 0x7F)
+							ascii.Append (hostName[i]);
+					}
+
+					hostName = ascii.Length > 0 ? ascii.ToString () : null;
+				}
+			} else {
+				hostName = null;
+			}
+
+			DefaultLocalDomain = hostName ?? "localhost";
+		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Net.Smtp.SmtpClient"/> class.
@@ -390,6 +417,24 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
+#if NET5_0_OR_GREATER
+		/// <summary>
+		/// Get the negotiated SSL or TLS cipher suite.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS cipher suite once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS cipher suite.</value>
+		public override TlsCipherSuite? SslCipherSuite {
+			get {
+				if (IsSecure && (Stream.Stream is SslStream sslStream))
+					return sslStream.NegotiatedCipherSuite;
+
+				return null;
+			}
+		}
+#endif
+
 		/// <summary>
 		/// Get the negotiated SSL or TLS hash algorithm.
 		/// </summary>
@@ -530,7 +575,7 @@ namespace MailKit.Net.Smtp {
 		{
 		}
 
-		async Task FlushCommandQueueAsync (MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, bool doAsync, CancellationToken cancellationToken)
+		async Task<int> FlushCommandQueueAsync (MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, bool doAsync, CancellationToken cancellationToken)
 		{
 			try {
 				// Note: Queued commands are buffered by the stream
@@ -591,8 +636,7 @@ namespace MailKit.Net.Smtp {
 			if (rex != null)
 				throw rex;
 
-			if (accepted == 0)
-				OnNoRecipientsAccepted (message);
+			return accepted;
 		}
 
 		async Task<SmtpResponse> SendCommandAsync (string command, bool doAsync, CancellationToken cancellationToken)
@@ -658,43 +702,120 @@ namespace MailKit.Net.Smtp {
 
 		async Task<SmtpResponse> SendEhloAsync (bool ehlo, bool doAsync, CancellationToken cancellationToken)
 		{
-			var network = NetworkStream.Get (Stream.Stream);
 			string command = ehlo ? "EHLO " : "HELO ";
-			string domain = null;
-			IPAddress ip = null;
+			string domain;
 
 			if (!string.IsNullOrEmpty (LocalDomain)) {
-				if (!IPAddress.TryParse (LocalDomain, out ip))
-					domain = LocalDomain;
-			} else if (network != null) {
-				var ipEndPoint = network.Socket.LocalEndPoint as IPEndPoint;
-
-				if (ipEndPoint == null)
-					domain = ((DnsEndPoint) network.Socket.LocalEndPoint).Host;
-				else
-					ip = ipEndPoint.Address;
-			} else {
-				domain = "[127.0.0.1]";
-			}
-
-			if (ip != null) {
-				if (ip.IsIPv4MappedToIPv6) {
-					try {
-						ip = ip.MapToIPv4 ();
-					} catch (ArgumentOutOfRangeException) {
-						// .NET 4.5.2 bug on Windows 7 SP1 (issue #814)
+				if (IPAddress.TryParse (LocalDomain, out var ip)) {
+					if (ip.IsIPv4MappedToIPv6) {
+						try {
+							ip = ip.MapToIPv4 ();
+						} catch (ArgumentOutOfRangeException) {
+							// .NET 4.5.2 bug on Windows 7 SP1 (issue #814)
+						}
 					}
-				}
 
-				if (ip.AddressFamily == AddressFamily.InterNetworkV6)
-					domain = "[IPv6:" + ip + "]";
-				else
-					domain = "[" + ip + "]";
+					if (ip.AddressFamily == AddressFamily.InterNetworkV6)
+						domain = "[IPv6:" + ip + "]";
+					else
+						domain = "[" + ip + "]";
+				} else {
+					domain = LocalDomain;
+				}
+			} else {
+				domain = DefaultLocalDomain;
 			}
 
 			command += domain;
 
 			return await SendCommandAsync (command, doAsync, cancellationToken).ConfigureAwait (false);
+		}
+
+		static bool ReadNextLine (string text, ref int index, out int lineStartIndex, out int lineEndIndex)
+		{
+			lineStartIndex = 0;
+			lineEndIndex = 0;
+
+			if (index >= text.Length)
+				return false;
+
+			lineStartIndex = index;
+			lineEndIndex = index;
+
+			do {
+				char c = text[index++];
+
+				if (c == '\n')
+					break;
+
+				// Only update lineEndIndex when we see a non-whitespace character. This effectively Trim()'s the end.
+				if (!char.IsWhiteSpace (c))
+					lineEndIndex = index;
+			} while (index < text.Length);
+
+			return true;
+		}
+
+		static bool IsCapability (string capability, string text, int startIndex, int endIndex, bool hasValue = false)
+		{
+			int length = endIndex - startIndex;
+
+			if (hasValue) {
+				if (length <= capability.Length)
+					return false;
+			} else {
+				if (length != capability.Length)
+					return false;
+			}
+
+			if (string.Compare (text, startIndex, capability, 0, capability.Length, StringComparison.OrdinalIgnoreCase) != 0)
+				return false;
+
+			if (hasValue) {
+				int index = startIndex + capability.Length;
+
+				return length > capability.Length && (text[index] == ' ' || text[index] == '=');
+			}
+
+			return true;
+		}
+
+		void AddAuthenticationMechanisms (string mechanisms, int startIndex, int endIndex)
+		{
+			int index = startIndex;
+
+			do {
+				while (index < endIndex && char.IsWhiteSpace (mechanisms[index]))
+					index++;
+
+				int mechanismIndex = index;
+
+				while (index < endIndex && !char.IsWhiteSpace (mechanisms[index]))
+					index++;
+
+				if (index > mechanismIndex) {
+					var mechanism = mechanisms.Substring (mechanismIndex, index - mechanismIndex);
+
+					AuthenticationMechanisms.Add (mechanism);
+				}
+			} while (index < endIndex);
+		}
+
+		void SetMaxSize (string capability, int startIndex, int endIndex)
+		{
+			int index = startIndex;
+
+			while (index < endIndex && char.IsWhiteSpace (capability[index]))
+				index++;
+
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+			var value = capability.AsSpan (index, endIndex - index);
+#else
+			var value = capability.Substring (index, endIndex - index);
+#endif
+
+			if (index < endIndex && uint.TryParse (value, NumberStyles.None, CultureInfo.InvariantCulture, out uint size))
+				MaxSize = size;
 		}
 
 		async Task EhloAsync (bool doAsync, CancellationToken cancellationToken)
@@ -718,46 +839,43 @@ namespace MailKit.Net.Smtp {
 				AuthenticationMechanisms.Clear ();
 				MaxSize = 0;
 
-				var lines = response.Response.Split ('\n');
-				for (int i = 0; i < lines.Length; i++) {
-					// Outlook.com replies with "250-8bitmime" instead of "250-8BITMIME"
-					// (strangely, it correctly capitalizes all other extensions...)
-					var capability = lines[i].Trim ().ToUpperInvariant ();
+				string text = response.Response;
+				int index = 0;
 
-					if (capability.StartsWith ("AUTH", StringComparison.Ordinal) || capability.StartsWith ("X-EXPS", StringComparison.Ordinal)) {
-						int index = capability[0] == 'A' ? "AUTH".Length : "X-EXPS".Length;
+				while (ReadNextLine (text, ref index, out int lineStartIndex, out int lineEndIndex)) {
+					if (IsCapability ("AUTH", text, lineStartIndex, lineEndIndex, true)) {
+						int startIndex = lineStartIndex + 5;
 
-						if (index < capability.Length && (capability[index] == ' ' || capability[index] == '=')) {
-							capabilities |= SmtpCapabilities.Authentication;
-							index++;
+						AddAuthenticationMechanisms (text, startIndex, lineEndIndex);
+						capabilities |= SmtpCapabilities.Authentication;
+					} else if (IsCapability ("X-EXPS", text, lineStartIndex, lineEndIndex, true)) {
+						int startIndex = lineStartIndex + 7;
 
-							var mechanisms = capability.Substring (index);
-							foreach (var mechanism in mechanisms.Split (new [] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
-								AuthenticationMechanisms.Add (mechanism);
-						}
-					} else if (capability.StartsWith ("SIZE", StringComparison.Ordinal)) {
-						int index = 4;
-						uint size;
+						AddAuthenticationMechanisms (text, startIndex, lineEndIndex);
+						capabilities |= SmtpCapabilities.Authentication;
+					} else if (IsCapability ("SIZE", text, lineStartIndex, lineEndIndex, true)) {
+						int startIndex = lineStartIndex + 5;
 
+						SetMaxSize (text, startIndex, lineEndIndex);
 						capabilities |= SmtpCapabilities.Size;
-
-						while (index < capability.Length && char.IsWhiteSpace (capability[index]))
-							index++;
-
-						if (uint.TryParse (capability.Substring (index), NumberStyles.None, CultureInfo.InvariantCulture, out size))
-							MaxSize = size;
-					} else {
-						switch (capability) {
-						case "DSN":                 capabilities |= SmtpCapabilities.Dsn; break;
-						case "BINARYMIME":          capabilities |= SmtpCapabilities.BinaryMime; break;
-						case "CHUNKING":            capabilities |= SmtpCapabilities.Chunking; break;
-						case "ENHANCEDSTATUSCODES": capabilities |= SmtpCapabilities.EnhancedStatusCodes; break;
-						case "8BITMIME":            capabilities |= SmtpCapabilities.EightBitMime; break;
-						case "PIPELINING":          capabilities |= SmtpCapabilities.Pipelining; break;
-						case "STARTTLS":            capabilities |= SmtpCapabilities.StartTLS; break;
-						case "SMTPUTF8":            capabilities |= SmtpCapabilities.UTF8; break;
-						case "REQUIRETLS":          capabilities |= SmtpCapabilities.RequireTLS; break;
-						}
+					} else if (IsCapability ("DSN", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.Dsn;
+					} else if (IsCapability ("BINARYMIME", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.BinaryMime;
+					} else if (IsCapability ("CHUNKING", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.Chunking;
+					} else if (IsCapability ("ENHANCEDSTATUSCODES", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.EnhancedStatusCodes;
+					} else if (IsCapability ("8BITMIME", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.EightBitMime;
+					} else if (IsCapability ("PIPELINING", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.Pipelining;
+					} else if (IsCapability ("STARTTLS", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.StartTLS;
+					} else if (IsCapability ("SMTPUTF8", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.UTF8;
+					} else if (IsCapability ("REQUIRETLS", text, lineStartIndex, lineEndIndex)) {
+						capabilities |= SmtpCapabilities.RequireTLS;
 					}
 				}
 			}
@@ -1400,9 +1518,8 @@ namespace MailKit.Net.Smtp {
 
 			SmtpResponse response;
 			Stream network;
-			bool starttls;
 
-			ComputeDefaultValues (host, ref port, ref options, out uri, out starttls);
+			ComputeDefaultValues (host, ref port, ref options, out uri, out var starttls);
 
 			if (options == SecureSocketOptions.SslOnConnect) {
 				var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
@@ -1755,9 +1872,9 @@ namespace MailKit.Net.Smtp {
 				OnDisconnected (host, port, options, requested);
 		}
 
-		#endregion
+#endregion
 
-		#region IMailTransport implementation
+#region IMailTransport implementation
 
 		static MailboxAddress GetMessageSender (MimeMessage message)
 		{
@@ -1960,8 +2077,10 @@ namespace MailKit.Net.Smtp {
 			if (!idnEncode)
 				builder.Append (" SMTPUTF8");
 
-			if ((Capabilities & SmtpCapabilities.Size) != 0 && size != -1)
-				builder.AppendFormat (CultureInfo.InvariantCulture, " SIZE={0}", size);
+			if ((Capabilities & SmtpCapabilities.Size) != 0 && size != -1) {
+				builder.Append (" SIZE=");
+				builder.Append (size.ToString (CultureInfo.InvariantCulture));
+			}
 
 			if ((extensions & SmtpExtension.BinaryMime) != 0)
 				builder.Append (" BODY=BINARYMIME");
@@ -2428,9 +2547,12 @@ namespace MailKit.Net.Smtp {
 					// Note: if PIPELINING is supported, this will flush all outstanding
 					// MAIL FROM and RCPT TO commands to the server and then process all
 					// of their responses.
-					await FlushCommandQueueAsync (message, sender, recipients, doAsync, cancellationToken).ConfigureAwait (false);
-				} else if (accepted == 0) {
+					accepted = await FlushCommandQueueAsync (message, sender, recipients, doAsync, cancellationToken).ConfigureAwait (false);
+				}
+
+				if (accepted == 0) {
 					OnNoRecipientsAccepted (message);
+					throw new SmtpCommandException (SmtpErrorCode.MessageNotAccepted, SmtpStatusCode.TransactionFailed, "No recipients were accepted.");
 				}
 
 				if ((extensions & SmtpExtension.BinaryMime) != 0 || (PreferSendAsBinaryData && (Capabilities & SmtpCapabilities.BinaryMime) != 0))
@@ -2599,7 +2721,7 @@ namespace MailKit.Net.Smtp {
 			return SendAsync (options, message, sender, rcpts, false, cancellationToken, progress).GetAwaiter ().GetResult ();
 		}
 
-		#endregion
+#endregion
 
 		async Task<InternetAddressList> ExpandAsync (string alias, bool doAsync, CancellationToken cancellationToken)
 		{
@@ -2626,9 +2748,7 @@ namespace MailKit.Net.Smtp {
 			var list = new InternetAddressList ();
 
 			for (int i = 0; i < lines.Length; i++) {
-				InternetAddress address;
-
-				if (InternetAddress.TryParse (lines[i], out address))
+				if (InternetAddress.TryParse (lines[i], out var address))
 					list.Add (address);
 			}
 

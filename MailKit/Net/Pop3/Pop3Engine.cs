@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@
 //
 
 using System;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Globalization;
@@ -59,23 +58,9 @@ namespace MailKit.Net.Pop3 {
 	/// </summary>
 	class Pop3Engine
 	{
-		static readonly Encoding Latin1;
-		static readonly Encoding UTF8;
-
 		readonly List<Pop3Command> queue;
 		Pop3Stream stream;
 		int nextId;
-
-		static Pop3Engine ()
-		{
-			UTF8 = Encoding.GetEncoding (65001, new EncoderExceptionFallback (), new DecoderExceptionFallback ());
-
-			try {
-				Latin1 = Encoding.GetEncoding (28591);
-			} catch (NotSupportedException) {
-				Latin1 = Encoding.GetEncoding (1252);
-			}
-		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Net.Pop3.Pop3Engine"/> class.
@@ -282,10 +267,7 @@ namespace MailKit.Net.Pop3 {
 
 		void OnDisconnected ()
 		{
-			var handler = Disconnected;
-
-			if (handler != null)
-				handler (this, EventArgs.Empty);
+			Disconnected?.Invoke (this, EventArgs.Empty);
 		}
 
 		/// <summary>
@@ -312,38 +294,20 @@ namespace MailKit.Net.Pop3 {
 			if (stream == null)
 				throw new InvalidOperationException ();
 
-			using (var memory = new MemoryStream ()) {
+			using (var builder = new ByteArrayBuilder (64)) {
 				bool complete;
-				byte[] buf;
-				int count;
 
 				do {
 					if (doAsync)
-						complete = await stream.ReadLineAsync (memory, cancellationToken).ConfigureAwait (false);
+						complete = await stream.ReadLineAsync (builder, cancellationToken).ConfigureAwait (false);
 					else
-						complete = stream.ReadLine (memory, cancellationToken);
+						complete = stream.ReadLine (builder, cancellationToken);
 				} while (!complete);
 
-				count = (int) memory.Length;
-#if !NETSTANDARD1_3 && !NETSTANDARD1_6
-				buf = memory.GetBuffer ();
-#else
-				buf = memory.ToArray ();
-#endif
+				// FIXME: All callers expect CRLF to be trimmed, but many also want all trailing whitespace trimmed.
+				builder.TrimNewLine ();
 
-				// Trim the <CR><LF> sequence from the end of the line.
-				if (buf[count - 1] == (byte) '\n') {
-					count--;
-
-					if (buf[count - 1] == (byte) '\r')
-						count--;
-				}
-
-				try {
-					return UTF8.GetString (buf, 0, count);
-				} catch (DecoderFallbackException) {
-					return Latin1.GetString (buf, 0, count);
-				}
+				return builder.ToString ();
 			}
 		}
 
@@ -429,7 +393,7 @@ namespace MailKit.Net.Pop3 {
 
 		async Task ReadResponseAsync (Pop3Command pc, bool doAsync)
 		{
-			string response, text;
+			string response;
 
 			try {
 				response = (await ReadLineAsync (doAsync, pc.CancellationToken).ConfigureAwait (false)).TrimEnd ();
@@ -439,7 +403,7 @@ namespace MailKit.Net.Pop3 {
 				throw;
 			}
 
-			pc.Status = GetCommandStatus (response, out text);
+			pc.Status = GetCommandStatus (response, out string text);
 			pc.StatusText = text;
 
 			switch (pc.Status) {
@@ -534,6 +498,70 @@ namespace MailKit.Net.Pop3 {
 			return QueueCommand (cancellationToken, handler, Encoding.ASCII, format, args);
 		}
 
+		static bool IsCapability (string capability, string text, int length, bool hasValue = false)
+		{
+			if (hasValue) {
+				if (length < capability.Length)
+					return false;
+			} else {
+				if (length != capability.Length)
+					return false;
+			}
+
+			if (string.Compare (text, 0, capability, 0, capability.Length, StringComparison.OrdinalIgnoreCase) != 0)
+				return false;
+
+			if (hasValue) {
+				int index = capability.Length;
+
+				return length == capability.Length || text[index] == ' ' || text[index] == '=';
+			}
+
+			return true;
+		}
+
+		static bool IsToken (string token, string text, int startIndex, int length)
+		{
+			return length == token.Length && string.Compare (text, startIndex, token, 0, token.Length, StringComparison.OrdinalIgnoreCase) == 0;
+		}
+
+		static bool ReadNextToken (string text, ref int index, out int startIndex, out int length)
+		{
+			while (index < text.Length && char.IsWhiteSpace (text[index]))
+				index++;
+
+			startIndex = index;
+
+			while (index < text.Length && !char.IsWhiteSpace (text[index]))
+				index++;
+
+			length = index - startIndex;
+
+			return length > 0;
+		}
+
+		void AddAuthenticationMechanisms (string text, int startIndex)
+		{
+			int index = startIndex;
+
+			while (ReadNextToken (text, ref index, out var tokenIndex, out var length)) {
+				var mechanism = text.Substring (tokenIndex, length);
+
+				AuthenticationMechanisms.Add (mechanism);
+			}
+		}
+
+		static bool TryParseInt32 (string text, int startIndex, int length, out int value)
+		{
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+			var token = text.AsSpan (startIndex, length);
+#else
+			var token = text.Substring (startIndex, length);
+#endif
+
+			return int.TryParse (token, NumberStyles.None, CultureInfo.InvariantCulture, out value);
+		}
+
 		static async Task CapaHandler (Pop3Engine engine, Pop3Command pc, string text, bool doAsync)
 		{
 			if (pc.Status != Pop3CommandStatus.Ok)
@@ -546,77 +574,55 @@ namespace MailKit.Net.Pop3 {
 					break;
 
 				int index = response.IndexOf (' ');
-				string token, data;
-				int value;
+				int startIndex, length, value;
 
-				if (index != -1) {
-					token = response.Substring (0, index);
+				if (index == -1)
+					index = response.Length;
 
-					while (index < response.Length && char.IsWhiteSpace (response[index]))
-						index++;
-
-					if (index < response.Length)
-						data = response.Substring (index);
-					else
-						data = string.Empty;
-				} else {
-					data = string.Empty;
-					token = response;
-				}
-
-				switch (token) {
-				case "EXPIRE":
+				if (IsCapability ("EXPIRE", response, index, true)) {
 					engine.Capabilities |= Pop3Capabilities.Expire;
-					var tokens = data.Split (' ');
 
-					if (int.TryParse (tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out value))
-						engine.ExpirePolicy = value;
-					else if (tokens[0] == "NEVER")
-						engine.ExpirePolicy = -1;
-					break;
-				case "IMPLEMENTATION":
-					engine.Implementation = data;
-					break;
-				case "LOGIN-DELAY":
-					if (int.TryParse (data, NumberStyles.None, CultureInfo.InvariantCulture, out value)) {
-						engine.Capabilities |= Pop3Capabilities.LoginDelay;
-						engine.LoginDelay = value;
+					if (ReadNextToken (response, ref index, out startIndex, out length)) {
+						if (IsToken ("NEVER", response, startIndex, length)) {
+							engine.ExpirePolicy = -1;
+						} else if (TryParseInt32 (response, startIndex, length, out value)) {
+							engine.ExpirePolicy = value;
+						}
 					}
-					break;
-				case "PIPELINING":
+				} else if (IsCapability ("IMPLEMENTATION", response, index, true)) {
+					engine.Implementation = response.Substring (index + 1);
+				} else if (IsCapability ("LANG", response, index)) {
+					engine.Capabilities |= Pop3Capabilities.Lang;
+				} else if (IsCapability ("LOGIN-DELAY", response, index, true)) {
+					if (ReadNextToken (response, ref index, out startIndex, out length)) {
+						if (TryParseInt32 (response, startIndex, length, out value)) {
+							engine.Capabilities |= Pop3Capabilities.LoginDelay;
+							engine.LoginDelay = value;
+						}
+					}
+				} else if (IsCapability ("PIPELINING", response, index)) {
 					engine.Capabilities |= Pop3Capabilities.Pipelining;
-					break;
-				case "RESP-CODES":
+				} else if (IsCapability ("RESP-CODES", response, index)) {
 					engine.Capabilities |= Pop3Capabilities.ResponseCodes;
-					break;
-				case "SASL":
+				} else if (IsCapability ("SASL", response, index, true)) {
 					engine.Capabilities |= Pop3Capabilities.Sasl;
-					foreach (var authmech in data.Split (new [] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
-						engine.AuthenticationMechanisms.Add (authmech);
-					break;
-				case "STLS":
+					engine.AddAuthenticationMechanisms (response, index);
+				} else if (IsCapability ("STLS", response, index)) {
 					engine.Capabilities |= Pop3Capabilities.StartTLS;
-					break;
-				case "TOP":
+				} else if (IsCapability ("TOP", response, index)) {
 					engine.Capabilities |= Pop3Capabilities.Top;
-					break;
-				case "UIDL":
+				} else if (IsCapability ("UIDL", response, index)) {
 					engine.Capabilities |= Pop3Capabilities.UIDL;
-					break;
-				case "USER":
+				} else if (IsCapability ("USER", response, index)) {
 					engine.Capabilities |= Pop3Capabilities.User;
-					break;
-				case "UTF8":
+				} else if (IsCapability ("UTF8", response, index, true)) {
 					engine.Capabilities |= Pop3Capabilities.UTF8;
 
-					foreach (var item in data.Split (' ')) {
-						if (item == "USER")
+					while (ReadNextToken (response, ref index, out startIndex, out length)) {
+						if (IsToken ("USER", response, startIndex, length)) {
 							engine.Capabilities |= Pop3Capabilities.UTF8User;
+						}
 					}
-					break;
-				case "LANG":
-					engine.Capabilities |= Pop3Capabilities.Lang;
-					break;
 				}
 			} while (true);
 		}

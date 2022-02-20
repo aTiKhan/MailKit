@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -289,6 +289,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets the part-specifier component of the annotation entry.
 		/// </remarks>
+		/// <value>The part-specifier.</value>
 		public string PartSpecifier {
 			get; private set;
 		}
@@ -299,6 +300,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets the path component of the annotation entry.
 		/// </remarks>
+		/// <value>The path.</value>
 		public string Path {
 			get; private set;
 		}
@@ -309,6 +311,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets the scope of the annotation.
 		/// </remarks>
+		/// <value>The scope.</value>
 		public AnnotationScope Scope {
 			get; private set;
 		}
@@ -370,7 +373,7 @@ namespace MailKit {
 		/// <see cref="MailKit.AnnotationEntry"/>; otherwise, <c>false</c>.</returns>
 		public override bool Equals (object obj)
 		{
-			return obj is AnnotationEntry && ((AnnotationEntry) obj).Entry == Entry;
+			return obj is AnnotationEntry entry && entry.Entry == Entry;
 		}
 
 		/// <summary>

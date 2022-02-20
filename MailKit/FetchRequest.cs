@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -115,6 +115,7 @@ namespace MailKit {
 		/// additional fields on a <see cref="IMessageSummary"/> for messages that were requested as well as summaries for
 		/// messages that were not requested at all.</para>
 		/// </remarks>
+		/// <value>The mod-sequence value that indicates the last known state of the messages being requested.</value>
 		public ulong? ChangedSince { get; set; }
 
 		/// <summary>
@@ -123,6 +124,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets or sets the message summary items to fetch.
 		/// </remarks>
+		/// <value>The message summary items.</value>
 		public MessageSummaryItems Items { get; set; }
 
 		/// <summary>

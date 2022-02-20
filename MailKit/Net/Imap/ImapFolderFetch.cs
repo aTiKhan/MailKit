@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -426,9 +426,8 @@ namespace MailKit.Net.Imap
 		async Task FetchSummaryItemsAsync (ImapEngine engine, ImapCommand ic, int index, bool doAsync)
 		{
 			var ctx = (FetchSummaryContext) ic.UserData;
-			MessageSummary message;
 
-			if (!ctx.TryGetValue (index, out message)) {
+			if (!ctx.TryGetValue (index, out var message)) {
 				message = new MessageSummary (this, index);
 				ctx.Add (index, message);
 			}
@@ -613,15 +612,13 @@ namespace MailKit.Net.Imap
 				var charset = body.ContentType.Charset ?? "utf-8";
 				ContentEncoding encoding;
 
-				if (!string.IsNullOrEmpty (body.ContentTransferEncoding))
-					MimeUtils.TryParse (body.ContentTransferEncoding, out encoding);
-				else
+				if (string.IsNullOrEmpty (body.ContentTransferEncoding) || !MimeUtils.TryParse (body.ContentTransferEncoding, out encoding))
 					encoding = ContentEncoding.Default;
 
 				using (var memory = new MemoryStream ()) {
 					var content = new MimeContent (section.Stream, encoding);
 
-					content.DecodeTo (memory);
+					content.DecodeTo (memory, cancellationToken);
 					memory.Position = 0;
 
 					try {
@@ -629,7 +626,7 @@ namespace MailKit.Net.Imap
 					} catch (DecoderFallbackException) {
 						memory.Position = 0;
 
-						message.PreviewText = previewer.GetPreviewText (memory, ImapEngine.Latin1);
+						message.PreviewText = previewer.GetPreviewText (memory, TextEncodings.Latin1);
 					}
 
 					message.Fields |= MessageSummaryItems.PreviewText;
@@ -695,7 +692,6 @@ namespace MailKit.Net.Imap
 				Dictionary<string, UniqueIdSet> bodies;
 				var message = (MessageSummary) item;
 				var body = message.TextBody;
-				UniqueIdSet uids;
 
 				if (body == null) {
 					body = message.HtmlBody;
@@ -711,7 +707,7 @@ namespace MailKit.Net.Imap
 					continue;
 				}
 
-				if (!bodies.TryGetValue (body.PartSpecifier, out uids)) {
+				if (!bodies.TryGetValue (body.PartSpecifier, out var uids)) {
 					uids = new UniqueIdSet (SortOrder.Ascending);
 					bodies.Add (body.PartSpecifier, uids);
 				}
@@ -747,8 +743,13 @@ namespace MailKit.Net.Imap
 
 			CheckState (true, false);
 
-			if (uids.Count == 0 || IsEmptyFetchRequest (request))
+			if (uids.Count == 0 || IsEmptyFetchRequest (request)) {
+#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
+				return Array.Empty<IMessageSummary> ();
+#else
 				return new IMessageSummary[0];
+#endif
+			}
 
 			var query = FormatSummaryItems (Engine, request, out var previewText);
 			var changedSince = string.Empty;
@@ -920,8 +921,13 @@ namespace MailKit.Net.Imap
 			CheckState (true, false);
 			CheckAllowIndexes ();
 
-			if (indexes.Count == 0 || IsEmptyFetchRequest (request))
+			if (indexes.Count == 0 || IsEmptyFetchRequest (request)) {
+#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
+				return Array.Empty<IMessageSummary> ();
+#else
 				return new IMessageSummary[0];
+#endif
+			}
 
 			var query = FormatSummaryItems (Engine, request, out var previewText);
 			var set = ImapUtils.FormatIndexSet (Engine, indexes);
@@ -1093,8 +1099,13 @@ namespace MailKit.Net.Imap
 			CheckState (true, false);
 			CheckAllowIndexes ();
 
-			if (Count == 0 || IsEmptyFetchRequest (request))
+			if (Count == 0 || IsEmptyFetchRequest (request)) {
+#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
+				return Array.Empty<IMessageSummary> ();
+#else
 				return new IMessageSummary[0];
+#endif
+			}
 
 			var query = FormatSummaryItems (Engine, request, out var previewText);
 			var set = GetFetchRange (min, max);
@@ -4307,9 +4318,11 @@ namespace MailKit.Net.Imap
 			if (indexes.Count == 0)
 				return;
 
-			var set = ImapUtils.FormatIndexSet (Engine, indexes);
-			var command = string.Format ("FETCH {0} (UID BODY.PEEK[])\r\n", set);
-			var ic = new ImapCommand (Engine, cancellationToken, this, command);
+			var command = new StringBuilder ("FETCH ");
+			ImapUtils.FormatIndexSet (Engine, command, indexes);
+			command.Append (" (UID BODY.PEEK[])\r\n");
+
+			var ic = new ImapCommand (Engine, cancellationToken, this, command.ToString ());
 			var ctx = new FetchStreamCallbackContext (this, callback, progress);
 
 			ic.RegisterUntaggedHandler ("FETCH", FetchStreamAsync);

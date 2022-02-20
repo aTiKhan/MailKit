@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -82,6 +82,7 @@ namespace MailKit {
 		/// If annotations are supported, this property can be used to determine whether or not
 		/// the <see cref="IMailFolder"/> supports reading and writing annotations.
 		/// </remarks>
+		/// <value>The annotation access level.</value>
 		AnnotationAccess AnnotationAccess { get; }
 
 		/// <summary>
@@ -91,6 +92,7 @@ namespace MailKit {
 		/// If annotations are supported, this property can be used to determine which
 		/// annotation scopes are supported by the <see cref="IMailFolder"/>.
 		/// </remarks>
+		/// <value>The supported annotation scopes.</value>
 		AnnotationScope AnnotationScopes { get; }
 
 		/// <summary>
@@ -100,6 +102,7 @@ namespace MailKit {
 		/// If annotations are supported, this property can be used to determine the
 		/// maximum size of annotation values supported by the <see cref="IMailFolder"/>.
 		/// </remarks>
+		/// <value>The maximum size of annotation values supported by the folder.</value>
 		uint MaxAnnotationSize { get; }
 
 		/// <summary>
@@ -1071,8 +1074,7 @@ namespace MailKit {
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Append (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously append a message to the folder.
@@ -1083,8 +1085,7 @@ namespace MailKit {
 		/// <returns>The UID of the appended message, if available; otherwise, <c>null</c>.</returns>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> AppendAsync (IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Append a message to the folder.
@@ -1096,8 +1097,7 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Append (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Append (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously append a message to the folder.
@@ -1109,8 +1109,7 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="request">The append request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> AppendAsync (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> AppendAsync (FormatOptions options, IAppendRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Append multiple messages to the folder.
@@ -1121,8 +1120,7 @@ namespace MailKit {
 		/// <returns>The UIDs of the appended messages, if available; otherwise, an empty array.</returns>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		IList<UniqueId> Append (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		IList<UniqueId> Append (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously append multiple messages to the folder.
@@ -1133,8 +1131,7 @@ namespace MailKit {
 		/// <returns>The UID of the appended message, if available; otherwise, an empty array.</returns>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<IList<UniqueId>> AppendAsync (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<IList<UniqueId>> AppendAsync (IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Append multiple messages to the folder.
@@ -1146,8 +1143,7 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		IList<UniqueId> Append (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		IList<UniqueId> Append (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously append multiple messages to the folder.
@@ -1159,8 +1155,7 @@ namespace MailKit {
 		/// <param name="options">The formatting options.</param>
 		/// <param name="requests">The append requests.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<IList<UniqueId>> AppendAsync (FormatOptions options, IList<IAppendRequest> requests, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Replace a message in the folder.
@@ -1172,8 +1167,7 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
@@ -1185,8 +1179,7 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Replace a message in the folder.
@@ -1199,8 +1192,7 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
@@ -1213,8 +1205,7 @@ namespace MailKit {
 		/// <param name="uid">The UID of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (FormatOptions options, UniqueId uid, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Replace a message in the folder.
@@ -1226,8 +1217,7 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
@@ -1239,8 +1229,7 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Replace a message in the folder.
@@ -1253,8 +1242,7 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		UniqueId? Replace (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		UniqueId? Replace (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Asynchronously replace a message in the folder.
@@ -1267,8 +1255,7 @@ namespace MailKit {
 		/// <param name="index">The index of the message to be replaced.</param>
 		/// <param name="request">The replace request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <param name="progress">The progress reporting mechanism.</param>
-		Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null);
+		Task<UniqueId?> ReplaceAsync (FormatOptions options, int index, IReplaceRequest request, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
 		/// Copy the specified message to the destination folder.
@@ -2136,6 +2123,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Updates the message flags and keywords for a set of messages.
 		/// </remarks>
+		/// <returns>The indexes of the messages that were not updated.</returns>
 		/// <param name="indexes">The message indexes.</param>
 		/// <param name="request">The message flags and keywords to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
@@ -2231,6 +2219,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Updates the GMail-style labels for a set of messages.
 		/// </remarks>
+		/// <returns>The indexes of the messages that were not updated.</returns>
 		/// <param name="indexes">The message indexes.</param>
 		/// <param name="request">The labels to store.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>

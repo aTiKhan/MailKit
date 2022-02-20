@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ using System.Globalization;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 
+using MimeKit.Utils;
+
 #if NETSTANDARD1_3 || NETSTANDARD1_6
 using MD5 = MimeKit.Cryptography.MD5;
 #endif
@@ -47,8 +49,6 @@ namespace MailKit.Security {
 	/// </remarks>
 	public class SaslMechanismDigestMd5 : SaslMechanism
 	{
-		static readonly Encoding Latin1;
-
 		enum LoginState {
 			Auth,
 			Final
@@ -59,15 +59,6 @@ namespace MailKit.Security {
 		internal string cnonce;
 		Encoding encoding;
 		LoginState state;
-
-		static SaslMechanismDigestMd5 ()
-		{
-			try {
-				Latin1 = Encoding.GetEncoding (28591);
-			} catch (NotSupportedException) {
-				Latin1 = Encoding.GetEncoding (1252);
-			}
-		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismDigestMd5"/> class.
@@ -157,7 +148,7 @@ namespace MailKit.Security {
 					throw new SaslException (MechanismName, SaslErrorCode.ChallengeTooLong, "Server challenge too long.");
 
 				challenge = DigestChallenge.Parse (Encoding.UTF8.GetString (token, startIndex, length));
-				encoding = challenge.Charset != null ? Encoding.UTF8 : Latin1;
+				encoding = challenge.Charset != null ? Encoding.UTF8 : TextEncodings.Latin1;
 				cnonce = cnonce ?? GenerateEntropy (15);
 
 				response = new DigestResponse (challenge, encoding, Uri.Scheme, Uri.DnsSafeHost, AuthorizationId, Credentials.UserName, Credentials.Password, cnonce);
@@ -285,8 +276,6 @@ namespace MailKit.Security {
 				return TryParseQuoted (text, ref index, out value);
 
 			int startIndex = index;
-
-			value = null;
 
 			while (index < text.Length && !char.IsWhiteSpace (text[index]) && text[index] != ',')
 				index++;
@@ -491,25 +480,11 @@ namespace MailKit.Security {
 			return HexEncode (digest);
 		}
 
-		static string Quote (string text)
-		{
-			var quoted = new StringBuilder ();
-
-			quoted.Append ("\"");
-			for (int i = 0; i < text.Length; i++) {
-				if (text[i] == '\\' || text[i] == '"')
-					quoted.Append ('\\');
-				quoted.Append (text[i]);
-			}
-			quoted.Append ("\"");
-
-			return quoted.ToString ();
-		}
-
 		public byte[] Encode (Encoding encoding)
 		{
 			var builder = new StringBuilder ();
-			builder.AppendFormat ("username={0}", Quote (UserName));
+			builder.Append ("username=");
+			MimeUtils.AppendQuoted (builder, UserName);
 			builder.AppendFormat (",realm=\"{0}\"", Realm);
 			builder.AppendFormat (",nonce=\"{0}\"", Nonce);
 			builder.AppendFormat (",cnonce=\"{0}\"", CNonce);

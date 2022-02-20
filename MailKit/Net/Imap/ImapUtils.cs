@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -202,38 +202,36 @@ namespace MailKit.Net.Imap {
 		/// <param name="text">The text to parse.</param>
 		public static DateTimeOffset ParseInternalDate (string text)
 		{
-			int day, month, year, hour, minute, second;
-			TimeSpan timezone;
 			int index = 0;
 
 			while (index < text.Length && char.IsWhiteSpace (text[index]))
 				index++;
 
-			if (index >= text.Length || !TryGetInt32 (text, ref index, '-', out day) || day < 1 || day > 31)
+			if (index >= text.Length || !TryGetInt32 (text, ref index, '-', out int day) || day < 1 || day > 31)
 				return DateTimeOffset.MinValue;
 
 			index++;
-			if (index >= text.Length || !TryGetMonth (text, ref index, '-', out month))
+			if (index >= text.Length || !TryGetMonth (text, ref index, '-', out int month))
 				return DateTimeOffset.MinValue;
 
 			index++;
-			if (index >= text.Length || !TryGetInt32 (text, ref index, ' ', out year) || year < 1969)
+			if (index >= text.Length || !TryGetInt32 (text, ref index, ' ', out int year) || year < 1969)
 				return DateTimeOffset.MinValue;
 
 			index++;
-			if (index >= text.Length || !TryGetInt32 (text, ref index, ':', out hour) || hour > 23)
+			if (index >= text.Length || !TryGetInt32 (text, ref index, ':', out int hour) || hour > 23)
 				return DateTimeOffset.MinValue;
 
 			index++;
-			if (index >= text.Length || !TryGetInt32 (text, ref index, ':', out minute) || minute > 59)
+			if (index >= text.Length || !TryGetInt32 (text, ref index, ':', out int minute) || minute > 59)
 				return DateTimeOffset.MinValue;
 
 			index++;
-			if (index >= text.Length || !TryGetInt32 (text, ref index, ' ', out second) || second > 59)
+			if (index >= text.Length || !TryGetInt32 (text, ref index, ' ', out int second) || second > 59)
 				return DateTimeOffset.MinValue;
 
 			index++;
-			if (index >= text.Length || !TryGetTimeZone (text, ref index, out timezone))
+			if (index >= text.Length || !TryGetTimeZone (text, ref index, out var timezone))
 				return DateTimeOffset.MinValue;
 
 			while (index < text.Length && char.IsWhiteSpace (text[index]))
@@ -274,7 +272,8 @@ namespace MailKit.Net.Imap {
 				command.Append (" (");
 
 				foreach (var property in annotation.Properties) {
-					command.AppendFormat ("{0} %S ", property.Key);
+					command.Append (property.Key);
+					command.Append (" %S ");
 					args.Add (property.Value);
 				}
 
@@ -293,21 +292,26 @@ namespace MailKit.Net.Imap {
 		/// <summary>
 		/// Formats the array of indexes as a string suitable for use with IMAP commands.
 		/// </summary>
-		/// <returns>The index set.</returns>
 		/// <param name="engine">The IMAP engine.</param>
+		/// <param name="builder">The string builder.</param>
 		/// <param name="indexes">The indexes.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <para><paramref name="engine"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="builder"/> is <c>null</c>.</para>
 		/// <para>-or-</para>
 		/// <para><paramref name="indexes"/> is <c>null</c>.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// One or more of the indexes has a negative value.
 		/// </exception>
-		public static string FormatIndexSet (ImapEngine engine, IList<int> indexes)
+		public static void FormatIndexSet (ImapEngine engine, StringBuilder builder, IList<int> indexes)
 		{
 			if (engine == null)
 				throw new ArgumentNullException (nameof (engine));
+
+			if (builder == null)
+				throw new ArgumentNullException (nameof (builder));
 
 			if (indexes == null)
 				throw new ArgumentNullException (nameof (indexes));
@@ -315,7 +319,6 @@ namespace MailKit.Net.Imap {
 			if (indexes.Count == 0)
 				throw new ArgumentException ("No indexes were specified.", nameof (indexes));
 
-			var builder = new StringBuilder ();
 			int index = 0;
 
 			while (index < indexes.Count) {
@@ -344,16 +347,39 @@ namespace MailKit.Net.Imap {
 					}
 				}
 
-				if (builder.Length > 0)
+				if (index > 0)
 					builder.Append (',');
 
-				if (begin != end)
-					builder.AppendFormat (CultureInfo.InvariantCulture, "{0}:{1}", begin + 1, end + 1);
-				else
-					builder.Append ((begin + 1).ToString (CultureInfo.InvariantCulture));
+				builder.Append ((begin + 1).ToString (CultureInfo.InvariantCulture));
+
+				if (begin != end) {
+					builder.Append (':');
+					builder.Append ((end + 1).ToString (CultureInfo.InvariantCulture));
+				}
 
 				index = i;
 			}
+		}
+
+		/// <summary>
+		/// Formats the array of indexes as a string suitable for use with IMAP commands.
+		/// </summary>
+		/// <returns>The index set.</returns>
+		/// <param name="engine">The IMAP engine.</param>
+		/// <param name="indexes">The indexes.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="engine"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="indexes"/> is <c>null</c>.</para>
+		/// </exception>
+		/// <exception cref="System.ArgumentOutOfRangeException">
+		/// One or more of the indexes has a negative value.
+		/// </exception>
+		public static string FormatIndexSet (ImapEngine engine, IList<int> indexes)
+		{
+			var builder = new StringBuilder ();
+
+			FormatIndexSet (engine, builder, indexes);
 
 			return builder.ToString ();
 		}
@@ -447,15 +473,11 @@ namespace MailKit.Net.Imap {
 				// See https://github.com/jstedfast/MailKit/issues/945 for details.
 				if (engine.QuirksMode == ImapQuirksMode.Exchange) {
 					var line = await engine.ReadLineAsync (doAsync, cancellationToken);
-					int eoln = line.IndexOf ("\r\n", StringComparison.Ordinal);
-					eoln = eoln != -1 ? eoln : line.Length - 1;
 
 					// unget the \r\n sequence
-					token = new ImapToken (ImapTokenType.Eoln);
-					engine.Stream.UngetToken (token);
+					engine.Stream.UngetToken (ImapToken.Eoln);
 
-					if (eoln > 0)
-						encodedName += line.Substring (0, eoln);
+					encodedName += line;
 				}
 				break;
 			case ImapTokenType.Nil:
@@ -492,32 +514,51 @@ namespace MailKit.Net.Imap {
 			token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 			while (token.Type == ImapTokenType.Flag || token.Type == ImapTokenType.Atom) {
-				var atom = ((string) token.Value).ToLowerInvariant ();
+				var atom = (string) token.Value;
 
-				switch (atom) {
-				case "\\noinferiors":   attrs |= FolderAttributes.NoInferiors; break;
-				case "\\noselect":      attrs |= FolderAttributes.NoSelect; break;
-				case "\\marked":        attrs |= FolderAttributes.Marked; break;
-				case "\\unmarked":      attrs |= FolderAttributes.Unmarked; break;
-				case "\\nonexistent":   attrs |= FolderAttributes.NonExistent; break;
-				case "\\subscribed":    attrs |= FolderAttributes.Subscribed; break;
-				case "\\remote":        attrs |= FolderAttributes.Remote; break;
-				case "\\haschildren":   attrs |= FolderAttributes.HasChildren; break;
-				case "\\hasnochildren": attrs |= FolderAttributes.HasNoChildren; break;
-				case "\\all":           attrs |= FolderAttributes.All; break;
-				case "\\archive":       attrs |= FolderAttributes.Archive; break;
-				case "\\drafts":        attrs |= FolderAttributes.Drafts; break;
-				case "\\flagged":       attrs |= FolderAttributes.Flagged; break;
-				case "\\important":     attrs |= FolderAttributes.Important; break;
-				case "\\junk":          attrs |= FolderAttributes.Junk; break;
-				case "\\sent":          attrs |= FolderAttributes.Sent; break;
-				case "\\trash":         attrs |= FolderAttributes.Trash; break;
+				if (atom.Equals ("\\noinferiors", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.NoInferiors;
+				else if (atom.Equals ("\\noselect", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.NoSelect;
+				else if (atom.Equals ("\\marked", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Marked;
+				else if (atom.Equals ("\\unmarked", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Unmarked;
+				else if (atom.Equals ("\\nonexistent", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.NonExistent;
+				else if (atom.Equals ("\\subscribed", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Subscribed;
+				else if (atom.Equals ("\\remote", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Remote;
+				else if (atom.Equals ("\\haschildren", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.HasChildren;
+				else if (atom.Equals ("\\hasnochildren", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.HasNoChildren;
+				else if (atom.Equals ("\\all", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.All;
+				else if (atom.Equals ("\\archive", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Archive;
+				else if (atom.Equals ("\\drafts", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Drafts;
+				else if (atom.Equals ("\\flagged", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Flagged;
+				else if (atom.Equals ("\\important", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Important;
+				else if (atom.Equals ("\\junk", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Junk;
+				else if (atom.Equals ("\\sent", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Sent;
+				else if (atom.Equals ("\\trash", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Trash;
 				// XLIST flags:
-				case "\\allmail":       attrs |= FolderAttributes.All; break;
-				case "\\inbox":         attrs |= FolderAttributes.Inbox; break;
-				case "\\spam":          attrs |= FolderAttributes.Junk; break;
-				case "\\starred":       attrs |= FolderAttributes.Flagged; break;
-				}
+				else if (atom.Equals ("\\allmail", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.All;
+				else if (atom.Equals ("\\inbox", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Inbox;
+				else if (atom.Equals ("\\spam", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Junk;
+				else if (atom.Equals ("\\starred", StringComparison.OrdinalIgnoreCase))
+					attrs |= FolderAttributes.Flagged;
 
 				token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 			}
@@ -549,7 +590,7 @@ namespace MailKit.Net.Imap {
 				var renamed = false;
 
 				// read the '(' token
-				token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
+				await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 				do {
 					token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
@@ -725,7 +766,7 @@ namespace MailKit.Net.Imap {
 			}
 
 			if (rfc2047) {
-				var encoding = engine.UTF8Enabled ? ImapEngine.UTF8 : ImapEngine.Latin1;
+				var encoding = engine.UTF8Enabled ? TextEncodings.UTF8 : TextEncodings.Latin1;
 
 				return Rfc2047.DecodeText (encoding.GetBytes (value));
 			}
@@ -743,7 +784,7 @@ namespace MailKit.Net.Imap {
 				var atom = (string) token.Value;
 
 				if (atom.Length > 0 && atom[0] == '-') {
-					if (!int.TryParse (atom, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var negative))
+					if (!int.TryParse (atom, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _))
 						throw ImapEngine.UnexpectedToken (format, token);
 
 					// Note: since Octets & Lines are the only 2 values this method is responsible for parsing,
@@ -800,7 +841,6 @@ namespace MailKit.Net.Imap {
 		{
 			var type = await ReadNStringTokenAsync (engine, format, false, doAsync, cancellationToken).ConfigureAwait (false) ?? "application";
 			var token = await engine.PeekTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
-			ContentType contentType;
 			string subtype;
 
 			if (token.Type == ImapTokenType.OpenParen || token.Type == ImapTokenType.Nil) {
@@ -839,11 +879,13 @@ namespace MailKit.Net.Imap {
 			ImapEngine.AssertToken (token, ImapTokenType.OpenParen, format, token);
 
 			var builder = new StringBuilder ();
-			builder.AppendFormat ("{0}/{1}", type, subtype);
+			builder.Append (type);
+			builder.Append ('/');
+			builder.Append (subtype);
 
 			await ParseParameterListAsync (builder, engine, format, doAsync, cancellationToken).ConfigureAwait (false);
 
-			if (!ContentType.TryParse (builder.ToString (), out contentType))
+			if (!ContentType.TryParse (builder.ToString (), out var contentType))
 				contentType = new ContentType (type, subtype);
 
 			return contentType;
@@ -868,7 +910,6 @@ namespace MailKit.Net.Imap {
 			// Exchange bug: ... (NIL NIL) ...
 			var dsp = await ReadNStringTokenAsync (engine, format, false, doAsync, cancellationToken).ConfigureAwait (false);
 			var builder = new StringBuilder ();
-			ContentDisposition disposition;
 			bool isNil = false;
 
 			// Note: These are work-arounds for some bugs in some mail clients that
@@ -896,7 +937,7 @@ namespace MailKit.Net.Imap {
 			if (dsp == null && isNil)
 				return null;
 
-			ContentDisposition.TryParse (builder.ToString (), out disposition);
+			ContentDisposition.TryParse (builder.ToString (), out var disposition);
 
 			return disposition;
 		}
@@ -1020,14 +1061,14 @@ namespace MailKit.Net.Imap {
 				ImapEngine.AssertToken (token, ImapTokenType.OpenParen, ImapTokenType.Nil, format, token);
 
 				var builder = new StringBuilder ();
-				ContentType contentType;
-
-				builder.AppendFormat ("{0}/{1}", body.ContentType.MediaType, body.ContentType.MediaSubtype);
+				builder.Append (body.ContentType.MediaType);
+				builder.Append ('/');
+				builder.Append (body.ContentType.MediaSubtype);
 
 				if (token.Type == ImapTokenType.OpenParen)
 					await ParseParameterListAsync (builder, engine, format, doAsync, cancellationToken).ConfigureAwait (false);
 
-				if (ContentType.TryParse (builder.ToString (), out contentType))
+				if (ContentType.TryParse (builder.ToString (), out var contentType))
 					body.ContentType = contentType;
 
 				token = await engine.PeekTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
@@ -1065,7 +1106,7 @@ namespace MailKit.Net.Imap {
 			}
 
 			// read the ')'
-			token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
+			await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 			return body;
 		}
@@ -1094,10 +1135,10 @@ namespace MailKit.Net.Imap {
 
 			var result = await ParseContentTypeAsync (engine, format, doAsync, cancellationToken).ConfigureAwait (false);
 
-			if (result is string) {
+			if (result is string subtype) {
 				// GMail breakage... yay! What we have is a nested multipart with
 				// the same boundary as its parent.
-				return await ParseMultipartAsync (engine, format, path, (string) result, doAsync, cancellationToken).ConfigureAwait (false);
+				return await ParseMultipartAsync (engine, format, path, subtype, doAsync, cancellationToken).ConfigureAwait (false);
 			}
 
 			var id = await ReadNStringTokenAsync (engine, format, false, doAsync, cancellationToken).ConfigureAwait (false);
@@ -1181,7 +1222,7 @@ namespace MailKit.Net.Imap {
 			}
 
 			// read the ')'
-			token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
+			await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
 
 			return body;
 		}
@@ -1211,12 +1252,27 @@ namespace MailKit.Net.Imap {
 
 			public MailboxAddress ToMailboxAddress (ImapEngine engine)
 			{
+				if (engine.QuirksMode == ImapQuirksMode.GMail && Name != null && Name[0] == '<' && Name[Name.Length - 1] == '>' && Mailbox != null && Domain == null) {
+					// For whatever reason, GMail seems to sometimes break by reversing the Name and Mailbox tokens.
+					// For an example, see the second error report in https://github.com/jstedfast/MailKit/issues/494
+					// where the Sender: address in the ENVELOPE has the name and address tokens flipped.
+					//
+					// Another example can be seen in https://github.com/jstedfast/MailKit/pull/1319.
+					var reversed = string.Format ("{0} {1}", Mailbox, Name);
+
+					try {
+						return MailboxAddress.Parse (reversed);
+					} catch (ParseException) {
+						// fall through to normal processing
+					}
+				}
+
 				var mailbox = Mailbox;
 				var domain = Domain;
 				string name = null;
 
 				if (Name != null) {
-					var encoding = engine.UTF8Enabled ? ImapEngine.UTF8 : ImapEngine.Latin1;
+					var encoding = engine.UTF8Enabled ? TextEncodings.UTF8 : TextEncodings.Latin1;
 
 					name = Rfc2047.DecodePhrase (encoding.GetBytes (Name));
 				}
@@ -1233,9 +1289,8 @@ namespace MailKit.Net.Imap {
 					mailbox = mailbox.TrimStart ('<');
 
 				string address = domain != null ? mailbox + "@" + domain : mailbox;
-				DomainList route;
 
-				if (Route != null && DomainList.TryParse (Route, out route))
+				if (Route != null && DomainList.TryParse (Route, out var route))
 					return new MailboxAddress (name, route, address);
 
 				return new MailboxAddress (name, address);
@@ -1246,7 +1301,7 @@ namespace MailKit.Net.Imap {
 				var name = string.Empty;
 
 				if (Mailbox != null) {
-					var encoding = engine.UTF8Enabled ? ImapEngine.UTF8 : ImapEngine.Latin1;
+					var encoding = engine.UTF8Enabled ? TextEncodings.UTF8 : TextEncodings.Latin1;
 
 					name = Rfc2047.DecodePhrase (encoding.GetBytes (Mailbox));
 				}
@@ -1345,7 +1400,6 @@ namespace MailKit.Net.Imap {
 		static async Task<DateTimeOffset?> ParseEnvelopeDateAsync (ImapEngine engine, string format, bool doAsync, CancellationToken cancellationToken)
 		{
 			var token = await engine.ReadTokenAsync (doAsync, cancellationToken).ConfigureAwait (false);
-			DateTimeOffset date;
 			string value;
 
 			switch (token.Type) {
@@ -1362,7 +1416,7 @@ namespace MailKit.Net.Imap {
 				throw ImapEngine.UnexpectedToken (format, token);
 			}
 
-			if (!DateUtils.TryParse (value, out date))
+			if (!DateUtils.TryParse (value, out var date))
 				return null;
 
 			return date;
@@ -1426,13 +1480,11 @@ namespace MailKit.Net.Imap {
 		/// <summary>
 		/// Formats a flags list suitable for use with the APPEND command.
 		/// </summary>
-		/// <returns>The flags list string.</returns>
 		/// <param name="flags">The message flags.</param>
+		/// <param name="builder">The string builder.</param>
 		/// <param name="numKeywords">The number of keywords.</param>
-		public static string FormatFlagsList (MessageFlags flags, int numKeywords)
+		public static void FormatFlagsList (StringBuilder builder, MessageFlags flags, int numKeywords)
 		{
-			var builder = new StringBuilder ();
-
 			builder.Append ('(');
 
 			if ((flags & MessageFlags.Answered) != 0)
@@ -1453,6 +1505,19 @@ namespace MailKit.Net.Imap {
 				builder.Length--;
 
 			builder.Append (')');
+		}
+
+		/// <summary>
+		/// Formats a flags list suitable for use with the APPEND command.
+		/// </summary>
+		/// <returns>The flags list string.</returns>
+		/// <param name="flags">The message flags.</param>
+		/// <param name="numKeywords">The number of keywords.</param>
+		public static string FormatFlagsList (MessageFlags flags, int numKeywords)
+		{
+			var builder = new StringBuilder ();
+
+			FormatFlagsList (builder, flags, numKeywords);
 
 			return builder.ToString ();
 		}
@@ -1479,19 +1544,22 @@ namespace MailKit.Net.Imap {
 				if (token.Type != ImapTokenType.Nil) {
 					var flag = (string) token.Value;
 
-					switch (flag) {
-					case "\\Answered": flags |= MessageFlags.Answered; break;
-					case "\\Deleted": flags |= MessageFlags.Deleted; break;
-					case "\\Draft": flags |= MessageFlags.Draft; break;
-					case "\\Flagged": flags |= MessageFlags.Flagged; break;
-					case "\\Seen": flags |= MessageFlags.Seen; break;
-					case "\\Recent": flags |= MessageFlags.Recent; break;
-					case "\\*": flags |= MessageFlags.UserDefined; break;
-					default:
-						if (keywords != null)
-							keywords.Add (flag);
-						break;
-					}
+					if (flag.Equals ("\\answered", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.Answered;
+					else if (flag.Equals ("\\deleted", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.Deleted;
+					else if (flag.Equals ("\\draft", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.Draft;
+					else if (flag.Equals ("\\flagged", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.Flagged;
+					else if (flag.Equals ("\\seen", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.Seen;
+					else if (flag.Equals ("\\recent", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.Recent;
+					else if (flag.Equals ("\\*", StringComparison.OrdinalIgnoreCase))
+						flags |= MessageFlags.UserDefined;
+					else if (keywords != null)
+						keywords.Add (flag);
 				}
 
 				token = await engine.ReadTokenAsync (ImapStream.AtomSpecials, doAsync, cancellationToken).ConfigureAwait (false);

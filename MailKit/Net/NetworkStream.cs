@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -174,7 +174,10 @@ namespace MailKit.Net
 
 			var tcs = new TaskCompletionSource<bool> ();
 
-			using (var timeout = new CancellationTokenSource (ReadTimeout)) {
+			// Capture the ReadTimeout so even if we get an exception and disconnect the socket, we still have it.
+			int readTimeout = ReadTimeout;
+
+			using (var timeout = new CancellationTokenSource (readTimeout)) {
 				using (var linked = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken, timeout.Token)) {
 					using (var registration = linked.Token.Register (() => tcs.TrySetCanceled (), false)) {
 						recv.SetBuffer (buffer, offset, count);
@@ -186,8 +189,10 @@ namespace MailKit.Net
 						try {
 							await tcs.Task.ConfigureAwait (false);
 							return recv.BytesTransferred;
-						} catch (OperationCanceledException) {
+						} catch (OperationCanceledException ex) {
 							Disconnect ();
+							if (timeout.IsCancellationRequested)
+								throw new TimeoutException ($"Operation timed out after {readTimeout} milliseconds", ex);
 							throw;
 						} catch (Exception ex) {
 							Disconnect ();
@@ -215,7 +220,10 @@ namespace MailKit.Net
 
 			var tcs = new TaskCompletionSource<bool> ();
 
-			using (var timeout = new CancellationTokenSource (WriteTimeout)) {
+			// Capture the WriteTimeout so even if we get an exception and disconnect the socket, we still have it.
+			int writeTimeout = WriteTimeout;
+
+			using (var timeout = new CancellationTokenSource (writeTimeout)) {
 				using (var linked = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken, timeout.Token)) {
 					using (var registration = linked.Token.Register (() => tcs.TrySetCanceled (), false)) {
 						send.SetBuffer (buffer, offset, count);
@@ -226,8 +234,10 @@ namespace MailKit.Net
 
 						try {
 							await tcs.Task.ConfigureAwait (false);
-						} catch (OperationCanceledException) {
+						} catch (OperationCanceledException ex) {
 							Disconnect ();
+							if (timeout.IsCancellationRequested)
+								throw new TimeoutException ($"Operation timed out after {writeTimeout} milliseconds", ex);
 							throw;
 						} catch (Exception ex) {
 							Disconnect ();

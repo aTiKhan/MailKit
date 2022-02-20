@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,10 +56,10 @@ namespace MailKit.Net.Smtp {
 
 		static SmtpAuthenticationSecretDetector ()
 		{
-#if NET45
-			EmptyAuthSecrets = new AuthenticationSecret[0];
-#else
+#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
 			EmptyAuthSecrets = Array.Empty<AuthenticationSecret> ();
+#else
+			EmptyAuthSecrets = new AuthenticationSecret[0];
 #endif
 		}
 

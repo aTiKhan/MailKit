@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 
 using System;
 using System.Text;
+using System.Globalization;
 using System.Collections.Generic;
 
 using MimeKit;
@@ -99,7 +100,7 @@ namespace MailKit {
 
 		internal static void Encode (StringBuilder builder, uint value)
 		{
-			builder.Append (value.ToString ());
+			builder.Append (value.ToString (CultureInfo.InvariantCulture));
 		}
 
 		internal static void Encode (StringBuilder builder, string value)
@@ -247,6 +248,11 @@ namespace MailKit {
 			return builder.ToString ();
 		}
 
+		static bool IsNIL (string text, int index)
+		{
+			return string.Compare (text, index, "NIL", 0, 3, StringComparison.Ordinal) == 0;
+		}
+
 		static bool TryParse (string text, ref int index, out uint value)
 		{
 			while (index < text.Length && text[index] == ' ')
@@ -273,7 +279,7 @@ namespace MailKit {
 				return false;
 
 			if (text[index] != '"') {
-				if (index + 3 <= text.Length && text.Substring (index, 3) == "NIL") {
+				if (index + 3 <= text.Length && IsNIL (text, index)) {
 					index += 3;
 					return true;
 				}
@@ -321,7 +327,7 @@ namespace MailKit {
 				return false;
 
 			if (text[index] != '(') {
-				if (index + 3 <= text.Length && text.Substring (index, 3) == "NIL") {
+				if (index + 3 <= text.Length && IsNIL (text, index)) {
 					index += 3;
 					return true;
 				}
@@ -335,13 +341,12 @@ namespace MailKit {
 				return false;
 
 			var list = new List<string> ();
-			string value;
 
 			do {
 				if (text[index] == ')')
 					break;
 
-				if (!TryParse (text, ref index, out value))
+				if (!TryParse (text, ref index, out string value))
 					return false;
 
 				list.Add (value);
@@ -358,11 +363,9 @@ namespace MailKit {
 
 		static bool TryParse (string text, ref int index, out Uri uri)
 		{
-			string nstring;
-
 			uri = null;
 
-			if (!TryParse (text, ref index, out nstring))
+			if (!TryParse (text, ref index, out string nstring))
 				return false;
 
 			if (!string.IsNullOrEmpty (nstring)) {
@@ -377,8 +380,6 @@ namespace MailKit {
 
 		static bool TryParse (string text, ref int index, out IList<Parameter> parameters)
 		{
-			string name, value;
-
 			parameters = null;
 
 			while (index < text.Length && text[index] == ' ')
@@ -388,7 +389,7 @@ namespace MailKit {
 				return false;
 
 			if (text[index] != '(') {
-				if (index + 3 <= text.Length && text.Substring (index, 3) == "NIL") {
+				if (index + 3 <= text.Length && IsNIL (text, index)) {
 					parameters = new List<Parameter> ();
 					index += 3;
 					return true;
@@ -408,10 +409,10 @@ namespace MailKit {
 				if (text[index] == ')')
 					break;
 
-				if (!TryParse (text, ref index, out name))
+				if (!TryParse (text, ref index, out string name))
 					return false;
 
-				if (!TryParse (text, ref index, out value))
+				if (!TryParse (text, ref index, out string value))
 					return false;
 
 				parameters.Add (new Parameter (name, value));
@@ -439,7 +440,7 @@ namespace MailKit {
 				return false;
 
 			if (text[index] != '(') {
-				if (index + 3 <= text.Length && text.Substring (index, 3) == "NIL") {
+				if (index + 3 <= text.Length && IsNIL (text, index)) {
 					index += 3;
 					return true;
 				}
@@ -539,9 +540,7 @@ namespace MailKit {
 			ContentDisposition disposition;
 			ContentType contentType;
 			string[] array;
-			string nstring;
 			Uri location;
-			uint number;
 
 			part = null;
 
@@ -549,7 +548,7 @@ namespace MailKit {
 				index++;
 
 			if (index >= text.Length || text[index] != '(') {
-				if (index + 3 <= text.Length && text.Substring (index, 3) == "NIL") {
+				if (index + 3 <= text.Length && IsNIL (text, index)) {
 					index += 3;
 					return true;
 				}
@@ -598,6 +597,8 @@ namespace MailKit {
 				BodyPartMessage message = null;
 				BodyPartText txt = null;
 				BodyPartBasic basic;
+				string nstring;
+				uint number;
 
 				if (!TryParse (text, ref index, false, out contentType))
 					return false;

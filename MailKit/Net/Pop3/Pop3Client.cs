@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -477,6 +477,24 @@ namespace MailKit.Net.Pop3 {
 				return null;
 			}
 		}
+
+#if NET5_0_OR_GREATER
+		/// <summary>
+		/// Get the negotiated SSL or TLS cipher suite.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS cipher suite once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS cipher suite.</value>
+		public override TlsCipherSuite? SslCipherSuite {
+			get {
+				if (IsSecure && (engine.Stream.Stream is SslStream sslStream))
+					return sslStream.NegotiatedCipherSuite;
+
+				return null;
+			}
+		}
+#endif
 
 		/// <summary>
 		/// Get the negotiated SSL or TLS hash algorithm.
@@ -1258,10 +1276,8 @@ namespace MailKit.Net.Pop3 {
 				throw new InvalidOperationException ("The Pop3Client is already connected.");
 
 			Stream network;
-			bool starttls;
-			Uri uri;
 
-			ComputeDefaultValues (host, ref port, ref options, out uri, out starttls);
+			ComputeDefaultValues (host, ref port, ref options, out var uri, out var starttls);
 
 			engine.Uri = uri;
 
@@ -1941,14 +1957,13 @@ namespace MailKit.Net.Pop3 {
 					return Task.FromResult (true);
 
 				var tokens = text.Split (new [] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-				int id;
 
 				if (tokens.Length < 2) {
 					pc.Exception = CreatePop3ParseException ("Pop3 server returned an incomplete response to the UIDL command.");
 					return Task.FromResult (true);
 				}
 
-				if (!int.TryParse (tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out id) || id != seqid) {
+				if (!int.TryParse (tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out int id) || id != seqid) {
 					pc.Exception = CreatePop3ParseException ("Pop3 server returned an unexpected response to the UIDL command.");
 					return Task.FromResult (true);
 				}
@@ -2536,7 +2551,7 @@ namespace MailKit.Net.Pop3 {
 				}
 
 				var commands = new Pop3Command[seqids.Count];
-				Pop3Command pc = null;
+				Pop3Command pc;
 				int id;
 
 				for (int i = 0; i < seqids.Count; i++)
@@ -2630,7 +2645,7 @@ namespace MailKit.Net.Pop3 {
 			protected override HeaderList Parse (Pop3Stream data, CancellationToken cancellationToken)
 			{
 				using (var stream = new ProgressStream (data, Update)) {
-					parser.SetStream (ParserOptions.Default, stream);
+					parser.SetStream (stream);
 
 					return parser.ParseMessage (cancellationToken).Headers;
 				}
@@ -2639,7 +2654,7 @@ namespace MailKit.Net.Pop3 {
 			protected override async Task<HeaderList> ParseAsync (Pop3Stream data, CancellationToken cancellationToken)
 			{
 				using (var stream = new ProgressStream (data, Update)) {
-					parser.SetStream (ParserOptions.Default, stream);
+					parser.SetStream (stream);
 
 					return (await parser.ParseMessageAsync (cancellationToken).ConfigureAwait (false)).Headers;
 				}
@@ -2658,7 +2673,7 @@ namespace MailKit.Net.Pop3 {
 			protected override MimeMessage Parse (Pop3Stream data, CancellationToken cancellationToken)
 			{
 				using (var stream = new ProgressStream (data, Update)) {
-					parser.SetStream (ParserOptions.Default, stream);
+					parser.SetStream (stream);
 
 					return parser.ParseMessage (cancellationToken);
 				}
@@ -2667,7 +2682,7 @@ namespace MailKit.Net.Pop3 {
 			protected override Task<MimeMessage> ParseAsync (Pop3Stream data, CancellationToken cancellationToken)
 			{
 				using (var stream = new ProgressStream (data, Update)) {
-					parser.SetStream (ParserOptions.Default, stream);
+					parser.SetStream (stream);
 
 					return parser.ParseMessageAsync (cancellationToken);
 				}

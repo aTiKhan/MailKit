@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -102,7 +102,7 @@ namespace MailKit {
 		}
 
 		/// <summary>
-		/// Gets an object that can be used to synchronize access to the service.
+		/// Get an object that can be used to synchronize access to the service.
 		/// </summary>
 		/// <remarks>
 		/// <para>Gets an object that can be used to synchronize access to the service.</para>
@@ -113,7 +113,7 @@ namespace MailKit {
 		}
 
 		/// <summary>
-		/// Gets the protocol supported by the message service.
+		/// Get the protocol supported by the message service.
 		/// </summary>
 		/// <remarks>
 		/// Gets the protocol supported by the message service.
@@ -135,7 +135,7 @@ namespace MailKit {
 		}
 
 		/// <summary>
-		/// Gets or sets the set of enabled SSL and/or TLS protocol versions that the client is allowed to use.
+		/// Get or set the set of enabled SSL and/or TLS protocol versions that the client is allowed to use.
 		/// </summary>
 		/// <remarks>
 		/// <para>Gets or sets the enabled SSL and/or TLS protocol versions that the client is allowed to use.</para>
@@ -152,7 +152,7 @@ namespace MailKit {
 
 #if NET5_0_OR_GREATER
 		/// <summary>
-		/// Gets or sets the cipher suites allowed to be used when negotiating an SSL or TLS connection.
+		/// Get or set the cipher suites allowed to be used when negotiating an SSL or TLS connection.
 		/// </summary>
 		/// <remarks>
 		/// Specifies the cipher suites allowed to be used when negotiating an SSL or TLS connection.
@@ -163,10 +163,21 @@ namespace MailKit {
 		public CipherSuitesPolicy SslCipherSuitesPolicy {
 			get; set;
 		}
+
+		/// <summary>
+		/// Get the negotiated SSL or TLS cipher suite.
+		/// </summary>
+		/// <remarks>
+		/// Gets the negotiated SSL or TLS cipher suite once an SSL or TLS connection has been made.
+		/// </remarks>
+		/// <value>The negotiated SSL or TLS cipher suite.</value>
+		public abstract TlsCipherSuite? SslCipherSuite {
+			get;
+		}
 #endif
 
 		/// <summary>
-		/// Gets or sets the client SSL certificates.
+		/// Get or set the client SSL certificates.
 		/// </summary>
 		/// <remarks>
 		/// <para>Some servers may require the client SSL certificates in order
@@ -200,7 +211,7 @@ namespace MailKit {
 		}
 
 		/// <summary>
-		/// Get or sets a callback function to validate the server certificate.
+		/// Get or set a callback function to validate the server certificate.
 		/// </summary>
 		/// <remarks>
 		/// <para>Gets or sets a callback function to validate the server certificate.</para>
@@ -423,54 +434,87 @@ namespace MailKit {
 			case "imap.gmail.com":
 				switch (issuer) {
 				case GMailCertificateIssuer:
-					return (serial == "33FF71640CD98A320A00000000F2C2B6" && fingerprint == "76A80201E949827892DB74E4465EC4049CECE204") // Expires 10/3/2021 10:59:11 PM
-						|| (serial == "00D4228FE2A199D8C10A00000000F6EDE5" && fingerprint == "3F9F7FF42A4C149ECB05793325E8A9A5ED194B5D") // Expires 10/17/2021 11:07:45 PM
-						|| (serial == "00BCB89E0695B636E20A00000000FA6516" && fingerprint == "38AD15CF14B047FE9FB595F5C083F35C9BAFEA2F") // Expires 11/7/2021 10:04:32 PM
-						|| (serial == "20E52857C20046810A00000000FB7F7E" && fingerprint == "E107D4C5C935F4694F6C29A649AB260761F92F8E") // Expires 11/14/2021 10:10:43 PM
-						|| (serial == "00C822D743CE33AA170A00000000FCF3EF" && fingerprint == "9BD59F6EDE8221864611AFE6DB0F119B8E443820"); // Expires 11/21/2021 10:03:58 PM)
+					return (serial == "00EC67725FAF05E6FD0A0000000125FF83" && fingerprint == "FF388B1BC174CBC3069B8709AB0CD93AF8077E94") // Expires 2/20/2022 10:08:30 PM
+						|| (serial == "046BC24DECDA5A6B0A0000000127DC6E" && fingerprint == "084398CE28512023437CC8B417230F82B39CACDA") // Expires 3/2/2022 5:19:16 PM
+						|| (serial == "6A3FFF463AE7156B0A000000012B7FF0" && fingerprint == "8E7E263CC155C62F07F7B5EEFBF1534EDDE18890") // Expires 3/21/2022 3:44:38 AM
+						|| (serial == "65FA03B5A71A05070A000000012E04F6" && fingerprint == "8C815F664E8EBE957A91AEA2612386E2184E6D68") // Expires 4/3/2022 11:07:09 PM
+						|| (serial == "68D51349AC1318C30A000000012F9258" && fingerprint == "26C56B1B8BAF1DD0CD79B121E91C83F41C35F66B") // Expires 4/10/2022 11:06:02 PM
+						|| (serial == "00820A16614E8DFB400A0000000133FA85" && fingerprint == "3D66900B34DA07C9A59D5A0003FAC2A49A87165F"); // Expires 5/1/2022 11:05:35 PM
 				default:
 					return false;
 				}
 			case "pop.gmail.com":
 				switch (issuer) {
 				case GMailCertificateIssuer:
-					return (serial == "67782B7E5C429E710A00000000F2C2B8" && fingerprint == "D40C001E88244BF11BC16984B06DD82B15F45896") // Expires 10/3/2021 10:59:40 PM
-						|| (serial == "6B027D047DDFCBDA0A00000000F6EDEC" && fingerprint == "B14CB0BFA8C1FA9BC0EF6418FC1A29C3CC5C9560") // Expires 10/17/2021 11:08:13 PM
-						|| (serial == "00DBF25C80DBE69E430A00000000FA6519" && fingerprint == "5AD601A312F1DE017D85E667F9B40C50C89B54CE") // Expires 11/7/2021 10:05:01 PM
-						|| (serial == "0080EAD683F0B85C3A0A00000000FB7F88" && fingerprint == "A815A9F0A5B7D6CAB0A9EEC02CA2B7C2A60BDC02") // Expires 11/14/2021 10:11:12 PM
-						|| (serial == "00B1EB71730C59238E0A00000000FCF3F3" && fingerprint == "E8A14C0C028B8493B154DA9EC2C0879396D14C80"); // Expires 11/21/2021 10:04:27 PM
+					return (serial == "309330098BF137760A0000000125FF88" && fingerprint == "30E95BB5541E924141CAEAB01B48FF20B308ED3C") // Expires 2/20/2022 10:08:45 PM
+						|| (serial == "053FC7A9BF15DCD90A0000000127DC72" && fingerprint == "DD6D24F2EC8DDB330C092C4E09340B3803B08062") // Expires 3/2/2022 5:19:31 PM
+						|| (serial == "5280627D1577C4340A000000012B7FF3" && fingerprint == "043B07F8568296BF0732922EA2F2B1D5225799B5") // Expires 3/21/2022 3:44:52 AM
+						|| (serial == "77A348EE15EE031C0A000000012E04F9" && fingerprint == "A4828167600A6741CE76C3A51247BE3D7ACB07F5") // Expires 4/3/2022 11:07:23 PM
+						|| (serial == "7B9C3FD9595DB8FE0A000000012F9265" && fingerprint == "D6767B51E288B4521BA148C057D6872D74ABCCC6") // Expires 4/10/2022 11:06:17 PM
+						|| (serial == "690FA8ABF8944DE70A0000000133FA87" && fingerprint == "3B5911EB64E63E7038D105696E0CACABCABA3CE4"); // Expires 5/1/2022 11:05:50 PM
 				default:
 					return false;
 				}
 			case "smtp.gmail.com":
 				switch (issuer) {
 				case GMailCertificateIssuer:
-					return (serial == "1146A5973D10C2700A00000000F2C2CE" && fingerprint == "14C1D4AC4A04A288A30D854F1F4100AD6852A11B") // Expires 10/3/2021 11:02:05 PM
-						|| (serial == "7FCF9FA362FCB8D20A00000000F6EE15" && fingerprint == "241C76B308F5DF1718E785D6AC35F7A7766CC64D") // Expires 10/17/2021 11:10:45 PM
-						|| (serial == "009EF7097FA046BFBB0A00000000FA6528" && fingerprint == "08512EBDDFF3D16DC45B433F9969D01EE3D4F77B") // Expires 11/7/2021 10:07:26 PM
-						|| (serial == "1170F455BF10286B0A00000000FB7FBB" && fingerprint == "E47EC3DCDB782FF9E2A0599D9D70587843F51E78") // Expires 11/14/2021 10:13:45 PM
-						|| (serial == "1189886D92A7421E0A00000000FCF40C" && fingerprint == "D59845F3DE0976ADD0DF6672DEBC31971E5CEC3A"); // Expires 11/21/2021 10:06:52 PM
+					return (serial == "00F3402FC1B5A7247E0A0000000125FFA2" && fingerprint == "2B4D501A49992D659F9FFBA5D18D09E431BA9CEB") // Expires 2/20/2022 10:10:08 PM
+						|| (serial == "00FDAE95407FD0D7510A0000000127DC80" && fingerprint == "C350243812AB4D6EDCBB59ED90B3139EB96957F8") // Expires 3/2/2022 5:20:56 PM
+						|| (serial == "0FC2B2627A5FF8FC0A000000012B7FFE" && fingerprint == "1A22D54BAFDC0916547CB0D80F39EA88954C8F5B") // Expires 3/21/2022 3:46:10 AM
+						|| (serial == "0096F217C660D6FD590A000000012E0519" && fingerprint == "9574A613E25D39BD585FFC7DBA8248A484135519") // Expires 4/3/2022 11:08:45 PM
+						|| (serial == "6AA71CAC662B12330A000000012F927C" && fingerprint == "71F149282CF0497750FDE4FA9B0593ADFC5BFA6A") // Expires 4/10/2022 11:07:35 PM
+						|| (serial == "00B8395DF841DD3C131200000000006058" && fingerprint == "621652D48C9F3E0FBB173A6BFEF20A8FAC5B689C"); // Expires 5/1/2022 11:07:04 PM
 				default:
 					return false;
 				}
 			case "outlook.com":
-				return issuer == OutlookCertificateIssuer && serial == "0CCAC32B0EF281026392B8852AB15642" && fingerprint == "CBAA1582F1E49AD1D108193B5D38B966BE4993C6"; // Expires 1/21/2022 6:59:59 PM
+				switch (issuer) {
+				case OutlookCertificateIssuer:
+					return (serial == "0CE67C905DDE83B20E77606A636AB967" && fingerprint == "E295CCF7F125F70907C2E7F97EF0F5E7D5704DE6") // Expires 10/23/2022 7:59:59 PM
+						|| (serial == "010CB801C9719EE668C7A803EFD5D8C4" && fingerprint == "5223FB99040188673B9847FAF8EAC3531F0FE55B") // Expires 12/12/2022 6:59:59 PM
+						|| (serial == "08349B4851225195DE03A3515F5600BE" && fingerprint == "02D13AF3D6DF147C2573AE8793AB8FBE8461E4CD") // Expires 12/12/2022 6:59:59 PM
+						|| (serial == "0B9E5C99FC34EBBF53EECD242509420C" && fingerprint == "C013CFEFD55B3D38101DAB624C89A0E046A8A587") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "05B20A80B48B137AE71783B5062FD2FE" && fingerprint == "0EEF7509B944504CB3C3ED3ECC05EF1008779665") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "04A1C21185146636B7235D842A1483BB" && fingerprint == "0A26630D07A9E624D186C8BFBDA39C79630A96FD") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "0371908B3F8B83FD09B448C237C26ECE" && fingerprint == "A1708642F2ECAE9BA98A005D9F0E675AF928232F") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "0E30AAEA6BD2C037B5F54561807FFC72" && fingerprint == "595F0036867A6227DDEE915F0AE761CD2EE65C65") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "07AD8D0BAE29B5A21814958B948122BE" && fingerprint == "C5CAA1AA341D4F3509DAC633D3B80AC927F72842") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "05BE55DA2BB1CAC2C35677AEB3BE7FD4" && fingerprint == "416CD89591D050FFD2520F35358FA642CA2E1B81") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "04AD62A5375D5D3B3D4B7E45D8F936F8" && fingerprint == "48F453D1C94B85D87DB151064AC40AC8473BF7F6") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "052EAC2D0BB68BA1A27E236FF6A48EDE" && fingerprint == "1F84128281B98D0A7AD21C17A9E7CFE150AE24E1") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "05CF601FAD764AE86FD1CC173DBE358B" && fingerprint == "33CBCB82CA0697FAEB87DBE6766E22E8B0729D5E") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "0CF35BFC2811106763FF7B797DCF1BFF" && fingerprint == "47CB819B4CC48DB9E63F09B25EDE1A20B834A151") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "017AD2ED2E361E76CEC93AB14218851D" && fingerprint == "B22A5C780B64C7A6915493760FDEE2D9709E79F1") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "06565F9B6A832F1BC8809F4E577292E7" && fingerprint == "4E39B4134B8C77577D803D7640E8882205001C58") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "0E595DF437B3F531517F7C62AFEA850D" && fingerprint == "B822391039E81E5FE07CC7479E73A18BEB2FFB5F") // Expires 12/22/2022 6:59:59 PM
+						|| (serial == "09248624EDC9886EBC1013A9C06E13FE" && fingerprint == "8A92F2C7BFA8B78E453D00E65EAA5F7C0D89FDEA") // Expires 12/22/2022 11:59:59 PM
+						|| (serial == "0F71C8C0B67D41BC5A0CE715334711E3" && fingerprint == "405D32901FC1E18E6BCE2B4C53A6788DE9702598") // Expires 12/23/2022 6:59:59 PM
+						|| (serial == "08D3CAD9D9C04D44DC4795B0F94ABF48" && fingerprint == "F2E96865A36C2EDA003F021907F32539C1C9FD97") // Expires 12/23/2022 6:59:59 PM
+						|| (serial == "0E0F58AC112C1EEE5020441EF6E386E6" && fingerprint == "479F0B7F299EE8F0F5A37E5CFBEFE7F2DE16E173"); // Expires 12/23/2022 6:59:59 PM
+				default:
+					return false;
+				}
 			case "imap.mail.me.com":
-				return issuer == AppleCertificateIssuer && serial == "7693E9D2C3B5564F4F9A487D15A54116" && fingerprint == "FACBDEB692021F6404BE8B88A563767B282F98EE"; // Expires 10/3/2021 5:51:43 PM
+				return issuer == AppleCertificateIssuer && serial == "2EC9B6B93C77A53D15405C47A9FBC3CF" && fingerprint == "A047B6AE5E0FF51CC216C1237A44529B0A4DB0D2"; // Expires 10/2/2022 3:51:56 PM
 			case "smtp.mail.me.com":
-				return issuer == AppleCertificateIssuer && serial == "0A3048DECAB5CAA796E163E011CAE82E" && fingerprint == "B14CE4D4FF15FBC3C16C4848F1C632552184BD79"; // Expires 10/3/2021 6:12:03 PM
+				return issuer == AppleCertificateIssuer && serial == "46A537AD83083BCCBDA20D1D8657F573" && fingerprint == "83AA1EF97EE9AC0EAD8B2C88C62C83F8EDBF2BDB"; // Expires 10/30/2022 4:11:38 PM
 			case "*.imap.mail.yahoo.com":
-				return issuer == YahooCertificateIssuer && serial == "090883C7E8D9B60E60ABA19D508BD988" && fingerprint == "4018766D324ED3CC37A05D5997405E5B33A7CAEF"; // Expires 10/20/2021 7:59:59 PM
+				switch (issuer) {
+				case YahooCertificateIssuer:
+					return (serial == "07E7B4CB914FFC7FB3E03105C9DA0BE1" && fingerprint == "D7D39A265E914ADC8B443BF24DB684354D50B000") // Expires 3/16/2022 7:59:59 PM
+						|| (serial == "0C67CECFD49B2BA3430DBE354BAAFD6B" && fingerprint == "0976270BA2651AF827987F1A91741B1D7B48AB7A"); // Expires 8/10/2022 7:59:59 PM
+				default:
+					return false;
+				}
 			case "legacy.pop.mail.yahoo.com":
 				switch (issuer) {
 				case YahooCertificateIssuer:
-					return (serial == "0CFADAA16F51AA5B67DCD15DCE388CF0" && fingerprint == "443D3B8F6F9A2439D0F3B9B2A2F90BBA70D8677F") // Expires 11/17/2021 6:59:59 PM
-						|| (serial == "09CC4977A4C14D4388D90CF6676385FE" && fingerprint == "7BA05AF724299FF0688842ADEF2837DE25F3C4FD"); // Expires 12/22/2021 6:59:59 PM
+					return (serial == "03B1E9610E0E209A4EA8FC192EBF55D7" && fingerprint == "7C32F642167257B00E55A9C5DC3E35F1719193BD"); // Expires 5/18/2022 11:59:59 PM
 				default:
 					return false;
 				}
 			case "smtp.mail.yahoo.com":
-				return issuer == YahooCertificateIssuer && serial == "0CFADAA16F51AA5B67DCD15DCE388CF0" && fingerprint == "443D3B8F6F9A2439D0F3B9B2A2F90BBA70D8677F"; // Expires 11/17/2021 6:59:59 PM
+				return issuer == YahooCertificateIssuer && serial == "096122E949C73D57587E904DE8EBE2BC" && fingerprint == "C38CA2874F6489686FAE148482325EC3D8763D81"; // Expires 4/13/2022 7:59:59 PM
 			case "mout.gmx.com":
 				return issuer == GmxDotComCertificateIssuer && serial == "06206F2270494CD7AD11F2B17E286C2C" && fingerprint == "A7D3BCC363B307EC3BDE21269A2F05117D6614A8"; // Expires 7/12/2022 8:00:00 AM
 			case "mail.gmx.com":
@@ -507,7 +551,7 @@ namespace MailKit {
 		/// <param name="certificate">The server's SSL certificate.</param>
 		/// <param name="chain">The server's SSL certificate chain.</param>
 		/// <param name="sslPolicyErrors">The SSL policy errors.</param>
-		protected bool DefaultServerCertificateValidationCallback (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		protected static bool DefaultServerCertificateValidationCallback (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
 		{
 			const SslPolicyErrors mask = SslPolicyErrors.RemoteCertificateNotAvailable | SslPolicyErrors.RemoteCertificateNameMismatch;
 
@@ -825,7 +869,6 @@ namespace MailKit {
 		{
 			var query = uri.ParsedQuery ();
 			var protocol = uri.Scheme;
-			string value;
 
 			// Note: early versions of MailKit used "pop3" and "pop3s"
 			if (protocol.Equals ("pop3s", StringComparison.OrdinalIgnoreCase))
@@ -839,7 +882,7 @@ namespace MailKit {
 			if (!protocol.Equals (Protocol, StringComparison.OrdinalIgnoreCase))
 				throw new ArgumentException ("Unknown URI scheme.", nameof (uri));
 
-			if (query.TryGetValue ("starttls", out value)) {
+			if (query.TryGetValue ("starttls", out string value)) {
 				switch (value.ToLowerInvariant ()) {
 				default:
 					return SecureSocketOptions.StartTlsWhenAvailable;
@@ -1671,10 +1714,7 @@ namespace MailKit {
 		/// <param name="options">The SSL/TLS options that were used when connecting.</param>
 		protected virtual void OnConnected (string host, int port, SecureSocketOptions options)
 		{
-			var handler = Connected;
-
-			if (handler != null)
-				handler (this, new ConnectedEventArgs (host, port, options));
+			Connected?.Invoke (this, new ConnectedEventArgs (host, port, options));
 		}
 
 		/// <summary>
@@ -1698,10 +1738,7 @@ namespace MailKit {
 		/// <param name="requested"><c>true</c> if the disconnect was explicitly requested; otherwise, <c>false</c>.</param>
 		protected virtual void OnDisconnected (string host, int port, SecureSocketOptions options, bool requested)
 		{
-			var handler = Disconnected;
-
-			if (handler != null)
-				handler (this, new DisconnectedEventArgs (host, port, options, requested));
+			Disconnected?.Invoke (this, new DisconnectedEventArgs (host, port, options, requested));
 		}
 
 		/// <summary>
@@ -1722,10 +1759,7 @@ namespace MailKit {
 		/// <param name="message">The notification sent by the server when the client successfully authenticates.</param>
 		protected virtual void OnAuthenticated (string message)
 		{
-			var handler = Authenticated;
-
-			if (handler != null)
-				handler (this, new AuthenticatedEventArgs (message));
+			Authenticated?.Invoke (this, new AuthenticatedEventArgs (message));
 		}
 
 		/// <summary>

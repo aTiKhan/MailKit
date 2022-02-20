@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2022 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -182,11 +182,10 @@ namespace MailKit.Security
 		internal static SslHandshakeException Create (ref SslCertificateValidationInfo validationInfo, Exception ex, bool starttls, string protocol, string host, int port, int sslPort, params int[] standardPorts)
 		{
 			var message = new StringBuilder (DefaultMessage);
-			var aggregate = ex as AggregateException;
 			X509Certificate certificate = null;
 			X509Certificate root = null;
 
-			if (aggregate != null) {
+			if (ex is AggregateException aggregate) {
 				aggregate = aggregate.Flatten ();
 
 				if (aggregate.InnerExceptions.Count == 1)
@@ -228,8 +227,10 @@ namespace MailKit.Security
 								message.AppendLine ("\u2022 An intermediate certificate has the following errors:");
 							}
 
-							foreach (var status in element.ChainElementStatus)
-								message.AppendFormat ("  \u2022 {0}{1}", status.StatusInformation, Environment.NewLine);
+							foreach (var status in element.ChainElementStatus) {
+								message.Append ("  \u2022 ");
+								message.AppendLine (status.StatusInformation);
+							}
 
 							haveReason = true;
 						}
@@ -291,7 +292,7 @@ namespace MailKit.Security
 
 		public void Dispose ()
 		{
-#if !NET45
+#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
 			Certificate.Dispose ();
 #endif
 		}
@@ -320,7 +321,7 @@ namespace MailKit.Security
 
 		public void Dispose ()
 		{
-#if !NET45
+#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
 			Certificate.Dispose ();
 			foreach (var element in ChainElements)
 				element.Dispose ();

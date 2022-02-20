@@ -146,9 +146,9 @@ namespace UnitTests.Net.Imap {
 				Assert.Throws<ArgumentNullException> (() => inbox.Create (null, SpecialFolder.All));
 				Assert.Throws<ArgumentException> (() => inbox.Create (string.Empty, SpecialFolder.All));
 				Assert.Throws<ArgumentException> (() => inbox.Create ("Folder./Name", SpecialFolder.All));
-				Assert.Throws<ArgumentNullException> (() => inbox.Create (null, new SpecialFolder [] { SpecialFolder.All }));
-				Assert.Throws<ArgumentException> (() => inbox.Create (string.Empty, new SpecialFolder [] { SpecialFolder.All }));
-				Assert.Throws<ArgumentException> (() => inbox.Create ("Folder./Name", new SpecialFolder [] { SpecialFolder.All }));
+				Assert.Throws<ArgumentNullException> (() => inbox.Create (null, new SpecialFolder[] { SpecialFolder.All }));
+				Assert.Throws<ArgumentException> (() => inbox.Create (string.Empty, new SpecialFolder[] { SpecialFolder.All }));
+				Assert.Throws<ArgumentException> (() => inbox.Create ("Folder./Name", new SpecialFolder[] { SpecialFolder.All }));
 				Assert.Throws<ArgumentNullException> (() => inbox.Create ("ValidName", null));
 				Assert.Throws<NotSupportedException> (() => inbox.Create ("ValidName", SpecialFolder.All));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CreateAsync (null, true));
@@ -157,9 +157,9 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CreateAsync (null, SpecialFolder.All));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.CreateAsync (string.Empty, SpecialFolder.All));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.CreateAsync ("Folder./Name", SpecialFolder.All));
-				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CreateAsync (null, new SpecialFolder [] { SpecialFolder.All }));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.CreateAsync (string.Empty, new SpecialFolder [] { SpecialFolder.All }));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.CreateAsync ("Folder./Name", new SpecialFolder [] { SpecialFolder.All }));
+				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CreateAsync (null, new SpecialFolder[] { SpecialFolder.All }));
+				Assert.ThrowsAsync<ArgumentException> (() => inbox.CreateAsync (string.Empty, new SpecialFolder[] { SpecialFolder.All }));
+				Assert.ThrowsAsync<ArgumentException> (() => inbox.CreateAsync ("Folder./Name", new SpecialFolder[] { SpecialFolder.All }));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CreateAsync ("ValidName", null));
 				Assert.ThrowsAsync<NotSupportedException> (() => inbox.CreateAsync ("ValidName", SpecialFolder.All));
 
@@ -178,13 +178,13 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.GetSubfolderAsync (string.Empty));
 
 				// GetMetadata
-				Assert.Throws<ArgumentNullException> (() => client.GetMetadata (null, new MetadataTag [] { MetadataTag.PrivateComment }));
+				Assert.Throws<ArgumentNullException> (() => client.GetMetadata (null, new MetadataTag[] { MetadataTag.PrivateComment }));
 				Assert.Throws<ArgumentNullException> (() => client.GetMetadata (new MetadataOptions (), null));
-				Assert.ThrowsAsync<ArgumentNullException> (() => client.GetMetadataAsync (null, new MetadataTag [] { MetadataTag.PrivateComment }));
+				Assert.ThrowsAsync<ArgumentNullException> (() => client.GetMetadataAsync (null, new MetadataTag[] { MetadataTag.PrivateComment }));
 				Assert.ThrowsAsync<ArgumentNullException> (() => client.GetMetadataAsync (new MetadataOptions (), null));
-				Assert.Throws<ArgumentNullException> (() => inbox.GetMetadata (null, new MetadataTag [] { MetadataTag.PrivateComment }));
+				Assert.Throws<ArgumentNullException> (() => inbox.GetMetadata (null, new MetadataTag[] { MetadataTag.PrivateComment }));
 				Assert.Throws<ArgumentNullException> (() => inbox.GetMetadata (new MetadataOptions (), null));
-				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.GetMetadataAsync (null, new MetadataTag [] { MetadataTag.PrivateComment }));
+				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.GetMetadataAsync (null, new MetadataTag[] { MetadataTag.PrivateComment }));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.GetMetadataAsync (new MetadataOptions (), null));
 
 				// SetMetadata
@@ -332,8 +332,8 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CopyToAsync (0, null));
 				Assert.Throws<ArgumentNullException> (() => inbox.CopyTo ((IList<int>) null, inbox));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CopyToAsync ((IList<int>) null, inbox));
-				Assert.Throws<ArgumentNullException> (() => inbox.CopyTo (new int [] { 0 }, null));
-				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CopyToAsync (new int [] { 0 }, null));
+				Assert.Throws<ArgumentNullException> (() => inbox.CopyTo (new int[] { 0 }, null));
+				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.CopyToAsync (new int[] { 0 }, null));
 
 				// MoveTo
 				Assert.Throws<ArgumentException> (() => inbox.MoveTo (UniqueId.Invalid, inbox));
@@ -350,10 +350,13 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.MoveToAsync (0, null));
 				Assert.Throws<ArgumentNullException> (() => inbox.MoveTo ((IList<int>) null, inbox));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.MoveToAsync ((IList<int>) null, inbox));
-				Assert.Throws<ArgumentNullException> (() => inbox.MoveTo (new int [] { 0 }, null));
-				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.MoveToAsync (new int [] { 0 }, null));
+				Assert.Throws<ArgumentNullException> (() => inbox.MoveTo (new int[] { 0 }, null));
+				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.MoveToAsync (new int[] { 0 }, null));
 
 				client.Disconnect (false);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -486,6 +489,9 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<NotSupportedException> (() => inbox.SetQuotaAsync (5, 10));
 
 				client.Disconnect (false);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -604,6 +610,8 @@ namespace UnitTests.Net.Imap {
 
 					Assert.IsTrue (uid.HasValue, "Expected a UIDAPPEND resp-code");
 					Assert.AreEqual (i + 1, uid.Value.Id, "Unexpected UID");
+
+					messages[i].Dispose ();
 				}
 
 				client.Disconnect (true);
@@ -652,6 +660,8 @@ namespace UnitTests.Net.Imap {
 
 					Assert.IsTrue (uid.HasValue, "Expected a UIDAPPEND resp-code");
 					Assert.AreEqual (i + 1, uid.Value.Id, "Unexpected UID");
+
+					messages[i].Dispose ();
 				}
 
 				await client.DisconnectAsync (true);
@@ -844,6 +854,9 @@ namespace UnitTests.Net.Imap {
 					Assert.AreEqual (i + 1, uids[i].Id, "Unexpected UID");
 
 				client.Disconnect (true);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -925,6 +938,9 @@ namespace UnitTests.Net.Imap {
 					Assert.AreEqual (i + 1, uids[i].Id, "Unexpected UID");
 
 				await client.DisconnectAsync (true);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -1071,6 +1087,9 @@ namespace UnitTests.Net.Imap {
 				}
 
 				client.Disconnect (true);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -1133,6 +1152,9 @@ namespace UnitTests.Net.Imap {
 				}
 
 				await client.DisconnectAsync (true);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -1282,6 +1304,9 @@ namespace UnitTests.Net.Imap {
 				}
 
 				client.Disconnect (true);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -1344,6 +1369,9 @@ namespace UnitTests.Net.Imap {
 				}
 
 				await client.DisconnectAsync (true);
+
+				foreach (var message in messages)
+					message.Dispose ();
 			}
 		}
 
@@ -2004,7 +2032,7 @@ namespace UnitTests.Net.Imap {
 
 				Assert.AreEqual (moved.Source.Count, moved.Destination.Count, "Source and Destination UID counts do not match");
 				Assert.AreEqual (21, expunged, "Expunged event");
-				Assert.AreEqual (22, changed, "CountChanged event"); // FIXME: should we work more like IMAP and only emit this once?
+				Assert.AreEqual (1, changed, "CountChanged event");
 
 				if (disableMove)
 					client.Capabilities &= ~ImapCapabilities.Move;
@@ -2017,7 +2045,7 @@ namespace UnitTests.Net.Imap {
 
 				Assert.AreEqual (moved.Source.Count, moved.Destination.Count, "Source and Destination UID counts do not match");
 				Assert.AreEqual (21, expunged, "Expunged event");
-				Assert.AreEqual (22, changed, "CountChanged event");
+				Assert.AreEqual (1, changed, "CountChanged event");
 
 				client.Disconnect (true);
 			}
@@ -2063,7 +2091,7 @@ namespace UnitTests.Net.Imap {
 
 				Assert.AreEqual (moved.Source.Count, moved.Destination.Count, "Source and Destination UID counts do not match");
 				Assert.AreEqual (21, expunged, "Expunged event");
-				Assert.AreEqual (22, changed, "CountChanged event");
+				Assert.AreEqual (1, changed, "CountChanged event");
 
 				if (disableMove)
 					client.Capabilities &= ~ImapCapabilities.Move;
@@ -2076,7 +2104,7 @@ namespace UnitTests.Net.Imap {
 
 				Assert.AreEqual (moved.Source.Count, moved.Destination.Count, "Source and Destination UID counts do not match");
 				Assert.AreEqual (21, expunged, "Expunged event");
-				Assert.AreEqual (22, changed, "CountChanged event");
+				Assert.AreEqual (1, changed, "CountChanged event");
 
 				await client.DisconnectAsync (true);
 			}
@@ -2147,7 +2175,7 @@ namespace UnitTests.Net.Imap {
 				inbox.Expunge (uids);
 
 				Assert.AreEqual (3, expunged, "Unexpected number of Expunged events");
-				Assert.AreEqual (4, changed, "Unexpected number of CountChanged events");
+				Assert.AreEqual (1, changed, "Unexpected number of CountChanged events");
 				Assert.AreEqual (18, inbox.Count, "Count");
 
 				client.Disconnect (true);
@@ -2193,7 +2221,7 @@ namespace UnitTests.Net.Imap {
 				await inbox.ExpungeAsync (uids);
 
 				Assert.AreEqual (3, expunged, "Unexpected number of Expunged events");
-				Assert.AreEqual (4, changed, "Unexpected number of CountChanged events");
+				Assert.AreEqual (1, changed, "Unexpected number of CountChanged events");
 				Assert.AreEqual (18, inbox.Count, "Count");
 
 				await client.DisconnectAsync (true);
