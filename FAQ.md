@@ -35,6 +35,7 @@
 * [How can I re-synchronize the cache for an IMAP folder?](#ImapFolderResync)
 
 ### SmtpClient
+* [Why doesn't the message show up in the "Sent Mail" folder after sending it?](#SmtpSentFolder)
 * [How can I send email to the SpecifiedPickupDirectory?](#SpecifiedPickupDirectory)
 * [How can I request a notification when the message is read by the user?](#SmtpRequestReadReceipt)
 * [How can I process a read receipt notification?](#SmtpProcessReadReceipt)
@@ -93,7 +94,14 @@ installed anti-virus software replaces the certificate in order to scan web traf
 When your system is unable to validate the mail server's certificate because it is not signed
 by a known and trusted Certificate Authority, the above error will occur.
 
-You can work around this problem by supplying a custom [RemoteCertificateValidationCallback](https://msdn.microsoft.com/en-us/library/ms145054)
+If you are on a Linux system or are running a web service in a Linux container, it might be possible to use the following command to install
+the standard set of Certificate Authority root certificates using the following command:
+
+```
+apt update && apt install -y ca-certificates
+```
+
+Another option is to work around this problem by supplying a custom [RemoteCertificateValidationCallback](https://msdn.microsoft.com/en-us/library/ms145054)
 and setting it on the client's [ServerCertificateValidationCallback](http://mimekit.net/docs/html/P_MailKit_MailService_ServerCertificateValidationCallback.htm)
 property.
 
@@ -236,9 +244,14 @@ GMail Settings page and set your options to look like this:
 
 ### <a name="GMailAccess">Q: How can I access GMail using MailKit?</a>
 
-The first thing that you will need to do is to configure your GMail account to
-[enable less secure apps](https://www.google.com/settings/security/lesssecureapps),
-or you'll need to use [OAuth 2.0 authentication](#GMailOAuth2) (which is a bit more complex).
+As of the end of May, 2022, Google no longer allows enabling "Less secure apps".
+
+There are now only 2 options to choose from:
+1. Use [OAuth 2.0 authentication](#GMailOAuth2)
+2. Use an "App password"
+
+To use an App password, you will first need to [turn on 2-Step Verification](https://support.google.com/accounts/answer/185839).
+Once 2-Step Verification is turned on, you can [generate an App password](https://myaccount.google.com/apppasswords).
 
 Then, assuming that your GMail account is `user@gmail.com`, you would use the following
 code snippet to connect to GMail via IMAP:
@@ -569,11 +582,17 @@ class HtmlPreviewVisitor : MimeVisitor
         return false;
     }
 
-    // Save the image to our temp directory and return a "file://" url suitable for
-    // the browser control to load.
-    // Note: if you'd rather embed the image data into the HTML, you can construct a
-    // "data:" url instead.
-    string SaveImage (MimePart image, string url)
+    /// <summary>
+    /// Get a file:// URI for the image attachment.
+    /// </summary>
+    /// <remarks>
+    /// Saves the image attachment to a temp file and returns a file:// URI for the
+    /// temp file.
+    /// </remarks>
+    /// <returns>The file:// URI.</returns>
+    /// <param name="image">The image attachment.</param>
+    /// <param name="url">The original HTML image URL.</param>
+    string GetFileUri (MimePart image, string url)
     {
         string fileName = url.Replace (':', '_').Replace ('\\', '_').Replace ('/', '_');
 
@@ -587,28 +606,70 @@ class HtmlPreviewVisitor : MimeVisitor
         return "file://" + path.Replace ('\\', '/');
     }
 
+    /// <summary>
+    /// Get a data: URI for the image attachment.
+    /// </summary>
+    /// <remarks>
+    /// Encodes the image attachment into a string suitable for setting as a src= attribute value in
+    /// an img tag.
+    /// </remarks>
+    /// <returns>The data: URI.</returns>
+    /// <param name="image">The image attachment.</param>
+    string GetDataUri (MimePart image)
+    {
+        using (var memory = new MemoryStream ()) {
+            image.Content.DecodeTo (memory);
+            var buffer = memory.GetBuffer ();
+            var length = (int) memory.Length;
+            var base64 = Convert.ToBase64String (buffer, 0, length);
+
+            return string.Format ("data:{0};base64,{1}", image.ContentType.MimeType, base64);
+        }
+    }
+
     // Replaces <img src=...> urls that refer to images embedded within the message with
     // "file://" urls that the browser control will actually be able to load.
     void HtmlTagCallback (HtmlTagContext ctx, HtmlWriter htmlWriter)
     {
-        if (ctx.TagId == HtmlTagId.Image && !ctx.IsEndTag && stack.Count > 0) {
+        if (ctx.TagId == HtmlTagId.Meta && !ctx.IsEndTag) {
+            bool isContentType = false;
+
+            ctx.WriteTag (htmlWriter, false);
+
+            // replace charsets with "utf-8" since our output will be in utf-8 (and not whatever the original charset was)
+            foreach (var attribute in ctx.Attributes) {
+                if (attribute.Id == HtmlAttributeId.Charset) {
+                    htmlWriter.WriteAttributeName (attribute.Name);
+                    htmlWriter.WriteAttributeValue ("utf-8");
+                } else if (isContentType && attribute.Id == HtmlAttributeId.Content) {
+                    htmlWriter.WriteAttributeName (attribute.Name);
+                    htmlWriter.WriteAttributeValue ("text/html; charset=utf-8");
+                } else {
+                    if (attribute.Id == HtmlAttributeId.HttpEquiv && attribute.Value != null
+                        && attribute.Value.Equals ("Content-Type", StringComparison.OrdinalIgnoreCase))
+                        isContentType = true;
+
+                    htmlWriter.WriteAttribute (attribute);
+                }
+            }
+        } else if (ctx.TagId == HtmlTagId.Image && !ctx.IsEndTag && stack.Count > 0) {
             ctx.WriteTag (htmlWriter, false);
 
             // replace the src attribute with a file:// URL
             foreach (var attribute in ctx.Attributes) {
                 if (attribute.Id == HtmlAttributeId.Src) {
-                    MimePart image;
-                    string url;
-
-                    if (!TryGetImage (attribute.Value, out image)) {
+                    if (!TryGetImage (attribute.Value, out var image)) {
                         htmlWriter.WriteAttribute (attribute);
                         continue;
                     }
 
-                    url = SaveImage (image, attribute.Value);
+                    // Note: you can either use a "file://" URI or you can use a
+                    // "data:" URI, the choice is yours.
+                    var uri = GetFileUri (image, attribute.Value);
+                    //var uri = GetDataUri (image);
 
                     htmlWriter.WriteAttributeName (attribute.Name);
-                    htmlWriter.WriteAttributeValue (url);
+                    htmlWriter.WriteAttributeValue (uri);
                 } else {
                     htmlWriter.WriteAttribute (attribute);
                 }
@@ -618,8 +679,8 @@ class HtmlPreviewVisitor : MimeVisitor
 
             // add and/or replace oncontextmenu="return false;"
             foreach (var attribute in ctx.Attributes) {
-                if (attribute.Name.ToLowerInvariant () == "oncontextmenu")
-                    continue;
+                if (attribute.Name.Equals ("oncontextmenu", StringComparison.OrdinalIgnoreCase))
+                   continue;
 
                 htmlWriter.WriteAttribute (attribute);
             }
@@ -650,7 +711,7 @@ class HtmlPreviewVisitor : MimeVisitor
             string delsp;
 
             if (entity.ContentType.Parameters.TryGetValue ("delsp", out delsp))
-                flowed.DeleteSpace = delsp.ToLowerInvariant () == "yes";
+                flowed.DeleteSpace = delsp.Equals ("yes", StringComparison.OrdinalIgnoreCase);
 
             converter = flowed;
         } else {
@@ -1423,7 +1484,8 @@ Other text encodings are not available to your application unless your applicati
 [registers](https://docs.microsoft.com/en-us/dotnet/api/system.text.encoding.registerprovider?view=net-5.0) the encoding
 provider that provides all of the additional encodings.
 
-To register the additional text encodings, use the following code snippet:
+First, add a package reference for the [System.Text.Encoding.CodePages](https://www.nuget.org/packages/System.Text.Encoding.CodePages)
+nuget package to your project and then register the additional text encodings using the following code snippet:
 
 ```csharp
 System.Text.Encoding.RegisterProvider (System.Text.CodePagesEncodingProvider.Instance);
@@ -1652,6 +1714,59 @@ static void ResyncFolder (ImapFolder folder, List<CachedMessageInfo> cache, ref 
 ```
 
 ## SmtpClient
+
+### <a name="SmtpSentFolder">Q: Why doesn't the message show up in the "Sent Mail" folder after sending it?</a>
+
+It seems to be a common misunderstanding that messages sent via SMTP will magically show up in the account's "Sent Mail" folder.
+
+In order for the message to show up in the "Sent Mail" folder, you will need to append the message to the "Sent Mail" folder
+yourself because the SMTP protocol does not support doing this automatically.
+
+If the "Sent Mail" folder is a local mbox folder, you'll need to append it like this:
+
+```csharp
+using (var mbox = File.Open ("C:\\path\\to\\Sent Mail.mbox", FileMode.Append, FileAccess.Write)) {
+    var marker = string.Format ("From MAILER-DAEMON {0}{1}", DateTime.Now.ToString (CultureInfo.InvariantCulture, "ddd MMM d HH:mm:ss yyyy"), Environment.NewLine);
+    var bytes = Encoding.ASCII.GetBytes (marker);
+    
+    // Write the mbox marker bytes.
+    mbox.Write (bytes, 0, bytes.Length);
+    
+    // Write the message, making sure to escape any line that looks like an mbox From-marker.
+    using (var filtered = new FilteredStream (stream)) {
+        filtered.Add (new MboxFromMarker ());
+        message.WriteTo (filtered);
+        filtered.Flush ();
+    }
+    
+    mbox.Flush ();
+}
+```
+
+If the "Sent Mail" folder exists on an IMAP server, you would need to do something more like this:
+
+```csharp
+using (var client = new ImapClient ()) {
+    client.Connect ("imap.server.com", 993, SecureSocketOptions.SslOnConnect);
+    client.Authenticate ("username", "password");
+    
+    IMailFolder sentMail;
+    
+    if (client.Capabilities.HasFlag (ImapCapabilities.SpecialUse)) {
+        sentMail = client.GetFolder (SpecialFolder.Sent);
+    } else {
+        var personal = client.GetFolder (client.PersonalNamespaces[0]);
+        
+        // Note: This assumes that the "Sent Mail" folder lives at the root of the folder hierarchy
+        // and is named "Sent Mail" as opposed to "Sent" or "Sent Items" or any other variation.
+        sentMail = personal.GetSubfolder ("Sent Mail");
+    }
+    
+    sentMail.Append (message, MessageFlags.Seen);
+    
+    client.Disconnect (true);
+}
+```
 
 ### <a name="SpecifiedPickupDirectory">Q: How can I send email to a SpecifiedPickupDirectory?</a>
 

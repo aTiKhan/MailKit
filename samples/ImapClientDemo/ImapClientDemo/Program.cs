@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Net;
-using System.Linq;
 using System.Threading;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -14,12 +12,15 @@ namespace ImapClientDemo
 {
 	static class Program
 	{
-		public static readonly ImapClient Client = new ImapClient (new ProtocolLogger ("imap.txt"));
-		public static ICredentials Credentials;
-		public static MainWindow MainWindow;
+		public static ClientCommandPipeline<ImapClient> ImapCommandPipeline { get; private set; }
+		public static ClientConnection<ImapClient> ImapClientConnection { get; set; }
 
-		static TaskScheduler GuiTaskScheduler;
-		static Task CurrentTask = Task.FromResult (true);
+		public static LoginWindow LoginWindow { get; private set; }
+		public static MainWindow MainWindow { get; private set; }
+
+		public static SynchronizationContext GuiContext { get; private set; }
+		public static TaskScheduler GuiTaskScheduler { get; private set; }
+		public static Thread GuiThread { get; private set; }
 
 		/// <summary>
 		/// The main entry point for the application.
@@ -30,73 +31,86 @@ namespace ImapClientDemo
 			Application.EnableVisualStyles ();
 			Application.SetCompatibleTextRenderingDefault (false);
 
-			Client.Disconnected += OnClientDisconnected;
-
 			MainWindow = new MainWindow ();
-			
-			Application.Run (new LoginWindow ());
+			LoginWindow = new LoginWindow ();
+
+			// Note: SynchronizationContext.Current will be null *until* a Windows.Forms control is instantiated.
+			GuiContext = SynchronizationContext.Current;
+			GuiTaskScheduler = new CustomTaskScheduler (GuiContext);
+			GuiThread = Thread.CurrentThread;
+
+			ImapCommandPipeline = new ClientCommandPipeline<ImapClient> ("IMAP Command Pipeline");
+			ImapCommandPipeline.CommandFailed += OnCommandFailed;
+			ImapCommandPipeline.ConnectionFailed += OnConnectionFailed;
+			ImapCommandPipeline.AuthenticationFailed += OnAuthenticationFailed;
+			ImapCommandPipeline.Start ();
+
+			var client = new ImapClient (new ProtocolLogger ("imap.log"));
+			var credentials = new NetworkCredential (string.Empty, string.Empty);
+
+			ImapClientConnection = new ClientConnection<ImapClient> (client, "imap.gmail.com", 993, SecureSocketOptions.SslOnConnect, credentials);
+
+			Application.Run (LoginWindow);
 		}
 
-		class AsyncTaskProxy
+		static void OnConnectionFailed (object state)
 		{
-			readonly Func<Task> action;
+			var e = (ConnectionFailedEventArgs<ImapClient>) state;
 
-			public AsyncTaskProxy (Func<Task> action)
-			{
-				this.action = action;
+			MessageBox.Show (MainWindow, e.Exception.Message, $"Failed to connect to {e.Connection.Host}:{e.Connection.Port}");
+			LoginWindow.Visible = true;
+			MainWindow.Visible = false;
+		}
+
+		static void OnConnectionFailed (object sender, ConnectionFailedEventArgs<ImapClient> e)
+		{
+			// This event is raised by the ImapClient and will be running in the IMAP Command Pipeline thread. Defer this back to the GUI thread.
+			GuiContext.Send (OnConnectionFailed, e);
+		}
+
+		static void OnAuthenticationFailed (object state)
+		{
+			var e = (AuthenticationFailedEventArgs<ImapClient>) state;
+			string text;
+
+			if (e.Connection.Credentials.UserName.EndsWith ("@gmail.com", StringComparison.OrdinalIgnoreCase)) {
+				text = "You probably need to go into your GMail settings to enable \"less secure apps\" in order " +
+					"to get this demo to work.\n\nFor a real Mail application, you'll want to add support for " +
+					"obtaining the user's OAuth2 credentials to prevent the need for user's to enable this, but " +
+					"that is beyond the scope of this demo.";
+			} else {
+				text = e.Exception.Message;
 			}
 
-			public async Task Run (Task task)
-			{
-				await task;
-				await action ();
-			}
+			MessageBox.Show (MainWindow, text, $"Failed to authenticate {e.Connection.Credentials.UserName}");
+			LoginWindow.Visible = true;
+			MainWindow.Visible = false;
 		}
 
-		public static void Queue (Func<Task> action)
+		static void OnAuthenticationFailed (object sender, AuthenticationFailedEventArgs<ImapClient> e)
 		{
-			var proxy = new AsyncTaskProxy (action);
-
-			Queue (proxy.Run);
+			// This event is raised by the ImapClient and will be running in the IMAP Command Pipeline thread. Defer this back to the GUI thread.
+			GuiContext.Send (OnAuthenticationFailed, e);
 		}
 
-		public static void Queue (Func<Task, Task> action)
+		static void OnCommandFailed (object state)
 		{
-			if (GuiTaskScheduler == null)
-				GuiTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext ();
+			var e = (CommandFailedEventArgs) state;
 
-			CurrentTask = CurrentTask.ContinueWith (action, GuiTaskScheduler);
+			MessageBox.Show (MainWindow, e.Exception.Message, "Failed to send command.");
 		}
 
-		public static void Queue (Func<Task, object, Task> action, object state)
+		static void OnCommandFailed (object sender, CommandFailedEventArgs e)
 		{
-			if (GuiTaskScheduler == null)
-				GuiTaskScheduler = TaskScheduler.FromCurrentSynchronizationContext ();
-
-			CurrentTask = CurrentTask.ContinueWith (action, state, GuiTaskScheduler);
+			// This event is raised by the ImapClient and will be running in the IMAP Command Pipeline thread. Defer this back to the GUI thread.
+			GuiContext.Send (OnCommandFailed, e);
 		}
 
-		static async void OnClientDisconnected (object sender, DisconnectedEventArgs e)
+		delegate void InvokeOnMainThreadDelegate ();
+
+		public static void RunOnMainThread (Control control, Action action)
 		{
-			if (e.IsRequested)
-				return;
-
-			await ReconnectAsync (e.Host, e.Port, e.Options);
-		}
-
-		public static async Task ReconnectAsync (string host, int port, SecureSocketOptions options)
-		{
-			// Note: for demo purposes, we're ignoring SSL validation errors (don't do this in production code)
-			Client.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
-
-			await Client.ConnectAsync (host, port, options);
-
-			await Client.AuthenticateAsync (Credentials);
-
-			if (Client.Capabilities.HasFlag (ImapCapabilities.UTF8Accept))
-				await Client.EnableUTF8Async ();
-
-			CurrentTask = Task.FromResult (true);
+			control.Invoke (new InvokeOnMainThreadDelegate (action));
 		}
 	}
 }

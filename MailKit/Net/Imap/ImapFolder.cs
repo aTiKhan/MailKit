@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,7 @@ namespace MailKit.Net.Imap {
 	public partial class ImapFolder : MailFolder, IImapFolder
 	{
 		bool supportsModSeq;
+		bool countChanged;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.Net.Imap.ImapFolder"/> class.
@@ -1060,6 +1061,9 @@ namespace MailKit.Net.Imap {
 			if (parent == null)
 				throw new ArgumentNullException (nameof (parent));
 
+			if (parent == this)
+				throw new ArgumentException ("Cannot rename a folder using itself as the new parent folder.", nameof (parent));
+
 			if (!(parent is ImapFolder) || ((ImapFolder) parent).Engine != Engine)
 				throw new ArgumentException ("The parent folder does not belong to this ImapClient.", nameof (parent));
 
@@ -1945,7 +1949,7 @@ namespace MailKit.Net.Imap {
 		/// of getting the desired information should be used.</para>
 		/// <para>For example, a common use for the <see cref="Status(StatusItems,System.Threading.CancellationToken)"/>
 		/// method is to get the number of unread messages in the folder. When the folder is open, however, it is
-		/// possible to use the <see cref="ImapFolder.Search(MailKit.Search.SearchQuery, System.Threading.CancellationToken)"/>
+		/// possible to use the <see cref="MailFolder.Search(MailKit.Search.SearchQuery, System.Threading.CancellationToken)"/>
 		/// method to query for the list of unread messages.</para>
 		/// <para>For more information about the <c>STATUS</c> command, see
 		/// <a href="https://tools.ietf.org/html/rfc3501#section-6.3.10">rfc3501</a>.</para>
@@ -1994,7 +1998,7 @@ namespace MailKit.Net.Imap {
 		/// of getting the desired information should be used.</para>
 		/// <para>For example, a common use for the <see cref="Status(StatusItems,System.Threading.CancellationToken)"/>
 		/// method is to get the number of unread messages in the folder. When the folder is open, however, it is
-		/// possible to use the <see cref="ImapFolder.Search(MailKit.Search.SearchQuery, System.Threading.CancellationToken)"/>
+		/// possible to use the <see cref="MailFolder.Search(MailKit.Search.SearchQuery, System.Threading.CancellationToken)"/>
 		/// method to query for the list of unread messages.</para>
 		/// <para>For more information about the <c>STATUS</c> command, see
 		/// <a href="https://tools.ietf.org/html/rfc3501#section-6.3.10">rfc3501</a>.</para>
@@ -3313,15 +3317,12 @@ namespace MailKit.Net.Imap {
 
 				limit = ImapEngine.ParseNumber (token, false, format, token);
 
-				switch (resource.ToUpperInvariant ()) {
-				case "MESSAGE":
+				if (resource.Equals ("MESSAGE", StringComparison.OrdinalIgnoreCase)) {
 					quota.CurrentMessageCount = used;
 					quota.MessageLimit = limit;
-					break;
-				case "STORAGE":
+				} else if (resource.Equals ("STORAGE", StringComparison.OrdinalIgnoreCase)) {
 					quota.CurrentStorageSize = used;
 					quota.StorageLimit = limit;
-					break;
 				}
 
 				token = await engine.PeekTokenAsync (doAsync, ic.CancellationToken).ConfigureAwait (false);
@@ -3701,11 +3702,11 @@ namespace MailKit.Net.Imap {
 			if ((Engine.Capabilities & ImapCapabilities.UidPlus) == 0) {
 				// get the list of messages marked for deletion that should not be expunged
 				var query = SearchQuery.Deleted.And (SearchQuery.Not (SearchQuery.Uids (uids)));
-				var unmark = await SearchAsync (query, doAsync, false, cancellationToken).ConfigureAwait (false);
+				var unmark = await SearchAsync (SearchOptions.None, query, doAsync, false, cancellationToken).ConfigureAwait (false);
 
 				if (unmark.Count > 0) {
 					// clear the \Deleted flag on all messages except the ones that are to be expunged
-					await StoreAsync (unmark, RemoveDeletedFlag, doAsync, cancellationToken).ConfigureAwait (false);
+					await StoreAsync (unmark.UniqueIds, RemoveDeletedFlag, doAsync, cancellationToken).ConfigureAwait (false);
 				}
 
 				// expunge the folder
@@ -3713,7 +3714,7 @@ namespace MailKit.Net.Imap {
 
 				if (unmark.Count > 0) {
 					// restore the \Deleted flags
-					await StoreAsync (unmark, AddDeletedFlag, doAsync, cancellationToken).ConfigureAwait (false);
+					await StoreAsync (unmark.UniqueIds, AddDeletedFlag, doAsync, cancellationToken).ConfigureAwait (false);
 				}
 
 				return;
@@ -4125,13 +4126,8 @@ namespace MailKit.Net.Imap {
 			if (format.International && !Engine.UTF8Enabled)
 				throw new InvalidOperationException ("The UTF8 extension has not been enabled.");
 
-			if (requests.Count == 0) {
-#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
+			if (requests.Count == 0)
 				return Array.Empty<UniqueId> ();
-#else
-				return new UniqueId[0];
-#endif
-			}
 
 			if ((Engine.Capabilities & ImapCapabilities.MultiAppend) != 0) {
 				var ic = QueueMultiAppend (format, requests, cancellationToken);
@@ -4148,11 +4144,7 @@ namespace MailKit.Net.Imap {
 				if (append != null)
 					return append.UidSet;
 
-#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
 				return Array.Empty<UniqueId> ();
-#else
-				return new UniqueId[0];
-#endif
 			}
 
 			// FIXME: use an aggregate progress reporter
@@ -4166,13 +4158,8 @@ namespace MailKit.Net.Imap {
 					uids = null;
 			}
 
-			if (uids == null) {
-#if NET46_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD
+			if (uids == null)
 				return Array.Empty<UniqueId> ();
-#else
-				return new UniqueId[0];
-#endif
-			}
 
 			return uids;
 		}
@@ -5430,6 +5417,7 @@ namespace MailKit.Net.Imap {
 
 		internal void OnExists (int count)
 		{
+			countChanged = false;
 			Count = count;
 
 			OnCountChanged ();
@@ -5437,15 +5425,27 @@ namespace MailKit.Net.Imap {
 
 		internal void OnExpunge (int index)
 		{
+			// Note: It is not required for the IMAP server to send an explicit untagged `* # EXISTS` response if it sends
+			// untagged `* # EXPUNGE` responses, so we queue a CountChanged event (that is only emitted if the server does
+			// NOT send the `* # EXISTS` response).
+			countChanged = true;
+			Count--;
+
 			OnMessageExpunged (new MessageEventArgs (index));
 		}
 
-		internal async Task OnFetchAsync (ImapEngine engine, int index, bool doAsync, CancellationToken cancellationToken)
+		internal void FlushQueuedEvents ()
 		{
-			var message = new MessageSummary (this, index);
-			UniqueId? uid = null;
+			if (countChanged) {
+				countChanged = false;
+				OnCountChanged ();
+			}
+		}
 
-			await FetchSummaryItemsAsync (engine, message, doAsync, cancellationToken).ConfigureAwait (false);
+		void OnFetchAsyncCompleted (MessageSummary message)
+		{
+			int index = message.Index;
+			UniqueId? uid = null;
 
 			if ((message.Fields & MessageSummaryItems.UniqueId) != 0)
 				uid = message.UniqueId;
@@ -5483,6 +5483,18 @@ namespace MailKit.Net.Imap {
 
 			if (message.Fields != MessageSummaryItems.None)
 				OnMessageSummaryFetched (message);
+		}
+
+		internal Task OnFetchAsync (ImapEngine engine, int index, bool doAsync, CancellationToken cancellationToken)
+		{
+			var message = new MessageSummary (this, index);
+
+			if (doAsync)
+				return FetchSummaryItemsAsync (engine, message, OnFetchAsyncCompleted, cancellationToken);
+
+			FetchSummaryItems (engine, message, OnFetchAsyncCompleted, cancellationToken);
+
+			return Task.CompletedTask;
 		}
 
 		internal void OnRecent (int count)

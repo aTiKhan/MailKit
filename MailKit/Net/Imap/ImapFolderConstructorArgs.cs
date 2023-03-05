@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,9 @@ namespace MailKit.Net.Imap {
 	/// Constructor arguments for <see cref="ImapFolder"/>.
 	/// </summary>
 	/// <remarks>
-	/// Constructor arguments for <see cref="ImapFolder"/>.
+	/// <para>Constructor arguments for <see cref="ImapFolder"/>.</para>
+	/// <para>The <see cref="ImapFolderConstructorArgs"/> are meant only to allow subclassing of <see cref="ImapFolder"/>
+	/// by overriding the <see cref="ImapClient.CreateImapFolder(ImapFolderConstructorArgs)"/> method.</para>
 	/// </remarks>
 	public sealed class ImapFolderConstructorArgs
 	{
@@ -105,9 +107,12 @@ namespace MailKit.Net.Imap {
 
 		static string GetBaseName (string fullName, char delim)
 		{
-			var names = fullName.Split (new [] { delim }, StringSplitOptions.RemoveEmptyEntries);
+			int index;
 
-			return names.Length > 0 ? names[names.Length - 1] : fullName;
+			if ((index = fullName.LastIndexOf (delim)) != -1)
+				return fullName.Substring (index + 1);
+
+			return fullName;
 		}
 	}
 }

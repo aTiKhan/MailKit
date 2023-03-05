@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ namespace UnitTests.Security.Ntlm {
 
 			Assert.AreEqual (1, type1.Type, "Type");
 			Assert.AreEqual ((NtlmFlags) 0xb207, type1.Flags, "Flags");
-			Assert.AreEqual ("4E-54-4C-4D-53-53-50-00-01-00-00-00-07-B2-00-00-0A-00-0A-00-29-00-00-00-09-00-09-00-20-00-00-00-4C-49-47-48-54-43-49-54-59-55-52-53-41-2D-4D-49-4E-4F-52", BitConverter.ToString (type1.Encode ()), "Encode");
+			Assert.AreEqual ("TlRMTVNTUAABAAAAB7IAAAoACgAxAAAACQAJACgAAAAAAAAAAAAAAExJR0hUQ0lUWVVSU0EtTUlOT1I=", Convert.ToBase64String (type1.Encode ()), "Encode");
 		}
 
 		[Test]

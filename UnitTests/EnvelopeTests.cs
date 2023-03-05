@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
 //
 
 using System;
+using System.Linq;
 
 using NUnit.Framework;
 
@@ -82,12 +83,15 @@ namespace UnitTests
 			original.InReplyTo = "<xyz@mimekit.org>";
 			original.MessageId = "<xyz123@mimekit.org>";
 			original.ReplyTo.Add (new MailboxAddress ("Reply-To", "unit-tests@mimekit.org"));
-			original.Sender.Add (new MailboxAddress ("The Real Sender", "unit-tests@mimekit.org"));
+			original.Sender.Add (new MailboxAddress ("The Real Sender", string.Empty));
 			original.Subject = "This is the subject";
 			var text = original.ToString ();
 			Envelope envelope;
 
 			Assert.IsTrue (Envelope.TryParse (text, out envelope));
+			Assert.AreEqual (string.Empty, envelope.Sender.Mailboxes.First ().LocalPart);
+			Assert.AreEqual ("fejj", envelope.From.Mailboxes.First ().LocalPart);
+			Assert.AreEqual ("notzed", envelope.To.Mailboxes.First ().LocalPart);
 			var text2 = envelope.ToString ();
 
 			Assert.AreEqual (text, text2);

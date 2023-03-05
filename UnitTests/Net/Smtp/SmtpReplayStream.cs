@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,15 +34,36 @@ using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace UnitTests.Net.Smtp {
+	public enum SmtpResponseMode
+	{
+		Blit,
+		Char,
+		Line
+	}
+
 	class SmtpReplayCommand
 	{
 		public string Command { get; private set; }
 		public string Resource { get; private set; }
+		public SmtpReplayState NextState { get; private set; }
+		public SmtpResponseMode ResponseMode { get; set; }
 
 		public SmtpReplayCommand (string command, string resource)
 		{
 			Command = command;
 			Resource = resource;
+
+			if (command == "DATA\r\n" || command.EndsWith ("\r\nDATA\r\n", StringComparison.Ordinal))
+				NextState = SmtpReplayState.WaitForEndOfData;
+			else
+				NextState = SmtpReplayState.WaitForCommand;
+		}
+
+		public SmtpReplayCommand (string command, string resource, SmtpReplayState nextState = SmtpReplayState.WaitForCommand)
+		{
+			Command = command;
+			Resource = resource;
+			NextState = nextState;
 		}
 	}
 
@@ -58,18 +79,20 @@ namespace UnitTests.Net.Smtp {
 		readonly IList<SmtpReplayCommand> commands;
 		int timeout = 100000;
 		SmtpReplayState state;
+		SmtpResponseMode mode;
 		Stream stream;
 		bool disposed;
 		bool asyncIO;
 		bool isAsync;
 		int index;
 
-		public SmtpReplayStream (IList<SmtpReplayCommand> commands, bool asyncIO)
+		public SmtpReplayStream (IList<SmtpReplayCommand> commands, bool asyncIO, SmtpResponseMode mode = SmtpResponseMode.Blit)
 		{
 			stream = GetResourceStream (commands[0].Resource);
 			state = SmtpReplayState.SendResponse;
 			this.commands = commands;
 			this.asyncIO = asyncIO;
+			this.mode = mode;
 		}
 
 		void CheckDisposed ()
@@ -128,10 +151,29 @@ namespace UnitTests.Net.Smtp {
 			Assert.AreEqual (SmtpReplayState.SendResponse, state, "Trying to read when no command given.");
 			Assert.IsNotNull (stream, "Trying to read when no data available.");
 
-			int nread = stream.Read (buffer, offset, count);
+			int nread = 0;
+
+			switch (mode) {
+			case SmtpResponseMode.Blit:
+				nread = stream.Read (buffer, offset, count);
+				break;
+			case SmtpResponseMode.Char:
+				nread = stream.Read (buffer, offset, 1);
+				break;
+			case SmtpResponseMode.Line:
+				while (nread < count && stream.Read (buffer, offset, 1) > 0) {
+					nread++;
+
+					if (buffer[offset] == (byte) '\n')
+						break;
+
+					offset++;
+				}
+				break;
+			}
 
 			if (stream.Position == stream.Length) {
-				state = commands[index].Command == "DATA\r\n" ? SmtpReplayState.WaitForEndOfData : SmtpReplayState.WaitForCommand;
+				state = commands[index].NextState;
 				stream.Dispose ();
 				stream = null;
 				index++;
@@ -200,6 +242,14 @@ namespace UnitTests.Net.Smtp {
 						state = SmtpReplayState.SendResponse;
 						sent.SetLength (0);
 					}
+				} else if (sent.Length == 3) {
+					var command = Encoding.ASCII.GetString (sent.GetBuffer (), 0, (int) sent.Length);
+
+					if (command == ".\r\n") {
+						stream = GetResourceStream (commands[index].Resource);
+						state = SmtpReplayState.SendResponse;
+						sent.SetLength (0);
+					}
 				}
 			}
 		}
@@ -251,4 +301,3 @@ namespace UnitTests.Net.Smtp {
 		}
 	}
 }
-	

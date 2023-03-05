@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -94,6 +94,35 @@ namespace MailKit
 		public override string ToString ()
 		{
 			return ToString (TextEncodings.UTF8, TextEncodings.Latin1);
+		}
+
+		public bool Equals (string value, bool ignoreCase = false)
+		{
+			if (length == value.Length) {
+				if (ignoreCase) {
+					for (int i = 0; i < length; i++) {
+						uint a = (uint) buffer[i];
+						uint b = (uint) value[i];
+
+						if ((a - 'a') <= 'z' - 'a')
+							a -= 0x20;
+						if ((b - 'a') <= 'z' - 'a')
+							b -= 0x20;
+
+						if (a != b)
+							return false;
+					}
+				} else {
+					for (int i = 0; i < length; i++) {
+						if (value[i] != (char) buffer[i])
+							return false;
+					}
+				}
+
+				return true;
+			}
+
+			return false;
 		}
 
 		public void TrimNewLine ()

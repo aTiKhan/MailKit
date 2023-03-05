@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,7 @@ namespace MailKit {
 	/// </remarks>
 	public class MessageSummary : IMessageSummary
 	{
+		IReadOnlySetOfStrings keywords;
 		int threadableReplyDepth = -1;
 		string normalizedSubject;
 
@@ -68,7 +69,6 @@ namespace MailKit {
 			if (index < 0)
 				throw new ArgumentOutOfRangeException (nameof (index));
 
-			Keywords = new HashSet<string> (StringComparer.Ordinal);
 			Index = index;
 		}
 
@@ -492,7 +492,15 @@ namespace MailKit {
 		/// </remarks>
 		/// <value>The user-defined message flags.</value>
 		public IReadOnlySetOfStrings Keywords {
-			get; set;
+			get {
+				if (keywords == null)
+					keywords = new HashSet<string> (StringComparer.Ordinal);
+
+				return keywords;
+			}
+			set {
+				keywords = value;
+			}
 		}
 
 		/// <summary>

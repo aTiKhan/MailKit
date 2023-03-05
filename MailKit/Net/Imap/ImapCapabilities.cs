@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -335,6 +335,11 @@ namespace MailKit.Net.Imap {
 		/// The server supports the <a href="https://tools.ietf.org/html/rfc8514">SAVEDATE</a> extension.
 		/// </summary>
 		SaveDate         = 1L << 57,
+
+		/// <summary>
+		/// The server supports the <a href="https://tools.ietf.org/html/rfc8970">PREVIEW</a> extension.
+		/// </summary>
+		Preview          = 1L << 58,
 
 		#region GMail Extensions
 

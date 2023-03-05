@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -57,10 +57,6 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// <para>Used by the various clients when authenticating via SASL to determine
 		/// which order the SASL mechanisms supported by the server should be tried.</para>
-		/// <note type="note">Even though NTLM is more secure than PLAIN or LOGIN (and
-		/// probably others), it is tried last only because it is less reliable due to
-		/// missing functionality to make it 100% compatible with all NTLM server
-		/// implementations.</note>
 		/// </remarks>
 		static readonly string[] RankedAuthenticationMechanisms;
 		static readonly bool md5supported;
@@ -95,7 +91,7 @@ namespace MailKit.Security {
 		/// Rank authentication mechanisms in order of security.
 		/// </summary>
 		/// <remarks>
-		/// <para>Ranks authentication machisms in order of security.</para>
+		/// <para>Ranks authentication mechanisms in order of security.</para>
 		/// </remarks>
 		/// <param name="authenticationMechanisms">The authentication mechanisms supported by the server.</param>
 		/// <returns>The supported authentication mechanisms in ranked order.</returns>

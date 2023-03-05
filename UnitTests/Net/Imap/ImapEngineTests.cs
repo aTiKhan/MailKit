@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -310,6 +310,18 @@ namespace UnitTests.Net.Imap {
 		public void TestExchangeImapDetection ()
 		{
 			TestGreetingDetection ("exchange", "greeting.txt", ImapQuirksMode.Exchange);
+		}
+
+		[Test]
+		public void TestExchange2003ImapDetection ()
+		{
+			TestGreetingDetection ("exchange", "greeting-2003.txt", ImapQuirksMode.Exchange2003);
+		}
+
+		[Test]
+		public void TestExchange2007ImapDetection ()
+		{
+			TestGreetingDetection ("exchange", "greeting-2007.txt", ImapQuirksMode.Exchange2007);
 		}
 
 		[Test]

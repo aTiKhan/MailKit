@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2022 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -434,93 +434,84 @@ namespace MailKit {
 			case "imap.gmail.com":
 				switch (issuer) {
 				case GMailCertificateIssuer:
-					return (serial == "00EC67725FAF05E6FD0A0000000125FF83" && fingerprint == "FF388B1BC174CBC3069B8709AB0CD93AF8077E94") // Expires 2/20/2022 10:08:30 PM
-						|| (serial == "046BC24DECDA5A6B0A0000000127DC6E" && fingerprint == "084398CE28512023437CC8B417230F82B39CACDA") // Expires 3/2/2022 5:19:16 PM
-						|| (serial == "6A3FFF463AE7156B0A000000012B7FF0" && fingerprint == "8E7E263CC155C62F07F7B5EEFBF1534EDDE18890") // Expires 3/21/2022 3:44:38 AM
-						|| (serial == "65FA03B5A71A05070A000000012E04F6" && fingerprint == "8C815F664E8EBE957A91AEA2612386E2184E6D68") // Expires 4/3/2022 11:07:09 PM
-						|| (serial == "68D51349AC1318C30A000000012F9258" && fingerprint == "26C56B1B8BAF1DD0CD79B121E91C83F41C35F66B") // Expires 4/10/2022 11:06:02 PM
-						|| (serial == "00820A16614E8DFB400A0000000133FA85" && fingerprint == "3D66900B34DA07C9A59D5A0003FAC2A49A87165F"); // Expires 5/1/2022 11:05:35 PM
+					return (serial == "34B84EF11142CF4512D41976BF659B41" && fingerprint == "ABF1B02CBF92482FE1640E8EAD4C9CE0C8BD8573") // Expires 4/3/2023 4:18:36 AM
+						|| (serial == "458817FC181DDE2E1288AD51CE2798BF" && fingerprint == "EF88E9EDB9B15EBD8498D037EAD8CF15F11A7492"); // Expires 5/3/2023 12:35:52 AM
 				default:
 					return false;
 				}
 			case "pop.gmail.com":
 				switch (issuer) {
 				case GMailCertificateIssuer:
-					return (serial == "309330098BF137760A0000000125FF88" && fingerprint == "30E95BB5541E924141CAEAB01B48FF20B308ED3C") // Expires 2/20/2022 10:08:45 PM
-						|| (serial == "053FC7A9BF15DCD90A0000000127DC72" && fingerprint == "DD6D24F2EC8DDB330C092C4E09340B3803B08062") // Expires 3/2/2022 5:19:31 PM
-						|| (serial == "5280627D1577C4340A000000012B7FF3" && fingerprint == "043B07F8568296BF0732922EA2F2B1D5225799B5") // Expires 3/21/2022 3:44:52 AM
-						|| (serial == "77A348EE15EE031C0A000000012E04F9" && fingerprint == "A4828167600A6741CE76C3A51247BE3D7ACB07F5") // Expires 4/3/2022 11:07:23 PM
-						|| (serial == "7B9C3FD9595DB8FE0A000000012F9265" && fingerprint == "D6767B51E288B4521BA148C057D6872D74ABCCC6") // Expires 4/10/2022 11:06:17 PM
-						|| (serial == "690FA8ABF8944DE70A0000000133FA87" && fingerprint == "3B5911EB64E63E7038D105696E0CACABCABA3CE4"); // Expires 5/1/2022 11:05:50 PM
+					return (serial == "064F13D6F20B4C140AA426791CCA36CB" && fingerprint == "4C3B78DD1078069E257E717513BF3E246DDA45E0") // Expires 4/3/2023 4:18:36 AM
+						|| (serial == "00946E3F84703BE4690A12491232CD7DF9" && fingerprint == "5C1376C19F1A6FB6DAAE4393D2919134573CADDE"); // Expires 5/3/2023 12:35:52 AM
 				default:
 					return false;
 				}
 			case "smtp.gmail.com":
 				switch (issuer) {
 				case GMailCertificateIssuer:
-					return (serial == "00F3402FC1B5A7247E0A0000000125FFA2" && fingerprint == "2B4D501A49992D659F9FFBA5D18D09E431BA9CEB") // Expires 2/20/2022 10:10:08 PM
-						|| (serial == "00FDAE95407FD0D7510A0000000127DC80" && fingerprint == "C350243812AB4D6EDCBB59ED90B3139EB96957F8") // Expires 3/2/2022 5:20:56 PM
-						|| (serial == "0FC2B2627A5FF8FC0A000000012B7FFE" && fingerprint == "1A22D54BAFDC0916547CB0D80F39EA88954C8F5B") // Expires 3/21/2022 3:46:10 AM
-						|| (serial == "0096F217C660D6FD590A000000012E0519" && fingerprint == "9574A613E25D39BD585FFC7DBA8248A484135519") // Expires 4/3/2022 11:08:45 PM
-						|| (serial == "6AA71CAC662B12330A000000012F927C" && fingerprint == "71F149282CF0497750FDE4FA9B0593ADFC5BFA6A") // Expires 4/10/2022 11:07:35 PM
-						|| (serial == "00B8395DF841DD3C131200000000006058" && fingerprint == "621652D48C9F3E0FBB173A6BFEF20A8FAC5B689C"); // Expires 5/1/2022 11:07:04 PM
+					return (serial == "00A7342694B906B4FE0A3683770F0FE5A7" && fingerprint == "23D7F12451BE47686D2A2C2837A88E1A5341F970") // Expires 4/3/2023 4:18:38 AM
+						|| (serial == "00F84964E523B1ADD80A85F5DBDFB8118A" && fingerprint == "7923264A11C9BB7C8F477A2E71FEC8449E56B192"); // Expires 5/3/2023 12:35:53 AM
 				default:
 					return false;
 				}
 			case "outlook.com":
 				switch (issuer) {
 				case OutlookCertificateIssuer:
-					return (serial == "0CE67C905DDE83B20E77606A636AB967" && fingerprint == "E295CCF7F125F70907C2E7F97EF0F5E7D5704DE6") // Expires 10/23/2022 7:59:59 PM
-						|| (serial == "010CB801C9719EE668C7A803EFD5D8C4" && fingerprint == "5223FB99040188673B9847FAF8EAC3531F0FE55B") // Expires 12/12/2022 6:59:59 PM
-						|| (serial == "08349B4851225195DE03A3515F5600BE" && fingerprint == "02D13AF3D6DF147C2573AE8793AB8FBE8461E4CD") // Expires 12/12/2022 6:59:59 PM
-						|| (serial == "0B9E5C99FC34EBBF53EECD242509420C" && fingerprint == "C013CFEFD55B3D38101DAB624C89A0E046A8A587") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "05B20A80B48B137AE71783B5062FD2FE" && fingerprint == "0EEF7509B944504CB3C3ED3ECC05EF1008779665") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "04A1C21185146636B7235D842A1483BB" && fingerprint == "0A26630D07A9E624D186C8BFBDA39C79630A96FD") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "0371908B3F8B83FD09B448C237C26ECE" && fingerprint == "A1708642F2ECAE9BA98A005D9F0E675AF928232F") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "0E30AAEA6BD2C037B5F54561807FFC72" && fingerprint == "595F0036867A6227DDEE915F0AE761CD2EE65C65") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "07AD8D0BAE29B5A21814958B948122BE" && fingerprint == "C5CAA1AA341D4F3509DAC633D3B80AC927F72842") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "05BE55DA2BB1CAC2C35677AEB3BE7FD4" && fingerprint == "416CD89591D050FFD2520F35358FA642CA2E1B81") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "04AD62A5375D5D3B3D4B7E45D8F936F8" && fingerprint == "48F453D1C94B85D87DB151064AC40AC8473BF7F6") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "052EAC2D0BB68BA1A27E236FF6A48EDE" && fingerprint == "1F84128281B98D0A7AD21C17A9E7CFE150AE24E1") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "05CF601FAD764AE86FD1CC173DBE358B" && fingerprint == "33CBCB82CA0697FAEB87DBE6766E22E8B0729D5E") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "0CF35BFC2811106763FF7B797DCF1BFF" && fingerprint == "47CB819B4CC48DB9E63F09B25EDE1A20B834A151") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "017AD2ED2E361E76CEC93AB14218851D" && fingerprint == "B22A5C780B64C7A6915493760FDEE2D9709E79F1") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "06565F9B6A832F1BC8809F4E577292E7" && fingerprint == "4E39B4134B8C77577D803D7640E8882205001C58") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "0E595DF437B3F531517F7C62AFEA850D" && fingerprint == "B822391039E81E5FE07CC7479E73A18BEB2FFB5F") // Expires 12/22/2022 6:59:59 PM
-						|| (serial == "09248624EDC9886EBC1013A9C06E13FE" && fingerprint == "8A92F2C7BFA8B78E453D00E65EAA5F7C0D89FDEA") // Expires 12/22/2022 11:59:59 PM
-						|| (serial == "0F71C8C0B67D41BC5A0CE715334711E3" && fingerprint == "405D32901FC1E18E6BCE2B4C53A6788DE9702598") // Expires 12/23/2022 6:59:59 PM
-						|| (serial == "08D3CAD9D9C04D44DC4795B0F94ABF48" && fingerprint == "F2E96865A36C2EDA003F021907F32539C1C9FD97") // Expires 12/23/2022 6:59:59 PM
-						|| (serial == "0E0F58AC112C1EEE5020441EF6E386E6" && fingerprint == "479F0B7F299EE8F0F5A37E5CFBEFE7F2DE16E173"); // Expires 12/23/2022 6:59:59 PM
+					return (serial == "058D13DD0B766164D1332309438DA5C2" && fingerprint == "63A17BB1A88D9E0FE87CAA41DD127612C93ECF3B") // Expires 6/24/2023 7:59:59 PM
+						|| (serial == "052F5D88215367212347874DD75D8A24" && fingerprint == "248E21138E0DEEF1D76686F12F5902D5E5957CF0") // Expires 6/24/2023 7:59:59 PM
+						|| (serial == "049EC157D421AB5B625E38BBE2FC90C0" && fingerprint == "195377147AEF853E9392B2E7CB056FC599B2BEC4") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "01D8732030D7FA91FF94392A06F057CF" && fingerprint == "9BAFBCA6838946CA189768BBE303941B17D5818E") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "03F1AE2A1C154C39C9373A42E8B14CA2" && fingerprint == "C8744E1679C1CE58FD0F4EF10E748D2DB1C1F30B") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "02640148E5A13CE36D1A09E637E41ABC" && fingerprint == "217205C5BD38B2E632AB8EFEB2C7B286F4D4F397") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "07DF627C3C9C953E9915DE24F3898100" && fingerprint == "1D19BE39844B1AFC854909912108D5A3F723BCD3") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "0D9B74E09C6F8DE40A473E557A87D94E" && fingerprint == "637956D8854240B92984D5D3DDFD5661E431C4C4") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "03555E2E47B850A694E59C00123138BE" && fingerprint == "980BA36D0B33B6861846CAC3CD29394511E7ACFE") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "02E2C349F58A6479502C324AC259924F" && fingerprint == "F7517AC671F7A8242B23C246DBCD67384325FCF4") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "0F18B67AB4EC1669CBFB8CE3B92D07F4" && fingerprint == "7C61A74637F9439A0CA3772D5BFB15CF7D60D8CD") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "0F8A6D8018B1B52B9B47A30B62670927" && fingerprint == "D16F37CA5D53D33C1BE13CA7E671EE2E79BC83B0") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "017B9709112CAC9876E40720C2AA240B" && fingerprint == "6AF1C9D4526450464489C75FB0CB97638E5D770F") // Expires 7/5/2023 7:59:59 PM
+						|| (serial == "0F12DC8955821D6D936BCF34E50F60C5" && fingerprint == "F7DA87B0B58B2A2EEC386EC7A60AB14D5A60A499"); // Expires 7/25/2023 7:59:59 PM
 				default:
 					return false;
 				}
 			case "imap.mail.me.com":
-				return issuer == AppleCertificateIssuer && serial == "2EC9B6B93C77A53D15405C47A9FBC3CF" && fingerprint == "A047B6AE5E0FF51CC216C1237A44529B0A4DB0D2"; // Expires 10/2/2022 3:51:56 PM
+				switch (issuer) {
+				case AppleCertificateIssuer:
+					return (serial == "01EEFBE511144C6229EA73B5774B23C2" && fingerprint == "DD3BF38DA0BF95379A4F8A5B9D544B521D2F53BF"); // Expires 10/1/2023 3:45:16 PM
+				default:
+					return false;
+				}
 			case "smtp.mail.me.com":
-				return issuer == AppleCertificateIssuer && serial == "46A537AD83083BCCBDA20D1D8657F573" && fingerprint == "83AA1EF97EE9AC0EAD8B2C88C62C83F8EDBF2BDB"; // Expires 10/30/2022 4:11:38 PM
+				return issuer == AppleCertificateIssuer && serial == "7F054B4953BB5654D28CEA4F9B9E32FB" && fingerprint == "DE88A44BBA4C827CBAABCBBCAE3DE20E11E946A0"; // Expires 11/5/2023 5:36:43 PM
 			case "*.imap.mail.yahoo.com":
 				switch (issuer) {
 				case YahooCertificateIssuer:
-					return (serial == "07E7B4CB914FFC7FB3E03105C9DA0BE1" && fingerprint == "D7D39A265E914ADC8B443BF24DB684354D50B000") // Expires 3/16/2022 7:59:59 PM
-						|| (serial == "0C67CECFD49B2BA3430DBE354BAAFD6B" && fingerprint == "0976270BA2651AF827987F1A91741B1D7B48AB7A"); // Expires 8/10/2022 7:59:59 PM
+					return (serial == "0410646FFC828B3257DE825939C6E7ED" && fingerprint == "EDA2F6D31216851A0E6F456F9C1D239D44059744"); // Expires 5/31/2023 7:59:59 PM
 				default:
 					return false;
 				}
 			case "legacy.pop.mail.yahoo.com":
 				switch (issuer) {
 				case YahooCertificateIssuer:
-					return (serial == "03B1E9610E0E209A4EA8FC192EBF55D7" && fingerprint == "7C32F642167257B00E55A9C5DC3E35F1719193BD"); // Expires 5/18/2022 11:59:59 PM
+					return (serial == "0844D3A0F6F69200C2E63268DADC58EE" && fingerprint == "6D26CDE4E416E6B7EA65F58206E0332D57DE5F62") // Expires 3/8/2023 6:59:59 PM
+						|| (serial == "01D722E4DFC71F6742BF762893BC67D0" && fingerprint == "407CF8B5518E5FF5219B6931995C31EEA856C8FC"); // Expires 8/2/2023 7:59:59 PM
 				default:
 					return false;
 				}
 			case "smtp.mail.yahoo.com":
-				return issuer == YahooCertificateIssuer && serial == "096122E949C73D57587E904DE8EBE2BC" && fingerprint == "C38CA2874F6489686FAE148482325EC3D8763D81"; // Expires 4/13/2022 7:59:59 PM
+				switch (issuer) {
+				case YahooCertificateIssuer:
+					return (serial == "04C87D818C1CAD2E374FC789134103CE" && fingerprint == "96E18C7CC02A206D01315368C24569BD2322A4DA"); // Expires 6/28/2023 7:59:59 PM
+				default:
+					return false;
+				}
 			case "mout.gmx.com":
-				return issuer == GmxDotComCertificateIssuer && serial == "06206F2270494CD7AD11F2B17E286C2C" && fingerprint == "A7D3BCC363B307EC3BDE21269A2F05117D6614A8"; // Expires 7/12/2022 8:00:00 AM
+				return issuer == GmxDotComCertificateIssuer && serial == "088B6F79869EEAB6A8FDD08B38178BF8" && fingerprint == "A86573576669167ECBC196F031B60EED3815EBD9"; // Expires 6/4/2023 7:59:59 PM
 			case "mail.gmx.com":
-				return issuer == GmxDotComCertificateIssuer && serial == "0719A4D33A18B550133DDA3253AF6C96" && fingerprint == "948B0C3FA22BC12C91EEE5B1631A6C41B4A01B9C"; // Expires 7/12/2022 8:00:00 AM
+				return issuer == GmxDotComCertificateIssuer && serial == "0EDED5E9A1A4A38F6C948BC1AAAF3461" && fingerprint == "7BC2F2DE446AEF4B5BDFEC6B600ADCB08D7FCE3F"; // Expires 6/4/2023 7:59:59 PM
 			case "mail.gmx.net":
-				return issuer == GmxDotNetCertificateIssuer && serial == "070E7CD59BB7AFD73E8A206219C4F011" && fingerprint == "E66DC8FE17C9A7718D17441CBE347D1D6F7BF3D2"; // Expires 5/3/2022 7:59:59 PM
+				return issuer == GmxDotNetCertificateIssuer && serial == "2C4EDAA6BFC3F4853DE57BBA2B2D0354" && fingerprint == "96267DA3F4D9CF4710E9C775D45DE75991D798D4"; // Expires 4/9/2023 7:59:59 PM
 			default:
 				return false;
 			}
@@ -585,7 +576,8 @@ namespace MailKit {
 		{
 			return new SslClientAuthenticationOptions {
 				CertificateRevocationCheckMode = CheckCertificateRevocation ? X509RevocationMode.Online : X509RevocationMode.NoCheck,
-				ApplicationProtocols = new List<SslApplicationProtocol> { new SslApplicationProtocol (Protocol) },
+				// Note: Not all servers support Application Protocols, so this will break in some cases.
+				//ApplicationProtocols = new List<SslApplicationProtocol> { new SslApplicationProtocol (Protocol) },
 				RemoteCertificateValidationCallback = remoteCertificateValidationCallback,
 #if NET5_0_OR_GREATER
 				CipherSuitesPolicy = SslCipherSuitesPolicy,
@@ -597,20 +589,39 @@ namespace MailKit {
 		}
 #endif
 
-		internal async Task<Stream> ConnectNetwork (string host, int port, bool doAsync, CancellationToken cancellationToken)
+		internal Stream ConnectNetwork (string host, int port, CancellationToken cancellationToken)
 		{
 			if (ProxyClient != null) {
 				ProxyClient.LocalEndPoint = LocalEndPoint;
 
-				if (doAsync)
-					return await ProxyClient.ConnectAsync (host, port, Timeout, cancellationToken).ConfigureAwait (false);
-
 				return ProxyClient.Connect (host, port, Timeout, cancellationToken);
 			}
 
-			var socket = await SocketUtils.ConnectAsync (host, port, LocalEndPoint, Timeout, doAsync, cancellationToken).ConfigureAwait (false);
+			var socket = SocketUtils.Connect (host, port, LocalEndPoint, Timeout, cancellationToken);
 
 			return new NetworkStream (socket, true);
+		}
+
+		internal async Task<Stream> ConnectNetworkAsync (string host, int port, CancellationToken cancellationToken)
+		{
+			if (ProxyClient != null) {
+				ProxyClient.LocalEndPoint = LocalEndPoint;
+
+				return await ProxyClient.ConnectAsync (host, port, Timeout, cancellationToken).ConfigureAwait (false);
+			}
+
+			var socket = await SocketUtils.ConnectAsync (host, port, LocalEndPoint, Timeout, cancellationToken).ConfigureAwait (false);
+
+			return new NetworkStream (socket, true);
+		}
+
+		internal Task<Stream> ConnectNetwork (string host, int port, bool doAsync, CancellationToken cancellationToken)
+		{
+			if (doAsync)
+				return ConnectNetworkAsync (host, port, cancellationToken);
+
+			var stream = ConnectNetwork (host, port, cancellationToken);
+			return Task.FromResult (stream);
 		}
 
 		/// <summary>
@@ -865,6 +876,16 @@ namespace MailKit {
 		/// </exception>
 		public abstract Task ConnectAsync (Stream stream, string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default (CancellationToken));
 
+		static bool IsAny (string value, params string[] anyOf)
+		{
+			foreach (var item in anyOf) {
+				if (value.Equals (item, StringComparison.OrdinalIgnoreCase))
+					return true;
+			}
+
+			return false;
+		}
+
 		internal SecureSocketOptions GetSecureSocketOptions (Uri uri)
 		{
 			var query = uri.ParsedQuery ();
@@ -883,14 +904,13 @@ namespace MailKit {
 				throw new ArgumentException ("Unknown URI scheme.", nameof (uri));
 
 			if (query.TryGetValue ("starttls", out string value)) {
-				switch (value.ToLowerInvariant ()) {
-				default:
-					return SecureSocketOptions.StartTlsWhenAvailable;
-				case "always": case "true": case "yes":
+				if (IsAny (value, "always", "true", "yes"))
 					return SecureSocketOptions.StartTls;
-				case "never": case "false": case "no":
+
+				if (IsAny (value, "never", "false", "no"))
 					return SecureSocketOptions.None;
-				}
+
+				return SecureSocketOptions.StartTlsWhenAvailable;
 			}
 
 			return SecureSocketOptions.StartTlsWhenAvailable;
@@ -1119,10 +1139,11 @@ namespace MailKit {
 		/// Authenticate using the supplied credentials.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1165,10 +1186,11 @@ namespace MailKit {
 		/// Asynchronously authenticate using the supplied credentials.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Asynchronously authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1212,10 +1234,11 @@ namespace MailKit {
 		/// Authenticate using the supplied credentials.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1258,10 +1281,11 @@ namespace MailKit {
 		/// Asynchronously authenticate using the supplied credentials.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Asynchronously authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1305,10 +1329,11 @@ namespace MailKit {
 		/// Authenticate using the specified user name and password.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1368,10 +1393,11 @@ namespace MailKit {
 		/// Asynchronously authenticate using the specified user name and password.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Asynchronously authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1432,10 +1458,11 @@ namespace MailKit {
 		/// Authenticate using the specified user name and password.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Authenticates using the supplied credentials.</para>
+		///<para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
@@ -1484,10 +1511,11 @@ namespace MailKit {
 		/// Asynchronously authenticate using the specified user name and password.
 		/// </summary>
 		/// <remarks>
-		/// <para>If the server supports one or more SASL authentication mechanisms,
-		/// then the SASL mechanisms that both the client and server support are tried
-		/// in order of greatest security to weakest security. Once a SASL
-		/// authentication mechanism is found that both client and server support,
+		/// <para>Asynchronously authenticates using the supplied credentials.</para>
+		/// <para>If the server supports one or more SASL authentication mechanisms, then
+		/// the SASL mechanisms that both the client and server support (not including any
+		/// OAUTH mechanisms) are tried in order of greatest security to weakest security.
+		/// Once a SASL authentication mechanism is found that both client and server support,
 		/// the credentials are used to authenticate.</para>
 		/// <para>If the server does not support SASL or if no common SASL mechanisms
 		/// can be found, then the default login command is used as a fallback.</para>
