@@ -24,11 +24,8 @@
 // THE SOFTWARE.
 //
 
-using System;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-
-using NUnit.Framework;
 
 using MailKit;
 using MailKit.Security;
@@ -49,8 +46,8 @@ namespace UnitTests {
 			var issuer = certificate2.Issuer;
 			var expires = certificate2.NotAfter;
 
-			Assert.IsNotNull (certificate2, "Cast");
-			Assert.IsTrue (MailService.IsKnownMailServerCertificate (certificate2), $"IsKnownMailServerCertificate failed: {cn} (issuer == \"{issuer}\" && serial == \"{serial}\" && fingerprint == \"{fingerprint}\"); // Expires {expires}");
+			Assert.That (certificate2, Is.Not.Null, "Cast");
+			Assert.That (MailService.IsKnownMailServerCertificate (certificate2), Is.True, $"IsKnownMailServerCertificate failed: {cn} (issuer == \"{issuer}\" && serial == \"{serial}\" && fingerprint == \"{fingerprint}\"); // Expires {expires}");
 
 			return true;
 		}

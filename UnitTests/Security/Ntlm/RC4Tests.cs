@@ -24,10 +24,6 @@
 // THE SOFTWARE.
 //
 
-using System;
-
-using NUnit.Framework;
-
 using MailKit.Security.Ntlm;
 
 namespace UnitTests.Security.Ntlm {
@@ -40,14 +36,14 @@ namespace UnitTests.Security.Ntlm {
 			using (var rc4 = new RC4 ()) {
 				var buffer = new byte[16];
 
-				Assert.AreEqual (1, rc4.InputBlockSize, "InputBlockSize");
-				Assert.AreEqual (1, rc4.OutputBlockSize, "OutputBlockSize");
-				Assert.IsFalse (rc4.CanReuseTransform, "CanReuseTransform");
-				Assert.IsTrue (rc4.CanTransformMultipleBlocks, "CanTransformMultipleBlocks");
+				Assert.That (rc4.InputBlockSize, Is.EqualTo (1), "InputBlockSize");
+				Assert.That (rc4.OutputBlockSize, Is.EqualTo (1), "OutputBlockSize");
+				Assert.That (rc4.CanReuseTransform, Is.False, "CanReuseTransform");
+				Assert.That (rc4.CanTransformMultipleBlocks, Is.True, "CanTransformMultipleBlocks");
 
 				Assert.Throws<InvalidOperationException> (() => { var x = rc4.Key; });
 				Assert.Throws<ArgumentNullException> (() => { rc4.Key = null; });
-				Assert.Throws<ArgumentException> (() => { rc4.Key = new byte[0]; });
+				Assert.Throws<ArgumentException> (() => { rc4.Key = Array.Empty<byte> (); });
 
 				rc4.GenerateIV ();
 				rc4.GenerateKey ();
@@ -80,7 +76,7 @@ namespace UnitTests.Security.Ntlm {
 				rc4.TransformBlock (input, 0, input.Length, output, 0);
 
 				for (int i = 0; i < output.Length; i++)
-					Assert.AreEqual (expected[i], output[i], $"output[{i}]");
+					Assert.That (output[i], Is.EqualTo (expected[i]), $"output[{i}]");
 			}
 
 			using (var rc4 = new RC4 ()) {
@@ -89,7 +85,7 @@ namespace UnitTests.Security.Ntlm {
 				var output = rc4.TransformFinalBlock (input, 0, input.Length);
 
 				for (int i = 0; i < output.Length; i++)
-					Assert.AreEqual (expected[i], output[i], $"output[{i}]");
+					Assert.That (output[i], Is.EqualTo (expected[i]), $"output[{i}]");
 			}
 		}
 

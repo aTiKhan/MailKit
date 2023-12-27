@@ -209,12 +209,10 @@ namespace MailKit {
 			if (uri == null)
 				throw new ArgumentNullException (nameof (uri));
 
-			bool cid = uri.IsAbsoluteUri && uri.Scheme.ToLowerInvariant () == "cid";
+			bool cid = uri.IsAbsoluteUri && uri.Scheme.Equals ("cid", StringComparison.OrdinalIgnoreCase);
 
 			for (int index = 0; index < Count; index++) {
-				var bodyPart = this[index] as BodyPartBasic;
-
-				if (bodyPart == null)
+				if (this[index] is not BodyPartBasic bodyPart)
 					continue;
 
 				if (uri.IsAbsoluteUri) {

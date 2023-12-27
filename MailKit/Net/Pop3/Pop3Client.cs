@@ -70,6 +70,8 @@ namespace MailKit.Net.Pop3 {
 			UIDL   = (1 << 1)
 		}
 
+		static readonly char[] Space = new char[] { ' ' };
+
 		readonly Pop3AuthenticationSecretDetector detector = new Pop3AuthenticationSecretDetector ();
 		readonly MimeParser parser = new MimeParser (Stream.Null);
 		readonly Pop3Engine engine;
@@ -208,6 +210,33 @@ namespace MailKit.Net.Pop3 {
 		/// <value>The login delay.</value>
 		public int LoginDelay {
 			get { return engine.LoginDelay; }
+		}
+
+		/// <summary>
+		/// Get the size of the POP3 mailbox, in bytes.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets the size of the POP3 mailbox, in bytes.</para>
+		/// <para>This value is updated as a side-effect of calling <see cref="GetMessageCount"/> or <see cref="GetMessageCountAsync"/>.</para>
+		/// </remarks>
+		/// <value>The size of the mailbox if available.</value>
+		/// <exception cref="System.ObjectDisposedException">
+		/// The <see cref="Pop3Client"/> has been disposed.
+		/// </exception>
+		/// <exception cref="ServiceNotConnectedException">
+		/// The <see cref="Pop3Client"/> is not connected.
+		/// </exception>
+		/// <exception cref="ServiceNotAuthenticatedException">
+		/// The <see cref="Pop3Client"/> is not authenticated.
+		/// </exception>
+		public long Size {
+			get {
+				CheckDisposed ();
+				CheckConnected ();
+				CheckAuthenticated ();
+
+				return octets;
+			}
 		}
 
 		void CheckDisposed ()
@@ -567,7 +596,7 @@ namespace MailKit.Net.Pop3 {
 				return Task.CompletedTask;
 
 			// the response should be "<count> <total size>"
-			var tokens = text.Split (new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			var tokens = text.Split (Space, StringSplitOptions.RemoveEmptyEntries);
 
 			if (tokens.Length < 2) {
 				pc.Exception = CreatePop3ParseException ("Pop3 server returned an incomplete response to the STAT command: {0}", text);
@@ -789,7 +818,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// An POP3 protocol error occurred.
 		/// </exception>
-		public override void Authenticate (SaslMechanism mechanism, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Authenticate (SaslMechanism mechanism, CancellationToken cancellationToken = default)
 		{
 			CheckCanAuthenticate (mechanism, cancellationToken);
 
@@ -898,7 +927,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// An POP3 protocol error occurred.
 		/// </exception>
-		public override void Authenticate (Encoding encoding, ICredentials credentials, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Authenticate (Encoding encoding, ICredentials credentials, CancellationToken cancellationToken = default)
 		{
 			CheckCanAuthenticate (encoding, credentials, cancellationToken);
 
@@ -968,46 +997,6 @@ namespace MailKit.Net.Pop3 {
 			OnAuthenticated (message, cancellationToken);
 		}
 
-		internal void ReplayConnect (string host, Stream replayStream, CancellationToken cancellationToken = default (CancellationToken))
-		{
-			if (host == null)
-				throw new ArgumentNullException (nameof (host));
-
-			if (replayStream == null)
-				throw new ArgumentNullException (nameof (replayStream));
-
-			CheckDisposed ();
-
-			probed = ProbedCapabilities.None;
-			secure = false;
-
-			engine.Uri = new Uri ($"pop://{host}:110");
-			engine.Connect (new Pop3Stream (replayStream, ProtocolLogger), cancellationToken);
-			engine.QueryCapabilities (cancellationToken);
-			engine.Disconnected += OnEngineDisconnected;
-			OnConnected (host, 110, SecureSocketOptions.None);
-		}
-
-		internal async Task ReplayConnectAsync (string host, Stream replayStream, CancellationToken cancellationToken = default (CancellationToken))
-		{
-			if (host == null)
-				throw new ArgumentNullException (nameof (host));
-
-			if (replayStream == null)
-				throw new ArgumentNullException (nameof (replayStream));
-
-			CheckDisposed ();
-
-			probed = ProbedCapabilities.None;
-			secure = false;
-
-			engine.Uri = new Uri ($"pop://{host}:110");
-			await engine.ConnectAsync (new Pop3Stream (replayStream, ProtocolLogger), cancellationToken).ConfigureAwait (false);
-			await engine.QueryCapabilitiesAsync (cancellationToken).ConfigureAwait (false);
-			engine.Disconnected += OnEngineDisconnected;
-			OnConnected (host, 110, SecureSocketOptions.None);
-		}
-
 		internal static void ComputeDefaultValues (string host, ref int port, ref SecureSocketOptions options, out Uri uri, out bool starttls)
 		{
 			switch (options) {
@@ -1051,7 +1040,7 @@ namespace MailKit.Net.Pop3 {
 			}
 		}
 
-		void ValidateArguments (string host, int port)
+		void CheckCanConnect (string host, int port)
 		{
 			if (host == null)
 				throw new ArgumentNullException (nameof (host));
@@ -1066,6 +1055,64 @@ namespace MailKit.Net.Pop3 {
 
 			if (IsConnected)
 				throw new InvalidOperationException ("The Pop3Client is already connected.");
+		}
+
+		void SslHandshake (SslStream ssl, string host, CancellationToken cancellationToken)
+		{
+#if NET5_0_OR_GREATER
+			ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
+#else
+			ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
+#endif
+		}
+
+		void PostConnect (Stream stream, string host, int port, SecureSocketOptions options, bool starttls, CancellationToken cancellationToken)
+		{
+			probed = ProbedCapabilities.None;
+
+			try {
+				ProtocolLogger.LogConnect (engine.Uri);
+			} catch {
+				stream.Dispose ();
+				secure = false;
+				throw;
+			}
+
+			var pop3 = new Pop3Stream (stream, ProtocolLogger);
+
+			engine.Connect (pop3, cancellationToken);
+
+			try {
+				engine.QueryCapabilities (cancellationToken);
+
+				if (options == SecureSocketOptions.StartTls && (engine.Capabilities & Pop3Capabilities.StartTLS) == 0)
+					throw new NotSupportedException ("The POP3 server does not support the STLS extension.");
+
+				if (starttls && (engine.Capabilities & Pop3Capabilities.StartTLS) != 0) {
+					SendCommand (cancellationToken, "STLS\r\n");
+
+					try {
+						var tls = new SslStream (stream, false, ValidateRemoteCertificate);
+						engine.Stream.Stream = tls;
+
+						SslHandshake (tls, host, cancellationToken);
+					} catch (Exception ex) {
+						throw SslHandshakeException.Create (ref sslValidationInfo, ex, true, "POP3", host, port, 995, 110);
+					}
+
+					secure = true;
+
+					// re-issue a CAPA command
+					engine.QueryCapabilities (cancellationToken);
+				}
+			} catch {
+				engine.Disconnect ();
+				secure = false;
+				throw;
+			}
+
+			engine.Disconnected += OnEngineDisconnected;
+			OnConnected (host, port, options);
 		}
 
 		/// <summary>
@@ -1132,9 +1179,9 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void Connect (string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Connect (string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default)
 		{
-			ValidateArguments (host, port);
+			CheckCanConnect (host, port);
 
 			ComputeDefaultValues (host, ref port, ref options, out var uri, out var starttls);
 
@@ -1148,11 +1195,7 @@ namespace MailKit.Net.Pop3 {
 				var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
 
 				try {
-#if NET5_0_OR_GREATER
-					ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
-#else
-					ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
-#endif
+					SslHandshake (ssl, host, cancellationToken);
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
@@ -1165,66 +1208,18 @@ namespace MailKit.Net.Pop3 {
 				secure = false;
 			}
 
-			probed = ProbedCapabilities.None;
-
-			try {
-				ProtocolLogger.LogConnect (uri);
-			} catch {
-				stream.Dispose ();
-				secure = false;
-				throw;
-			}
-
-			var pop3 = new Pop3Stream (stream, ProtocolLogger);
-
-			engine.Connect (pop3, cancellationToken);
-
-			try {
-				engine.QueryCapabilities (cancellationToken);
-
-				if (options == SecureSocketOptions.StartTls && (engine.Capabilities & Pop3Capabilities.StartTLS) == 0)
-					throw new NotSupportedException ("The POP3 server does not support the STLS extension.");
-
-				if (starttls && (engine.Capabilities & Pop3Capabilities.StartTLS) != 0) {
-					SendCommand (cancellationToken, "STLS\r\n");
-
-					try {
-						var tls = new SslStream (stream, false, ValidateRemoteCertificate);
-						engine.Stream.Stream = tls;
-
-#if NET5_0_OR_GREATER
-						tls.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
-#else
-						tls.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
-#endif
-					} catch (Exception ex) {
-						throw SslHandshakeException.Create (ref sslValidationInfo, ex, true, "POP3", host, port, 995, 110);
-					}
-
-					secure = true;
-
-					// re-issue a CAPA command
-					engine.QueryCapabilities (cancellationToken);
-				}
-			} catch {
-				engine.Disconnect ();
-				secure = false;
-				throw;
-			}
-
-			engine.Disconnected += OnEngineDisconnected;
-			OnConnected (host, port, options);
+			PostConnect (stream, host, port, options, starttls, cancellationToken);
 		}
 
-		void ValidateArguments (Stream stream, string host, int port)
+		void CheckCanConnect (Stream stream, string host, int port)
 		{
 			if (stream == null)
 				throw new ArgumentNullException (nameof (stream));
 
-			ValidateArguments (host, port);
+			CheckCanConnect (host, port);
 		}
 
-		void ValidateArguments (Socket socket, string host, int port)
+		void CheckCanConnect (Socket socket, string host, int port)
 		{
 			if (socket == null)
 				throw new ArgumentNullException (nameof (socket));
@@ -1232,7 +1227,7 @@ namespace MailKit.Net.Pop3 {
 			if (!socket.Connected)
 				throw new ArgumentException ("The socket is not connected.", nameof (socket));
 
-			ValidateArguments (host, port);
+			CheckCanConnect (host, port);
 		}
 
 		/// <summary>
@@ -1299,9 +1294,9 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void Connect (Socket socket, string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Connect (Socket socket, string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default)
 		{
-			ValidateArguments (socket, host, port);
+			CheckCanConnect (socket, host, port);
 
 			Connect (new NetworkStream (socket, true), host, port, options, cancellationToken);
 		}
@@ -1368,9 +1363,9 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void Connect (Stream stream, string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Connect (Stream stream, string host, int port = 0, SecureSocketOptions options = SecureSocketOptions.Auto, CancellationToken cancellationToken = default)
 		{
-			ValidateArguments (stream, host, port);
+			CheckCanConnect (stream, host, port);
 
 			Stream network;
 
@@ -1382,11 +1377,7 @@ namespace MailKit.Net.Pop3 {
 				var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
 
 				try {
-#if NET5_0_OR_GREATER
-					ssl.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
-#else
-					ssl.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
-#endif
+					SslHandshake (ssl, host, cancellationToken);
 				} catch (Exception ex) {
 					ssl.Dispose ();
 
@@ -1400,59 +1391,12 @@ namespace MailKit.Net.Pop3 {
 				secure = false;
 			}
 
-			probed = ProbedCapabilities.None;
 			if (network.CanTimeout) {
 				network.WriteTimeout = timeout;
 				network.ReadTimeout = timeout;
 			}
 
-			try {
-				ProtocolLogger.LogConnect (uri);
-			} catch {
-				network.Dispose ();
-				secure = false;
-				throw;
-			}
-
-			var pop3 = new Pop3Stream (network, ProtocolLogger);
-
-			engine.Connect (pop3, cancellationToken);
-
-			try {
-				engine.QueryCapabilities (cancellationToken);
-
-				if (options == SecureSocketOptions.StartTls && (engine.Capabilities & Pop3Capabilities.StartTLS) == 0)
-					throw new NotSupportedException ("The POP3 server does not support the STLS extension.");
-
-				if (starttls && (engine.Capabilities & Pop3Capabilities.StartTLS) != 0) {
-					SendCommand (cancellationToken, "STLS\r\n");
-
-					var tls = new SslStream (network, false, ValidateRemoteCertificate);
-					engine.Stream.Stream = tls;
-
-					try {
-#if NET5_0_OR_GREATER
-						tls.AuthenticateAsClient (GetSslClientAuthenticationOptions (host, ValidateRemoteCertificate));
-#else
-						tls.AuthenticateAsClient (host, ClientCertificates, SslProtocols, CheckCertificateRevocation);
-#endif
-					} catch (Exception ex) {
-						throw SslHandshakeException.Create (ref sslValidationInfo, ex, true, "POP3", host, port, 995, 110);
-					}
-
-					secure = true;
-
-					// re-issue a CAPA command
-					engine.QueryCapabilities (cancellationToken);
-				}
-			} catch {
-				engine.Disconnect ();
-				secure = false;
-				throw;
-			}
-
-			engine.Disconnected += OnEngineDisconnected;
-			OnConnected (host, port, options);
+			PostConnect (network, host, port, options, starttls, cancellationToken);
 		}
 
 		/// <summary>
@@ -1469,7 +1413,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="Pop3Client"/> has been disposed.
 		/// </exception>
-		public override void Disconnect (bool quit, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Disconnect (bool quit, CancellationToken cancellationToken = default)
 		{
 			CheckDisposed ();
 
@@ -1519,7 +1463,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override int GetMessageCount (CancellationToken cancellationToken = default (CancellationToken))
+		public override int GetMessageCount (CancellationToken cancellationToken = default)
 		{
 			CheckDisposed ();
 			CheckConnected ();
@@ -1554,7 +1498,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void NoOp (CancellationToken cancellationToken = default (CancellationToken))
+		public override void NoOp (CancellationToken cancellationToken = default)
 		{
 			CheckDisposed ();
 			CheckConnected ();
@@ -1633,7 +1577,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public void EnableUTF8 (CancellationToken cancellationToken = default (CancellationToken))
+		public void EnableUTF8 (CancellationToken cancellationToken = default)
 		{
 			if (!CheckCanEnableUTF8 ())
 				return;
@@ -1652,7 +1596,7 @@ namespace MailKit.Net.Pop3 {
 				if (response == ".")
 					break;
 
-				var tokens = response.Split (new[] { ' ' }, 2);
+				var tokens = response.Split (Space, 2);
 				if (tokens.Length != 2)
 					continue;
 
@@ -1718,7 +1662,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public IList<Pop3Language> GetLanguages (CancellationToken cancellationToken = default (CancellationToken))
+		public IList<Pop3Language> GetLanguages (CancellationToken cancellationToken = default)
 		{
 			var pc = QueueLangCommand (out var langs);
 
@@ -1778,7 +1722,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public void SetLanguage (string lang, CancellationToken cancellationToken = default (CancellationToken))
+		public void SetLanguage (string lang, CancellationToken cancellationToken = default)
 		{
 			CheckCanSetLanguage (lang);
 
@@ -1854,7 +1798,7 @@ namespace MailKit.Net.Pop3 {
 			if (pc.Status != Pop3CommandStatus.Ok)
 				return Task.CompletedTask;
 
-			var tokens = text.Split (new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			var tokens = text.Split (Space, StringSplitOptions.RemoveEmptyEntries);
 			int seqid = GetExpectedSequenceId (pc);
 
 			if (tokens.Length < 2) {
@@ -1940,7 +1884,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override string GetMessageUid (int index, CancellationToken cancellationToken = default (CancellationToken))
+		public override string GetMessageUid (int index, CancellationToken cancellationToken = default)
 		{
 			var pc = QueueUidlCommand (index);
 
@@ -1951,7 +1895,7 @@ namespace MailKit.Net.Pop3 {
 
 		static void ParseUidlAllResponse (Pop3Command pc, string response)
 		{
-			var tokens = response.Split (new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			var tokens = response.Split (Space, StringSplitOptions.RemoveEmptyEntries);
 			var uids = (List<string>) pc.UserData;
 
 			if (tokens.Length < 2) {
@@ -2049,7 +1993,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<string> GetMessageUids (CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<string> GetMessageUids (CancellationToken cancellationToken = default)
 		{
 			var pc = QueueUidlCommand ();
 
@@ -2063,7 +2007,7 @@ namespace MailKit.Net.Pop3 {
 			if (pc.Status != Pop3CommandStatus.Ok)
 				return Task.CompletedTask;
 
-			var tokens = text.Split (new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			var tokens = text.Split (Space, StringSplitOptions.RemoveEmptyEntries);
 			int seqid = GetExpectedSequenceId (pc);
 
 			if (tokens.Length < 2) {
@@ -2131,7 +2075,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override int GetMessageSize (int index, CancellationToken cancellationToken = default (CancellationToken))
+		public override int GetMessageSize (int index, CancellationToken cancellationToken = default)
 		{
 			var pc = QueueListCommand (index);
 
@@ -2142,7 +2086,7 @@ namespace MailKit.Net.Pop3 {
 
 		static void ParseListAllResponse (Pop3Command pc, string response)
 		{
-			var tokens = response.Split (new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+			var tokens = response.Split (Space, StringSplitOptions.RemoveEmptyEntries);
 			var sizes = (List<int>) pc.UserData;
 
 			if (tokens.Length < 2) {
@@ -2233,7 +2177,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<int> GetMessageSizes (CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<int> GetMessageSizes (CancellationToken cancellationToken = default)
 		{
 			var sizes = QueueListCommand ();
 
@@ -2639,7 +2583,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override HeaderList GetMessageHeaders (int index, CancellationToken cancellationToken = default (CancellationToken))
+		public override HeaderList GetMessageHeaders (int index, CancellationToken cancellationToken = default)
 		{
 			CheckCanDownload (index);
 
@@ -2691,7 +2635,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<HeaderList> GetMessageHeaders (IList<int> indexes, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<HeaderList> GetMessageHeaders (IList<int> indexes, CancellationToken cancellationToken = default)
 		{
 			if (!CheckCanDownload (indexes))
 				return Array.Empty<HeaderList> ();
@@ -2743,7 +2687,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<HeaderList> GetMessageHeaders (int startIndex, int count, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<HeaderList> GetMessageHeaders (int startIndex, int count, CancellationToken cancellationToken = default)
 		{
 			if (!CheckCanDownload (startIndex, count))
 				return Array.Empty<HeaderList> ();
@@ -2790,7 +2734,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override MimeMessage GetMessage (int index, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override MimeMessage GetMessage (int index, CancellationToken cancellationToken = default, ITransferProgress progress = null)
 		{
 			CheckCanDownload (index);
 
@@ -2843,7 +2787,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<MimeMessage> GetMessages (IList<int> indexes, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override IList<MimeMessage> GetMessages (IList<int> indexes, CancellationToken cancellationToken = default, ITransferProgress progress = null)
 		{
 			if (!CheckCanDownload (indexes))
 				return Array.Empty<MimeMessage> ();
@@ -2899,7 +2843,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<MimeMessage> GetMessages (int startIndex, int count, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override IList<MimeMessage> GetMessages (int startIndex, int count, CancellationToken cancellationToken = default, ITransferProgress progress = null)
 		{
 			if (!CheckCanDownload (startIndex, count))
 				return Array.Empty<MimeMessage> ();
@@ -2944,7 +2888,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override Stream GetStream (int index, bool headersOnly = false, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override Stream GetStream (int index, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null)
 		{
 			CheckCanDownload (index);
 
@@ -2998,7 +2942,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<Stream> GetStreams (IList<int> indexes, bool headersOnly = false, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override IList<Stream> GetStreams (IList<int> indexes, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null)
 		{
 			if (!CheckCanDownload (indexes))
 				return Array.Empty<Stream> ();
@@ -3052,7 +2996,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override IList<Stream> GetStreams (int startIndex, int count, bool headersOnly = false, CancellationToken cancellationToken = default (CancellationToken), ITransferProgress progress = null)
+		public override IList<Stream> GetStreams (int startIndex, int count, bool headersOnly = false, CancellationToken cancellationToken = default, ITransferProgress progress = null)
 		{
 			if (!CheckCanDownload (startIndex, count))
 				return Array.Empty<Stream> ();
@@ -3111,7 +3055,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void DeleteMessage (int index, CancellationToken cancellationToken = default (CancellationToken))
+		public override void DeleteMessage (int index, CancellationToken cancellationToken = default)
 		{
 			CheckCanDelete (index, out string seqid);
 
@@ -3175,7 +3119,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void DeleteMessages (IList<int> indexes, CancellationToken cancellationToken = default (CancellationToken))
+		public override void DeleteMessages (IList<int> indexes, CancellationToken cancellationToken = default)
 		{
 			if (!CheckCanDelete (indexes))
 				return;
@@ -3247,7 +3191,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void DeleteMessages (int startIndex, int count, CancellationToken cancellationToken = default (CancellationToken))
+		public override void DeleteMessages (int startIndex, int count, CancellationToken cancellationToken = default)
 		{
 			if (!CheckCanDelete (startIndex, count))
 				return;
@@ -3295,7 +3239,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void DeleteAllMessages (CancellationToken cancellationToken = default (CancellationToken))
+		public override void DeleteAllMessages (CancellationToken cancellationToken = default)
 		{
 			if (total > 0)
 				DeleteMessages (0, total, cancellationToken);
@@ -3331,7 +3275,7 @@ namespace MailKit.Net.Pop3 {
 		/// <exception cref="Pop3ProtocolException">
 		/// A POP3 protocol error occurred.
 		/// </exception>
-		public override void Reset (CancellationToken cancellationToken = default (CancellationToken))
+		public override void Reset (CancellationToken cancellationToken = default)
 		{
 			CheckDisposed ();
 			CheckConnected ();

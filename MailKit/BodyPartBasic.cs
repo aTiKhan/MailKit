@@ -38,7 +38,7 @@ namespace MailKit {
 	/// message/rfc822 part, or a text part.
 	/// </remarks>
 	/// <example>
-	/// <code language="c#" source="Examples\ImapExamples.cs" region="DownloadBodyParts"/>
+	/// <code language="c#" source="Examples\ImapBodyPartExamples.cs" region="GetBodyPartsByUniqueId"/>
 	/// </example>
 	public class BodyPartBasic : BodyPart
 	{
@@ -184,8 +184,7 @@ namespace MailKit {
 				if (ContentDisposition != null)
 					filename = ContentDisposition.FileName;
 
-				if (filename == null)
-					filename = ContentType.Name;
+				filename ??= ContentType.Name;
 
 				return filename?.Trim ();
 			}

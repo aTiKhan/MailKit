@@ -339,7 +339,7 @@ namespace MailKit.Net.Imap {
 					throw new ImapProtocolException ("The IMAP server has unexpectedly disconnected.");
 				}
 
-				if (!(Stream is NetworkStream))
+				if (Stream is not NetworkStream)
 					cancellationToken.ThrowIfCancellationRequested ();
 			} catch {
 				IsConnected = false;
@@ -738,7 +738,7 @@ namespace MailKit.Net.Imap {
 				// skip over the '\n'
 				inputIndex++;
 
-				if (!builder.TryParse (1, endIndex, out literalDataLeft) || literalDataLeft < 0)
+				if (!builder.TryParse (1, endIndex, out literalDataLeft))
 					return ImapToken.Create (ImapTokenType.Error, builder.ToString ());
 
 				Mode = ImapStreamMode.Literal;
@@ -836,6 +836,12 @@ namespace MailKit.Net.Imap {
 			if (c == '\\')
 				return ReadFlagToken (specials, cancellationToken);
 
+			if (c == '+') {
+				inputIndex++;
+
+				return ImapToken.Plus;
+			}
+
 			if (IsAtom (input[inputIndex], specials))
 				return ReadAtomToken (specials, cancellationToken);
 
@@ -881,6 +887,12 @@ namespace MailKit.Net.Imap {
 
 			if (c == '\\')
 				return await ReadFlagTokenAsync (specials, cancellationToken).ConfigureAwait (false);
+
+			if (c == '+') {
+				inputIndex++;
+
+				return ImapToken.Plus;
+			}
 
 			if (IsAtom (input[inputIndex], specials))
 				return await ReadAtomTokenAsync (specials, cancellationToken).ConfigureAwait (false);
@@ -1114,7 +1126,7 @@ namespace MailKit.Net.Imap {
 				}
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}
@@ -1220,7 +1232,7 @@ namespace MailKit.Net.Imap {
 				}
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}
@@ -1265,7 +1277,7 @@ namespace MailKit.Net.Imap {
 				outputIndex = 0;
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}
@@ -1330,7 +1342,7 @@ namespace MailKit.Net.Imap {
 				outputIndex = 0;
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}

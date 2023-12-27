@@ -24,13 +24,10 @@
 // THE SOFTWARE.
 //
 
-using System;
 using System.Net;
-using System.Collections.Generic;
-
-using NUnit.Framework;
 
 using MailKit;
+using MailKit.Security;
 using MailKit.Net.Imap;
 
 namespace UnitTests.Net.Imap {
@@ -50,13 +47,13 @@ namespace UnitTests.Net.Imap {
 				new ImapReplayCommand ("A00000004 SELECT INBOX (CONDSTORE)\r\n", "common.select-inbox.txt")
 			};
 
-			using (var client = new ImapClient ()) {
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
 				var credentials = new NetworkCredential ("username", "password");
 
 				try {
-					client.ReplayConnect ("localhost", new ImapReplayStream (commands, false));
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
 				} catch (Exception ex) {
-					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
 				}
 
 				// Note: we do not want to use SASL at all...
@@ -65,7 +62,7 @@ namespace UnitTests.Net.Imap {
 				try {
 					client.Authenticate (credentials);
 				} catch (Exception ex) {
-					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
 				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
@@ -219,7 +216,7 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.StoreAsync (new int[] { 0 }, (StoreFlagsRequest) null));
 
 				var labels = new string [] { "Label1", "Label2" };
-				var emptyLabels = new string[0];
+				var emptyLabels = Array.Empty<string> ();
 
 				// AddLabels
 				Assert.Throws<ArgumentException> (() => inbox.AddLabels (-1, labels, true));
@@ -347,13 +344,13 @@ namespace UnitTests.Net.Imap {
 				new ImapReplayCommand ("A00000004 SELECT INBOX\r\n", "common.select-inbox-no-modseq.txt")
 			};
 
-			using (var client = new ImapClient ()) {
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
 				var credentials = new NetworkCredential ("username", "password");
 
 				try {
-					client.ReplayConnect ("localhost", new ImapReplayStream (commands, false));
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
 				} catch (Exception ex) {
-					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
 				}
 
 				// Note: we do not want to use SASL at all...
@@ -362,7 +359,7 @@ namespace UnitTests.Net.Imap {
 				try {
 					client.Authenticate (credentials);
 				} catch (Exception ex) {
-					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
 				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
@@ -445,13 +442,13 @@ namespace UnitTests.Net.Imap {
 				new ImapReplayCommand ("A00000004 SELECT INBOX (CONDSTORE)\r\n", "common.select-inbox.txt")
 			};
 
-			using (var client = new ImapClient ()) {
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
 				var credentials = new NetworkCredential ("username", "password");
 
 				try {
-					client.ReplayConnect ("localhost", new ImapReplayStream (commands, false));
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
 				} catch (Exception ex) {
-					Assert.Fail ("Did not expect an exception in Connect: {0}", ex);
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
 				}
 
 				// Note: we do not want to use SASL at all...
@@ -460,7 +457,7 @@ namespace UnitTests.Net.Imap {
 				try {
 					client.Authenticate (credentials);
 				} catch (Exception ex) {
-					Assert.Fail ("Did not expect an exception in Authenticate: {0}", ex);
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
 				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
@@ -469,54 +466,54 @@ namespace UnitTests.Net.Imap {
 				inbox.Open (FolderAccess.ReadWrite);
 
 				ulong modseq = 409601020304;
-				var uids = new UniqueId[0];
-				var indexes = new int[0];
+				var uids = Array.Empty<UniqueId> ();
+				var indexes = Array.Empty<int> ();
 				IList<UniqueId> unmodifiedUids;
 				IList<int> unmodifiedIndexes;
 
 				// AddFlags
 				unmodifiedIndexes = inbox.AddFlags (indexes, modseq, MessageFlags.Seen, true);
-				Assert.AreEqual (0, unmodifiedIndexes.Count);
+				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
 
 				unmodifiedUids = inbox.AddFlags (uids, modseq, MessageFlags.Seen, true);
-				Assert.AreEqual (0, unmodifiedUids.Count);
+				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
 
 				// RemoveFlags
 				unmodifiedIndexes = inbox.RemoveFlags (indexes, modseq, MessageFlags.Seen, true);
-				Assert.AreEqual (0, unmodifiedIndexes.Count);
+				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
 
 				unmodifiedUids = inbox.RemoveFlags (uids, modseq, MessageFlags.Seen, true);
-				Assert.AreEqual (0, unmodifiedUids.Count);
+				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
 
 				// SetFlags
 				unmodifiedIndexes = inbox.SetFlags (indexes, modseq, MessageFlags.Seen, true);
-				Assert.AreEqual (0, unmodifiedIndexes.Count);
+				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
 
 				unmodifiedUids = inbox.SetFlags (uids, modseq, MessageFlags.Seen, true);
-				Assert.AreEqual (0, unmodifiedUids.Count);
+				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
 
 				var labels = new string[] { "Label1", "Label2" };
 
 				// AddLabels
 				unmodifiedIndexes = inbox.AddLabels (indexes, modseq, labels, true);
-				Assert.AreEqual (0, unmodifiedIndexes.Count);
+				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
 
 				unmodifiedUids = inbox.AddLabels (uids, modseq, labels, true);
-				Assert.AreEqual (0, unmodifiedUids.Count);
+				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
 
 				// RemoveLabels
 				unmodifiedIndexes = inbox.RemoveLabels (indexes, modseq, labels, true);
-				Assert.AreEqual (0, unmodifiedIndexes.Count);
+				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
 
 				unmodifiedUids = inbox.RemoveLabels (uids, modseq, labels, true);
-				Assert.AreEqual (0, unmodifiedUids.Count);
+				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
 
 				// SetLabels
 				unmodifiedIndexes = inbox.SetLabels (indexes, modseq, labels, true);
-				Assert.AreEqual (0, unmodifiedIndexes.Count);
+				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
 
 				unmodifiedUids = inbox.SetLabels (uids, modseq, labels, true);
-				Assert.AreEqual (0, unmodifiedUids.Count);
+				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
 
 				client.Disconnect (false);
 			}

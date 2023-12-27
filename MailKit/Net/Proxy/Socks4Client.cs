@@ -152,7 +152,11 @@ namespace MailKit.Net.Proxy
 		{
 			cancellationToken.ThrowIfCancellationRequested ();
 
+#if NET6_0_OR_GREATER
+			var ipAddresses = await Dns.GetHostAddressesAsync (host, cancellationToken).ConfigureAwait (false);
+#else
 			var ipAddresses = await Dns.GetHostAddressesAsync (host).ConfigureAwait (false);
+#endif
 
 			return Resolve (host, ipAddresses);
 		}
@@ -164,7 +168,7 @@ namespace MailKit.Net.Proxy
 			// +----+-----+----------+----------+----------+-------+--------------+-------+
 			// | 1  |  1  |    2     |    4     | VARIABLE | X'00' |   VARIABLE   | X'00' |
 			// +----+-----+----------+----------+----------+-------+--------------+-------+
-			var user = ProxyCredentials != null ? Encoding.UTF8.GetBytes (ProxyCredentials.UserName) : new byte[0];
+			var user = ProxyCredentials != null ? Encoding.UTF8.GetBytes (ProxyCredentials.UserName) : Array.Empty<byte> ();
 			int bufferSize = 9 + user.Length + (domain != null ? domain.Length + 1 : 0);
 			var buffer = new byte[bufferSize];
 			int n = 0;
@@ -216,7 +220,7 @@ namespace MailKit.Net.Proxy
 		/// <exception cref="System.IO.IOException">
 		/// An I/O error occurred.
 		/// </exception>
-		public override Stream Connect (string host, int port, CancellationToken cancellationToken = default (CancellationToken))
+		public override Stream Connect (string host, int port, CancellationToken cancellationToken = default)
 		{
 			byte[] addr, domain = null;
 
@@ -301,7 +305,7 @@ namespace MailKit.Net.Proxy
 		/// <exception cref="System.IO.IOException">
 		/// An I/O error occurred.
 		/// </exception>
-		public override async Task<Stream> ConnectAsync (string host, int port, CancellationToken cancellationToken = default (CancellationToken))
+		public override async Task<Stream> ConnectAsync (string host, int port, CancellationToken cancellationToken = default)
 		{
 			byte[] addr, domain = null;
 

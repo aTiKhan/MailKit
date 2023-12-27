@@ -13,22 +13,28 @@
     <RootNamespace>Documentation</RootNamespace>
     <Name>Documentation</Name>
     <!-- SHFB properties -->
-    <FrameworkVersion>.NET Framework 4.7.2</FrameworkVersion>
+    <FrameworkVersion>Cross-platform (.NET Core/.NET Standard)</FrameworkVersion>
     <OutputPath>bin\docs\</OutputPath>
     <HtmlHelpName>Documentation</HtmlHelpName>
     <Language>en-US</Language>
     <TransformComponentArguments>
-      <Argument Key="logoFile" Value="Help.png" />
-      <Argument Key="logoHeight" Value="" />
-      <Argument Key="logoWidth" Value="" />
-      <Argument Key="logoAltText" Value="MimeKit" />
-      <Argument Key="logoPlacement" Value="left" />
-      <Argument Key="logoAlignment" Value="left" />
-      <Argument Key="maxVersionParts" Value="3" />
-      <Argument Key="defaultLanguage" Value="cs" />
-      <Argument Key="includeEnumValues" Value="true" />
-      <Argument Key="baseSourceCodeUrl" Value="" />
-      <Argument Key="requestExampleUrl" Value="https://github.com/jstedfast/MailKit/issues/new" />
+      <Argument Key="RobotsMetadata" Value="" />
+      <Argument Key="BibliographyDataFile" Value="" />
+      <Argument Key="LogoFile" Value="Help.png" />
+      <Argument Key="LogoHeight" Value="" />
+      <Argument Key="LogoWidth" Value="" />
+      <Argument Key="LogoAltText" Value="MimeKit" />
+      <Argument Key="LogoPlacement" Value="left" />
+      <Argument Key="LogoAlignment" Value="left" />
+      <Argument Key="LogoUrl" Value="" />
+      <Argument Key="MaxVersionParts" Value="3" />
+      <Argument Key="DefaultLanguage" Value="cs" />
+      <Argument Key="IncludeEnumValues" Value="true" />
+      <Argument Key="EnumMemberSortOrder" Value="Value" />
+      <Argument Key="FlagsEnumValueFormat" Value="IntegerValue" />
+      <Argument Key="FlagsEnumSeparatorSize" Value="0" />
+      <Argument Key="BaseSourceCodeUrl" Value="" />
+      <Argument Key="RequestExampleUrl" Value="" />
     </TransformComponentArguments>
     <BuildAssemblerVerbosity>OnlyWarningsAndErrors</BuildAssemblerVerbosity>
     <HelpFileFormat>Website</HelpFileFormat>
@@ -71,7 +77,7 @@
       <NamespaceSummaryItem name="MailKit.Search" isDocumented="True">The &lt;b&gt;MailKit.Search&lt;/b&gt; namespace provides classes that are necessary for searching folders for messages matching a set of criteria.</NamespaceSummaryItem>
       <NamespaceSummaryItem name="MailKit.Security" isDocumented="True">The &lt;b&gt;MailKit.Security&lt;/b&gt; namespace provides implementations of various SASL authentication mechanisms used by the IMAP, POP3 and SMTP clients.</NamespaceSummaryItem>
     </NamespaceSummaries>
-    <CopyrightText>Copyright &amp;#169%3b 2013-2022 Jeffrey Stedfast</CopyrightText>
+    <CopyrightText>Copyright &amp;#169%3b 2013-2023 Jeffrey Stedfast</CopyrightText>
     <WorkingPath>obj\</WorkingPath>
     <FooterText>&amp;lt%3b!-- Global site tag %28gtag.js%29 - Google Analytics --&amp;gt%3b
 &amp;lt%3bscript src=&amp;quot%3bhttps://www.googletagmanager.com/gtag/js%3fid=UA-63841238-1&amp;quot%3b&amp;gt%3b&amp;lt%3b/script&amp;gt%3b
@@ -118,15 +124,17 @@
     <None Include="Examples\DecodingContent.cs" />
     <None Include="Examples\DkimExamples.cs" />
     <None Include="Examples\ForwardExamples.cs" />
+    <None Include="Examples\ImapBodyPartExamples.cs" />
     <None Include="Examples\ImapExamples.cs" />
     <None Include="Examples\ImapIdleExample.cs" />
     <None Include="Examples\MessageDeliveryStatusExamples.cs" />
     <None Include="Examples\MimeIterator.cs" />
     <None Include="Examples\MimeMessageLoad.cs" />
-    <None Include="Examples\MimeParserMbox.cs" />
-    <None Include="Examples\MimeParserParseMessage.cs" />
+    <None Include="Examples\MimeParserExamples.cs" />
     <None Include="Examples\MimeVisitorExamples.cs" />
     <None Include="Examples\MultipartFormDataExamples.cs" />
+    <None Include="Examples\OAuth2ExchangeExample.cs" />
+    <None Include="Examples\OAuth2GMailExample.cs" />
     <None Include="Examples\OpeningContent.cs" />
     <None Include="Examples\OpenPGPExamples.cs" />
     <None Include="Examples\ParameterExamples.cs" />

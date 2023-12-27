@@ -65,7 +65,7 @@ namespace MailKit.Net.Imap
 				}
 			}
 
-			return new int[0];
+			return Array.Empty<int> ();
 		}
 
 		async Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreFlagsRequest request, bool doAsync, CancellationToken cancellationToken)
@@ -82,7 +82,7 @@ namespace MailKit.Net.Imap
 			CheckState (true, true);
 
 			if (uids.Count == 0)
-				return new UniqueId[0];
+				return Array.Empty<UniqueId> ();
 
 			int numKeywords = request.Keywords != null ? request.Keywords.Count : 0;
 			string action;
@@ -90,13 +90,13 @@ namespace MailKit.Net.Imap
 			switch (request.Action) {
 			case StoreAction.Add:
 				if ((request.Flags & SettableFlags) == 0 && numKeywords == 0)
-					return new UniqueId[0];
+					return Array.Empty<UniqueId> ();
 
 				action = request.Silent ? "+FLAGS.SILENT" : "+FLAGS";
 				break;
 			case StoreAction.Remove:
 				if ((request.Flags & SettableFlags) == 0 && numKeywords == 0)
-					return new UniqueId[0];
+					return Array.Empty<UniqueId> ();
 
 				action = request.Silent ? "-FLAGS.SILENT" : "-FLAGS";
 				break;
@@ -106,7 +106,7 @@ namespace MailKit.Net.Imap
 			}
 
 			var flaglist = ImapUtils.FormatFlagsList (request.Flags & PermanentFlags, request.Keywords != null ? request.Keywords.Count : 0);
-			var keywordList = request.Keywords != null ? request.Keywords.ToArray () : new object[0];
+			var keywordList = request.Keywords != null ? request.Keywords.ToArray () : Array.Empty<object> ();
 			UniqueIdSet unmodified = null;
 			var @params = string.Empty;
 
@@ -120,14 +120,13 @@ namespace MailKit.Net.Imap
 
 				ProcessResponseCodes (ic, null);
 
-				if (ic.Response != ImapCommandResponse.Ok)
-					throw ImapCommandException.Create ("STORE", ic);
+				ic.ThrowIfNotOk ("STORE");
 
 				ProcessUnmodified (ic, ref unmodified, request.UnchangedSince);
 			}
 
 			if (unmodified == null)
-				return new UniqueId[0];
+				return Array.Empty<UniqueId> ();
 
 			return unmodified;
 		}
@@ -178,7 +177,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override IList<UniqueId> Store (IList<UniqueId> uids, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<UniqueId> Store (IList<UniqueId> uids, IStoreFlagsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, request, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -229,7 +228,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreFlagsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, request, true, cancellationToken);
 		}
@@ -248,7 +247,7 @@ namespace MailKit.Net.Imap
 			CheckState (true, true);
 
 			if (indexes.Count == 0)
-				return new int[0];
+				return Array.Empty<int> ();
 
 			int numKeywords = request.Keywords != null ? request.Keywords.Count : 0;
 			string action;
@@ -256,13 +255,13 @@ namespace MailKit.Net.Imap
 			switch (request.Action) {
 			case StoreAction.Add:
 				if ((request.Flags & SettableFlags) == 0 && numKeywords == 0)
-					return new int[0];
+					return Array.Empty<int> ();
 
 				action = request.Silent ? "+FLAGS.SILENT" : "+FLAGS";
 				break;
 			case StoreAction.Remove:
 				if ((request.Flags & SettableFlags) == 0 && numKeywords == 0)
-					return new int[0];
+					return Array.Empty<int> ();
 
 				action = request.Silent ? "-FLAGS.SILENT" : "-FLAGS";
 				break;
@@ -271,7 +270,7 @@ namespace MailKit.Net.Imap
 				break;
 			}
 
-			var keywordList = request.Keywords != null ? request.Keywords.ToArray () : new object[0];
+			var keywordList = request.Keywords != null ? request.Keywords.ToArray () : Array.Empty<object> ();
 			var command = new StringBuilder ("STORE ");
 			ImapUtils.FormatIndexSet (Engine, command, indexes);
 			command.Append (' ');
@@ -293,8 +292,7 @@ namespace MailKit.Net.Imap
 
 			ProcessResponseCodes (ic, null);
 
-			if (ic.Response != ImapCommandResponse.Ok)
-				throw ImapCommandException.Create ("STORE", ic);
+			ic.ThrowIfNotOk ("STORE");
 
 			return GetUnmodified (ic, request.UnchangedSince);
 		}
@@ -345,7 +343,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override IList<int> Store (IList<int> indexes, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<int> Store (IList<int> indexes, IStoreFlagsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, request, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -396,12 +394,12 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task<IList<int>> StoreAsync (IList<int> indexes, IStoreFlagsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task<IList<int>> StoreAsync (IList<int> indexes, IStoreFlagsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, request, true, cancellationToken);
 		}
 
-		void AppendLabelList (StringBuilder command, ISet<string> labels, ICollection<object> args)
+		void AppendLabelList (StringBuilder command, ISet<string> labels, List<object> args)
 		{
 			command.Append ('(');
 
@@ -455,20 +453,20 @@ namespace MailKit.Net.Imap
 			CheckState (true, true);
 
 			if (uids.Count == 0)
-				return new UniqueId[0];
+				return Array.Empty<UniqueId> ();
 
 			string action;
 
 			switch (request.Action) {
 			case StoreAction.Add:
 				if (request.Labels == null || request.Labels.Count == 0)
-					return new UniqueId[0];
+					return Array.Empty<UniqueId> ();
 
 				action = request.Silent ? "+X-GM-LABELS.SILENT" : "+X-GM-LABELS";
 				break;
 			case StoreAction.Remove:
 				if (request.Labels == null || request.Labels.Count == 0)
-					return new UniqueId[0];
+					return Array.Empty<UniqueId> ();
 
 				action = request.Silent ? "-X-GM-LABELS.SILENT" : "-X-GM-LABELS";
 				break;
@@ -497,14 +495,13 @@ namespace MailKit.Net.Imap
 
 				ProcessResponseCodes (ic, null);
 
-				if (ic.Response != ImapCommandResponse.Ok)
-					throw ImapCommandException.Create ("STORE", ic);
+				ic.ThrowIfNotOk ("STORE");
 
 				ProcessUnmodified (ic, ref unmodified, request.UnchangedSince);
 			}
 
 			if (unmodified == null)
-				return new UniqueId[0];
+				return Array.Empty<UniqueId> ();
 
 			return unmodified;
 		}
@@ -555,7 +552,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override IList<UniqueId> Store (IList<UniqueId> uids, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<UniqueId> Store (IList<UniqueId> uids, IStoreLabelsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, request, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -606,7 +603,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, IStoreLabelsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, request, true, cancellationToken);
 		}
@@ -625,20 +622,20 @@ namespace MailKit.Net.Imap
 			CheckState (true, true);
 
 			if (indexes.Count == 0)
-				return new int[0];
+				return Array.Empty<int> ();
 
 			string action;
 
 			switch (request.Action) {
 			case StoreAction.Add:
 				if (request.Labels == null || request.Labels.Count == 0)
-					return new int[0];
+					return Array.Empty<int> ();
 
 				action = request.Silent ? "+X-GM-LABELS.SILENT" : "+X-GM-LABELS";
 				break;
 			case StoreAction.Remove:
 				if (request.Labels == null || request.Labels.Count == 0)
-					return new int[0];
+					return Array.Empty<int> ();
 
 				action = request.Silent ? "-X-GM-LABELS.SILENT" : "-X-GM-LABELS";
 				break;
@@ -670,8 +667,7 @@ namespace MailKit.Net.Imap
 
 			ProcessResponseCodes (ic, null);
 
-			if (ic.Response != ImapCommandResponse.Ok)
-				throw ImapCommandException.Create ("STORE", ic);
+			ic.ThrowIfNotOk ("STORE");
 
 			return GetUnmodified (ic, request.UnchangedSince);
 		}
@@ -722,7 +718,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override IList<int> Store (IList<int> indexes, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<int> Store (IList<int> indexes, IStoreLabelsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, request, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -773,7 +769,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task<IList<int>> StoreAsync (IList<int> indexes, IStoreLabelsRequest request, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task<IList<int>> StoreAsync (IList<int> indexes, IStoreLabelsRequest request, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, request, true, cancellationToken);
 		}

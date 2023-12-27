@@ -24,14 +24,9 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.IO;
 using System.Net;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-
-using NUnit.Framework;
 
 using MailKit.Net.Proxy;
 
@@ -65,9 +60,9 @@ namespace UnitTests.Net.Proxy {
 			Assert.Throws<ArgumentOutOfRangeException> (() => new HttpsProxyClient (proxy.ProxyHost, -1));
 			Assert.Throws<ArgumentNullException> (() => new HttpsProxyClient (proxy.ProxyHost, 1080, null));
 
-			Assert.AreEqual (1080, proxy.ProxyPort);
-			Assert.AreEqual ("http.proxy.com", proxy.ProxyHost);
-			Assert.AreEqual (credentials, proxy.ProxyCredentials);
+			Assert.That (proxy.ProxyPort, Is.EqualTo (1080));
+			Assert.That (proxy.ProxyHost, Is.EqualTo ("http.proxy.com"));
+			Assert.That (proxy.ProxyCredentials, Is.EqualTo (credentials));
 
 			Assert.Throws<ArgumentNullException> (() => proxy.Connect (null, 443));
 			Assert.Throws<ArgumentNullException> (() => proxy.Connect (null, 443, ConnectTimeout));
@@ -98,8 +93,9 @@ namespace UnitTests.Net.Proxy {
 				stream = proxy.Connect ("www.google.com", 443);
 				Assert.Fail ("www.google.com is not an HTTP proxy, so CONNECT should have failed.");
 			} catch (ProxyProtocolException ex) {
-				// This is expected since this proxy does not support Socks4a
-				Assert.AreEqual ("Failed to connect to www.google.com:443: HTTP/1.1 405 Method Not Allowed", ex.Message);
+				// This is expected since this is not an HTTP proxy
+				var response = ex.Message.Substring (0, ex.Message.IndexOf ("\r\n"));
+				Assert.That (response, Is.EqualTo ("Failed to connect to www.google.com:443: HTTP/1.1 405 Method Not Allowed"));
 			} catch (TimeoutException) {
 				Assert.Inconclusive ("Timed out.");
 			} catch (Exception ex) {
@@ -119,8 +115,9 @@ namespace UnitTests.Net.Proxy {
 				stream = await proxy.ConnectAsync ("www.google.com", 443);
 				Assert.Fail ("www.google.com is not an HTTP proxy, so CONNECT should have failed.");
 			} catch (ProxyProtocolException ex) {
-				// This is expected since this proxy does not support Socks4a
-				Assert.AreEqual ("Failed to connect to www.google.com:443: HTTP/1.1 405 Method Not Allowed", ex.Message);
+				// This is expected since this is not an HTTP proxy
+				var response = ex.Message.Substring (0, ex.Message.IndexOf ("\r\n"));
+				Assert.That (response, Is.EqualTo ("Failed to connect to www.google.com:443: HTTP/1.1 405 Method Not Allowed"));
 			} catch (TimeoutException) {
 				Assert.Inconclusive ("Timed out.");
 			} catch (Exception ex) {

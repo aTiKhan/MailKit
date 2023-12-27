@@ -162,14 +162,10 @@ namespace MailKit {
 			var cid = new Uri (string.Format ("cid:{0}", contentId));
 
 			for (int i = 0; i < related.BodyParts.Count; i++) {
-				var basic = related.BodyParts[i] as BodyPartBasic;
-
-				if (basic != null && (basic.ContentId == contentId || basic.ContentLocation == cid))
+				if (related.BodyParts[i] is BodyPartBasic basic && (basic.ContentId == contentId || basic.ContentLocation == cid))
 					return basic;
 
-				var multipart = related.BodyParts[i] as BodyPartMultipart;
-
-				if (multipart != null && multipart.ContentLocation == cid)
+				if (related.BodyParts[i] is BodyPartMultipart multipart && multipart.ContentLocation == cid)
 					return multipart;
 			}
 
@@ -180,10 +176,9 @@ namespace MailKit {
 		{
 			// walk the multipart/alternative children backwards from greatest level of faithfulness to the least faithful
 			for (int i = multipart.BodyParts.Count - 1; i >= 0; i--) {
-				var multi = multipart.BodyParts[i] as BodyPartMultipart;
 				BodyPartText text = null;
 
-				if (multi != null) {
+				if (multipart.BodyParts[i] is BodyPartMultipart multi) {
 					if (multi.ContentType.IsMimeType ("multipart", "related")) {
 						text = GetMultipartRelatedRoot (multi) as BodyPartText;
 					} else if (multi.ContentType.IsMimeType ("multipart", "alternative")) {
@@ -278,7 +273,7 @@ namespace MailKit {
 		/// methods.</para>
 		/// </remarks>
 		/// <example>
-		/// <code language="c#" source="Examples\ImapExamples.cs" region="DownloadBodyParts"/>
+		/// <code language="c#" source="Examples\ImapBodyPartExamples.cs" region="GetBodyPartsByUniqueId"/>
 		/// </example>
 		/// <value>The text body if it exists; otherwise, <c>null</c>.</value>
 		public BodyPartText TextBody {
@@ -306,6 +301,9 @@ namespace MailKit {
 		/// or <a href="Overload_MailKit_IMailFolder_FetchAsync.htm">FetchAsync</a>
 		/// methods.</para>
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ImapBodyPartExamples.cs" region="GetBodyPartsByUniqueId"/>
+		/// </example>
 		/// <value>The html body if it exists; otherwise, <c>null</c>.</value>
 		public BodyPartText HtmlBody {
 			get {
@@ -375,7 +373,7 @@ namespace MailKit {
 		/// methods.</para>
 		/// </remarks>
 		/// <example>
-		/// <code language="c#" source="Examples\ImapExamples.cs" region="DownloadBodyParts"/>
+		/// <code language="c#" source="Examples\ImapBodyPartExamples.cs" region="GetBodyPartsByUniqueId"/>
 		/// </example>
 		/// <value>The attachments.</value>
 		public IEnumerable<BodyPartBasic> Attachments {
@@ -493,8 +491,7 @@ namespace MailKit {
 		/// <value>The user-defined message flags.</value>
 		public IReadOnlySetOfStrings Keywords {
 			get {
-				if (keywords == null)
-					keywords = new HashSet<string> (StringComparer.Ordinal);
+				keywords ??= new HashSet<string> (StringComparer.Ordinal);
 
 				return keywords;
 			}

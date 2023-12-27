@@ -597,8 +597,19 @@ namespace MailKit.Net.Smtp {
 				char* chars = cmd + index;
 
 				var needed = encoder.GetByteCount (chars, charCount, true);
-				if (needed > outputLeft)
+
+				if (needed > output.Length) {
+					// If the command we are trying to queue is larger than the output buffer and we
+					// already have some commands queued in the output buffer, then flush the queue
+					// before queuing this command.
+					if (outputIndex > 0)
+						return false;
+				} else if (needed > outputLeft && index == 0) {
+					// If we are trying to queue a new command (index == 0) and we need more space than
+					// what remains in the output buffer, then flush the output buffer before queueing
+					// the new command. Some servers do not handle receiving partial commands well.
 					return false;
+				}
 
 				fixed (byte* outbuf = output) {
 					byte* outptr = outbuf + outputIndex;
@@ -798,7 +809,7 @@ namespace MailKit.Net.Smtp {
 				}
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}
@@ -913,7 +924,7 @@ namespace MailKit.Net.Smtp {
 				}
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}
@@ -958,7 +969,7 @@ namespace MailKit.Net.Smtp {
 				outputIndex = 0;
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}
@@ -1022,7 +1033,7 @@ namespace MailKit.Net.Smtp {
 				outputIndex = 0;
 			} catch (Exception ex) {
 				IsConnected = false;
-				if (!(ex is OperationCanceledException))
+				if (ex is not OperationCanceledException)
 					cancellationToken.ThrowIfCancellationRequested ();
 				throw;
 			}

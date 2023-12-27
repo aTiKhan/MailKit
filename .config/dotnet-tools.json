@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "altcover.global": {
+      "version": "8.6.95",
+      "commands": [
+        "altcover"
+      ]
+    },
+    "coveralls.net": {
+      "version": "4.0.1",
+      "commands": [
+        "csmacnz.Coveralls"
+      ]
+    }
+  }
+}

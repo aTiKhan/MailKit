@@ -46,10 +46,12 @@ namespace MailKit.Net.Imap {
 		Asterisk      = (int) '*',
 		OpenBracket   = (int) '[',
 		CloseBracket  = (int) ']',
+		Plus          = (int) '+',
 	}
 
 	class ImapToken
 	{
+		public static readonly ImapToken Plus = new ImapToken (ImapTokenType.Plus, '+');
 		public static readonly ImapToken Asterisk = new ImapToken (ImapTokenType.Asterisk, '*');
 		public static readonly ImapToken OpenParen = new ImapToken (ImapTokenType.OpenParen, '(');
 		public static readonly ImapToken CloseParen = new ImapToken (ImapTokenType.CloseParen, ')');
@@ -72,6 +74,7 @@ namespace MailKit.Net.Imap {
 			Nil
 		};
 
+		static readonly ImapToken Ok = new ImapToken (ImapTokenType.Atom, "OK");
 		static readonly ImapToken Fetch = new ImapToken (ImapTokenType.Atom, "FETCH");
 		//static readonly ImapToken Annotation = new ImapToken (ImapTokenType.Atom, "ANNOTATION");
 		static readonly ImapToken Body = new ImapToken (ImapTokenType.Atom, "BODY");
@@ -105,6 +108,7 @@ namespace MailKit.Net.Imap {
 		public static ImapToken Create (ImapTokenType type, char c)
 		{
 			switch (type) {
+			case ImapTokenType.Plus: return Plus;
 			case ImapTokenType.Asterisk: return Asterisk;
 			case ImapTokenType.OpenParen: return OpenParen;
 			case ImapTokenType.CloseParen: return CloseParen;
@@ -132,19 +136,27 @@ namespace MailKit.Net.Imap {
 					if (builder.Equals (value, true))
 						return token;
 				}
-			} else if (builder.Equals ("NIL", true)) {
-				foreach (var token in NilTokens) {
-					value = (string) token.Value;
+			} else if (type == ImapTokenType.Atom) {
+				if (builder.Equals ("NIL", true)) {
+					// Look for the cached NIL token that matches this capitalization.
+					lock (NilTokens) {
+						foreach (var token in NilTokens) {
+							value = (string) token.Value;
 
-					if (builder.Equals (value))
-						return token;
+							if (builder.Equals (value))
+								return token;
+						}
+
+						// Add this new variation to our NIL token cache.
+						var nil = new ImapToken (ImapTokenType.Nil, builder.ToString ());
+						NilTokens.Add (nil);
+
+						return nil;
+					}
 				}
 
-				var nil = new ImapToken (ImapTokenType.Nil, builder.ToString ());
-				NilTokens.Add (nil);
-
-				return nil;
-			} else {
+				if (builder.Equals ("OK", false))
+					return Ok;
 				if (builder.Equals ("FETCH", false))
 					return Fetch;
 				if (builder.Equals ("BODY", false))
@@ -191,6 +203,7 @@ namespace MailKit.Net.Imap {
 			case ImapTokenType.QString:      return MimeUtils.Quote ((string) Value);
 			case ImapTokenType.Literal:      return string.Format (CultureInfo.InvariantCulture, "{{{0}}}", (int) Value);
 			case ImapTokenType.Eoln:         return "'\\n'";
+			case ImapTokenType.Plus:         return "'+'";
 			case ImapTokenType.OpenParen:    return "'('";
 			case ImapTokenType.CloseParen:   return "')'";
 			case ImapTokenType.Asterisk:     return "'*'";

@@ -52,7 +52,7 @@ namespace MailKit.Net.Imap
 				throw new NotSupportedException ("The ImapFolder does not support annotations.");
 
 			if (uids.Count == 0 || annotations.Count == 0)
-				return new UniqueId[0];
+				return Array.Empty<UniqueId> ();
 
 			var builder = new StringBuilder ("UID STORE %s ");
 			var values = new List<object> ();
@@ -75,14 +75,17 @@ namespace MailKit.Net.Imap
 
 				ProcessResponseCodes (ic, null);
 
-				if (ic.Response != ImapCommandResponse.Ok)
+				if (ic.Response != ImapCommandResponse.Ok) {
+					// TODO: Do something with the AnnotateResponseCode if it exists??
+
 					throw ImapCommandException.Create ("STORE", ic);
+				}
 
 				ProcessUnmodified (ic, ref unmodified, modseq);
 			}
 
 			if (unmodified == null)
-				return new UniqueId[0];
+				return Array.Empty<UniqueId> ();
 
 			return unmodified;
 		}
@@ -134,7 +137,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override void Store (IList<UniqueId> uids, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Store (IList<UniqueId> uids, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			StoreAsync (uids, null, annotations, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -187,7 +190,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task StoreAsync (IList<UniqueId> uids, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task StoreAsync (IList<UniqueId> uids, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, null, annotations, true, cancellationToken);
 		}
@@ -243,7 +246,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override IList<UniqueId> Store (IList<UniqueId> uids, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<UniqueId> Store (IList<UniqueId> uids, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, modseq, annotations, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -299,7 +302,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task<IList<UniqueId>> StoreAsync (IList<UniqueId> uids, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (uids, modseq, annotations, true, cancellationToken);
 		}
@@ -321,7 +324,7 @@ namespace MailKit.Net.Imap
 				throw new NotSupportedException ("The ImapFolder does not support annotations.");
 
 			if (indexes.Count == 0 || annotations.Count == 0)
-				return new int[0];
+				return Array.Empty<int> ();
 
 			var command = new StringBuilder ("STORE ");
 			var args = new List<object> ();
@@ -344,8 +347,11 @@ namespace MailKit.Net.Imap
 
 			ProcessResponseCodes (ic, null);
 
-			if (ic.Response != ImapCommandResponse.Ok)
+			if (ic.Response != ImapCommandResponse.Ok) {
+				// TODO: Do something with the AnnotateResponseCode if it exists??
+
 				throw ImapCommandException.Create ("STORE", ic);
+			}
 
 			return GetUnmodified (ic, modseq);
 		}
@@ -397,7 +403,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override void Store (IList<int> indexes, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override void Store (IList<int> indexes, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			StoreAsync (indexes, null, annotations, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -450,7 +456,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task StoreAsync (IList<int> indexes, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task StoreAsync (IList<int> indexes, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, null, annotations, true, cancellationToken);
 		}
@@ -506,7 +512,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override IList<int> Store (IList<int> indexes, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override IList<int> Store (IList<int> indexes, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, modseq, annotations, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
@@ -562,7 +568,7 @@ namespace MailKit.Net.Imap
 		/// <exception cref="ImapCommandException">
 		/// The server replied with a NO or BAD response.
 		/// </exception>
-		public override Task<IList<int>> StoreAsync (IList<int> indexes, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default (CancellationToken))
+		public override Task<IList<int>> StoreAsync (IList<int> indexes, ulong modseq, IList<Annotation> annotations, CancellationToken cancellationToken = default)
 		{
 			return StoreAsync (indexes, modseq, annotations, true, cancellationToken);
 		}

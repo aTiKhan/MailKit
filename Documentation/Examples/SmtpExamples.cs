@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +62,7 @@ namespace MailKit.Examples {
 						// which means that lines beginning with "." need to be escaped
 						// by adding an extra "." to the beginning of the line.
 						//
-						// Use an SmtpDataFilter "byte-stuff" the message as it is written
+						// Use an SmtpDataFilter to "byte-stuff" the message as it is written
 						// to the file stream. This is the same process that an SmtpClient
 						// would use when sending the message in a `DATA` command.
 						using (var filtered = new FilteredStream (stream)) {
@@ -87,7 +87,27 @@ namespace MailKit.Examples {
 				}
 			} while (true);
 		}
-		#endif
+		#endregion
+
+		#region LoadFromPickupDirectory
+		public static MimeMessage LoadFromPickupDirectory (string fileName)
+		{
+			using (var stream = File.OpenRead (fileName)) {
+				// IIS pickup directories store messages that have been "byte-stuffed"
+				// which means that lines beginning with "." have been escaped by
+				// adding an extra "." to the beginning of the line.
+				//
+				// Use an SmtpDataFilter to decode the message as it is loaded from
+				// the file stream. This is the reverse process that an SmtpClient
+				// would use when sending the message in a `DATA` command.
+				using (var filtered = new FilteredStream (stream)) {
+					filtered.Add (new SmtpDataFilter (decode: true));
+
+					return MimeMessage.Load (filtered);
+				}
+			}
+		}
+		#endregion
 
 		#region ProtocolLogger
 		public static void SendMessage (MimeMessage message)
@@ -305,6 +325,43 @@ namespace MailKit.Examples {
 				foreach (var message in messages) {
 					client.Send (message);
 				}
+
+				client.Disconnect (true);
+			}
+		}
+		#endregion
+
+		#region VerifyAddress
+		public static void VerifyAddress ()
+		{
+			using (var client = new SmtpClient ()) {
+				client.Connect ("smtp.mail-server.com", 465, SecureSocketOptions.SslOnConnect);
+				client.Authenticate ("username", "password");
+
+				try {
+					var verified = client.Verify ("smith");
+					Console.WriteLine ($"'smith' was resolved the the following mailbox: {verified}");
+				} catch (SmtpCommandException ex) {
+					Console.WriteLine ($"'smith' is not a valid address: {ex.Message}");
+				}
+
+				client.Disconnect (true);
+			}
+		}
+		#endregion
+
+		#region ExpandAlias
+		public static void ExpandAlias (string alias)
+		{
+			using (var client = new SmtpClient ()) {
+				client.Connect ("smtp.mail-server.com", 465, SecureSocketOptions.SslOnConnect);
+				client.Authenticate ("username", "password");
+
+				var expanded = client.Expand (alias);
+
+				Console.WriteLine ($"Expanding the alias '{alias}' results in the following list of addresses:");
+				foreach (var mailbox in expanded.Mailboxes)
+					Console.WriteLine ($"* {mailbox}");
 
 				client.Disconnect (true);
 			}

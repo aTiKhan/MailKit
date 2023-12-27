@@ -24,11 +24,9 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
+#if NET6_0
 
-using NUnit.Framework;
+using System.Runtime.Serialization.Formatters.Binary;
 
 using MailKit.Net.Smtp;
 
@@ -47,7 +45,7 @@ namespace UnitTests.Net.Smtp {
 				stream.Position = 0;
 
 				var ex = (SmtpProtocolException) formatter.Deserialize (stream);
-				Assert.AreEqual (expected.Message, ex.Message, "Unexpected Message.");
+				Assert.That (ex.Message, Is.EqualTo (expected.Message), "Unexpected Message.");
 			}
 
 			expected = new SmtpProtocolException ("Bad boys, bad boys. Whatcha gonna do?");
@@ -58,7 +56,7 @@ namespace UnitTests.Net.Smtp {
 				stream.Position = 0;
 
 				var ex = (SmtpProtocolException) formatter.Deserialize (stream);
-				Assert.AreEqual (expected.Message, ex.Message, "Unexpected Message.");
+				Assert.That (ex.Message, Is.EqualTo (expected.Message), "Unexpected Message.");
 			}
 
 			expected = new SmtpProtocolException ();
@@ -69,8 +67,10 @@ namespace UnitTests.Net.Smtp {
 				stream.Position = 0;
 
 				var ex = (SmtpProtocolException) formatter.Deserialize (stream);
-				Assert.AreEqual (expected.Message, ex.Message, "Unexpected Message.");
+				Assert.That (ex.Message, Is.EqualTo (expected.Message), "Unexpected Message.");
 			}
 		}
 	}
 }
+
+#endif // NET6_0

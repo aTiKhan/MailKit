@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,16 +44,13 @@ namespace MimeKit.Examples
 	{
 		List<MultipartRelated> stack = new List<MultipartRelated> ();
 		List<MimeEntity> attachments = new List<MimeEntity> ();
-		readonly string tempDir;
 		string body;
 
 		/// <summary>
 		/// Creates a new HtmlPreviewVisitor.
 		/// </summary>
-		/// <param name="tempDirectory">A temporary directory used for storing image files.</param>
-		public HtmlPreviewVisitor (string tempDirectory)
+		public HtmlPreviewVisitor ()
 		{
-			tempDir = tempDirectory;
 		}
 
 		/// <summary>

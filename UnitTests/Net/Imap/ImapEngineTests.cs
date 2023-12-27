@@ -24,13 +24,8 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.IO;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-using NUnit.Framework;
+using System.Globalization;
 
 using MailKit;
 using MailKit.Net.Imap;
@@ -39,6 +34,113 @@ namespace UnitTests.Net.Imap {
 	[TestFixture]
 	public class ImapEngineTests
 	{
+		[TestCase ('*', (int) ImapTokenType.Asterisk, (int) ImapTokenType.Atom)]
+		[TestCase ("ATOM", (int) ImapTokenType.Atom, (int) ImapTokenType.Asterisk)]
+		[TestCase ("\\Flagged", (int) ImapTokenType.Flag, (int) ImapTokenType.QString)]
+		[TestCase ("QSTRING", (int) ImapTokenType.QString, (int) ImapTokenType.Atom)]
+		[TestCase (123456, (int) ImapTokenType.Literal, (int) ImapTokenType.Atom)]
+		[TestCase ("NIL", (int) ImapTokenType.Nil, (int) ImapTokenType.QString)]
+
+		public void TestAssertToken (object value, int actual, int expected)
+		{
+			using (var builder = new ByteArrayBuilder (64)) {
+				ImapToken token;
+
+				if (value is string str) {
+					foreach (var c in str)
+						builder.Append ((byte) c);
+
+					token = ImapToken.Create ((ImapTokenType) actual, builder);
+				} else if (value is char c) {
+					token = ImapToken.Create ((ImapTokenType) actual, c);
+				} else if (value is int literal) {
+					token = ImapToken.Create ((ImapTokenType) actual, literal);
+				} else {
+					return;
+				}
+
+				Assert.Throws<ImapProtocolException> (() => ImapEngine.AssertToken (token, (ImapTokenType) expected, "Unexpected token: {0}", token));
+			}
+		}
+
+		[Test]
+		public void TestParseNumber ()
+		{
+			using (var builder = new ByteArrayBuilder (64)) {
+				ImapToken token;
+				uint value;
+
+				builder.Append ((byte) '0');
+
+				token = ImapToken.Create (ImapTokenType.Atom, builder);
+				value = ImapEngine.ParseNumber (token, false, "Unexpected number: {0}", token);
+				Assert.That (value, Is.EqualTo (0), "number");
+
+				Assert.Throws<ImapProtocolException> (() => ImapEngine.ParseNumber (token, true, "Unexpected number: {0}", token), "nz-number");
+
+				builder.Clear ();
+				var max = uint.MaxValue.ToString (CultureInfo.InvariantCulture);
+				for (int i = 0; i < max.Length; i++)
+					builder.Append ((byte) max[i]);
+
+				token = ImapToken.Create (ImapTokenType.Atom, builder);
+				value = ImapEngine.ParseNumber (token, false, "Unexpected number: {0}", token);
+				Assert.That (value, Is.EqualTo (uint.MaxValue), "max number");
+			}
+		}
+
+		[Test]
+		public void TestParseNumber64 ()
+		{
+			using (var builder = new ByteArrayBuilder (64)) {
+				ImapToken token;
+				ulong value;
+
+				builder.Append ((byte) '0');
+
+				token = ImapToken.Create (ImapTokenType.Atom, builder);
+				value = ImapEngine.ParseNumber64 (token, false, "Unexpected number: {0}", token);
+				Assert.That (value, Is.EqualTo (0), "number64");
+
+				Assert.Throws<ImapProtocolException> (() => ImapEngine.ParseNumber64 (token, true, "Unexpected number: {0}", token), "nz-number64");
+
+				builder.Clear ();
+				var max = ulong.MaxValue.ToString (CultureInfo.InvariantCulture);
+				for (int i = 0; i < max.Length; i++)
+					builder.Append ((byte) max[i]);
+
+				token = ImapToken.Create (ImapTokenType.Atom, builder);
+				value = ImapEngine.ParseNumber64 (token, false, "Unexpected number: {0}", token);
+				Assert.That (value, Is.EqualTo (ulong.MaxValue), "max number64");
+			}
+		}
+
+		[Test]
+		public void TestParseUidSet ()
+		{
+			using (var builder = new ByteArrayBuilder (64)) {
+				UniqueId? min, max;
+				UniqueIdSet uids;
+				ImapToken token;
+
+				builder.Append ((byte) '0');
+
+				token = ImapToken.Create (ImapTokenType.Atom, builder);
+				Assert.Throws<ImapProtocolException> (() => ImapEngine.ParseUidSet (token, 0, out min, out max, "Unexpected uid-set: {0}", token), "0");
+
+				builder.Clear ();
+				var bytes = Encoding.ASCII.GetBytes ("1:500");
+				for (int i = 0; i < bytes.Length; i++)
+					builder.Append (bytes[i]);
+
+				token = ImapToken.Create (ImapTokenType.Atom, builder);
+				uids = ImapEngine.ParseUidSet (token, 0, out min, out max, "Unexpected uid-set: {0}", token);
+				Assert.That (uids.ToString (), Is.EqualTo ("1:500"), "uid-set");
+				Assert.That (min.ToString (), Is.EqualTo ("1"), "min");
+				Assert.That (max.ToString (), Is.EqualTo ("500"), "max");
+			}
+		}
+
 		[Test]
 		public void TestGetResponseCodeType ()
 		{
@@ -54,7 +156,7 @@ namespace UnitTests.Net.Imap {
 				}
 
 				var result = ImapEngine.GetResponseCodeType (atom);
-				Assert.AreEqual (type, result);
+				Assert.That (result, Is.EqualTo (type));
 			}
 		}
 
@@ -73,17 +175,17 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (true, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.BadCharset, respCode.Type);
-						Assert.AreEqual ("This is some free-form text", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.BadCharset));
+						Assert.That (respCode.Message, Is.EqualTo ("This is some free-form text"));
 
-						Assert.AreEqual (3, engine.SupportedCharsets.Count);
-						Assert.IsTrue (engine.SupportedCharsets.Contains ("US-ASCII"), "US-ASCII");
-						Assert.IsTrue (engine.SupportedCharsets.Contains ("iso-8859-1"), "iso-8859-1");
-						Assert.IsTrue (engine.SupportedCharsets.Contains ("UTF-8"), "UTF-8");
+						Assert.That (engine.SupportedCharsets.Count, Is.EqualTo (3));
+						Assert.That (engine.SupportedCharsets.Contains ("US-ASCII"), Is.True, "US-ASCII");
+						Assert.That (engine.SupportedCharsets.Contains ("iso-8859-1"), Is.True, "iso-8859-1");
+						Assert.That (engine.SupportedCharsets.Contains ("UTF-8"), Is.True, "UTF-8");
 					}
 				}
 			}
@@ -104,15 +206,15 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (true, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.BadUrl, respCode.Type);
-						Assert.AreEqual ("CATENATE append has failed, one message expunged", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.BadUrl));
+						Assert.That (respCode.Message, Is.EqualTo ("CATENATE append has failed, one message expunged"));
 
 						var badurl = (BadUrlResponseCode) respCode;
-						Assert.AreEqual ("/INBOX;UIDVALIDITY=785799047/;UID=113330;section=1.5.9", badurl.BadUrl);
+						Assert.That (badurl.BadUrl, Is.EqualTo ("/INBOX;UIDVALIDITY=785799047/;UID=113330;section=1.5.9"));
 					}
 				}
 			}
@@ -133,15 +235,15 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (true, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.MaxConvertMessages, respCode.Type);
-						Assert.AreEqual ("This is some free-form text", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.MaxConvertMessages));
+						Assert.That (respCode.Message, Is.EqualTo ("This is some free-form text"));
 
 						var maxconvert = (MaxConvertResponseCode) respCode;
-						Assert.AreEqual (1, maxconvert.MaxConvert);
+						Assert.That (maxconvert.MaxConvert, Is.EqualTo (1));
 					}
 				}
 			}
@@ -162,15 +264,15 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (true, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.MaxConvertParts, respCode.Type);
-						Assert.AreEqual ("This is some free-form text", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.MaxConvertParts));
+						Assert.That (respCode.Message, Is.EqualTo ("This is some free-form text"));
 
 						var maxconvert = (MaxConvertResponseCode) respCode;
-						Assert.AreEqual (1, maxconvert.MaxConvert);
+						Assert.That (maxconvert.MaxConvert, Is.EqualTo (1));
 					}
 				}
 			}
@@ -191,15 +293,15 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (false, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.NoUpdate, respCode.Type);
-						Assert.AreEqual ("Too many contexts", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.NoUpdate));
+						Assert.That (respCode.Message, Is.EqualTo ("Too many contexts"));
 
 						var noupdate = (NoUpdateResponseCode) respCode;
-						Assert.AreEqual ("B02", noupdate.Tag);
+						Assert.That (noupdate.Tag, Is.EqualTo ("B02"));
 					}
 				}
 			}
@@ -220,16 +322,16 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (true, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.NewName, respCode.Type);
-						Assert.AreEqual ("This is some free-form text", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.NewName));
+						Assert.That (respCode.Message, Is.EqualTo ("This is some free-form text"));
 
 						var newname = (NewNameResponseCode) respCode;
-						Assert.AreEqual ("OldName", newname.OldName);
-						Assert.AreEqual ("NewName", newname.NewName);
+						Assert.That (newname.OldName, Is.EqualTo ("OldName"));
+						Assert.That (newname.NewName, Is.EqualTo ("NewName"));
 					}
 				}
 			}
@@ -250,15 +352,15 @@ namespace UnitTests.Net.Imap {
 						try {
 							respCode = engine.ParseResponseCodeAsync (true, false, CancellationToken.None).GetAwaiter ().GetResult ();
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing RESP-CODE failed: {0}", ex);
+							Assert.Fail ($"Parsing RESP-CODE failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (ImapResponseCodeType.UndefinedFilter, respCode.Type);
-						Assert.AreEqual ("This is some free-form text", respCode.Message);
+						Assert.That (respCode.Type, Is.EqualTo (ImapResponseCodeType.UndefinedFilter));
+						Assert.That (respCode.Message, Is.EqualTo ("This is some free-form text"));
 
 						var undefined = (UndefinedFilterResponseCode) respCode;
-						Assert.AreEqual ("filter-name", undefined.Name);
+						Assert.That (undefined.Name, Is.EqualTo ("filter-name"));
 					}
 				}
 			}
@@ -270,13 +372,31 @@ namespace UnitTests.Net.Imap {
 				using (var tokenizer = new ImapStream (input, new NullProtocolLogger ())) {
 					using (var engine = new ImapEngine (null)) {
 						try {
-							engine.ConnectAsync (tokenizer, false, CancellationToken.None).GetAwaiter ().GetResult ();
+							engine.Connect (tokenizer, CancellationToken.None);
 						} catch (Exception ex) {
-							Assert.Fail ("Parsing greeting failed: {0}", ex);
+							Assert.Fail ($"Parsing greeting failed: {ex}");
 							return;
 						}
 
-						Assert.AreEqual (expected, engine.QuirksMode);
+						Assert.That (engine.QuirksMode, Is.EqualTo (expected));
+					}
+				}
+			}
+		}
+
+		async Task TestGreetingDetectionAsync (string server, string fileName, ImapQuirksMode expected)
+		{
+			using (var input = GetType ().Assembly.GetManifestResourceStream ("UnitTests.Net.Imap.Resources." + server + "." + fileName)) {
+				using (var tokenizer = new ImapStream (input, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						try {
+							await engine.ConnectAsync (tokenizer, CancellationToken.None);
+						} catch (Exception ex) {
+							Assert.Fail ($"Parsing greeting failed: {ex}");
+							return;
+						}
+
+						Assert.That (engine.QuirksMode, Is.EqualTo (expected));
 					}
 				}
 			}
@@ -289,9 +409,21 @@ namespace UnitTests.Net.Imap {
 		}
 
 		[Test]
+		public Task TestCourierImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("courier", "greeting.txt", ImapQuirksMode.Courier);
+		}
+
+		[Test]
 		public void TestCyrusImapDetection ()
 		{
 			TestGreetingDetection ("cyrus", "greeting.txt", ImapQuirksMode.Cyrus);
+		}
+
+		[Test]
+		public Task TestCyrusImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("cyrus", "greeting.txt", ImapQuirksMode.Cyrus);
 		}
 
 		[Test]
@@ -301,9 +433,21 @@ namespace UnitTests.Net.Imap {
 		}
 
 		[Test]
+		public Task TestDominoImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("domino", "greeting.txt", ImapQuirksMode.Domino);
+		}
+
+		[Test]
 		public void TestDovecotImapDetection ()
 		{
 			TestGreetingDetection ("dovecot", "greeting.txt", ImapQuirksMode.Dovecot);
+		}
+
+		[Test]
+		public Task TestDovecotImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("dovecot", "greeting.txt", ImapQuirksMode.Dovecot);
 		}
 
 		[Test]
@@ -313,9 +457,21 @@ namespace UnitTests.Net.Imap {
 		}
 
 		[Test]
+		public Task TestExchangeImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("exchange", "greeting.txt", ImapQuirksMode.Exchange);
+		}
+
+		[Test]
 		public void TestExchange2003ImapDetection ()
 		{
 			TestGreetingDetection ("exchange", "greeting-2003.txt", ImapQuirksMode.Exchange2003);
+		}
+
+		[Test]
+		public Task TestExchange2003ImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("exchange", "greeting-2003.txt", ImapQuirksMode.Exchange2003);
 		}
 
 		[Test]
@@ -325,9 +481,21 @@ namespace UnitTests.Net.Imap {
 		}
 
 		[Test]
+		public Task TestExchange2007ImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("exchange", "greeting-2007.txt", ImapQuirksMode.Exchange2007);
+		}
+
+		[Test]
 		public void TestUWImapDetection ()
 		{
 			TestGreetingDetection ("uw", "greeting.txt", ImapQuirksMode.UW);
+		}
+
+		[Test]
+		public Task TestUWImapDetectionAsync ()
+		{
+			return TestGreetingDetectionAsync ("uw", "greeting.txt", ImapQuirksMode.UW);
 		}
 	}
 }

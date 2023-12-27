@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2021 .NET Foundation and Contributors
+// Copyright (c) 2013-2023 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -122,7 +122,42 @@ namespace MailKit.Examples {
 		}
 		#endregion
 
-		#region DownloadMessages
+		#region Namespaces
+		public static void ShowNamespaces ()
+		{
+			using (var client = new ImapClient ()) {
+				client.Connect ("imap.mail-server.com", 993, SecureSocketOptions.SslOnConnect);
+				client.Authenticate ("username", "password");
+
+				Console.WriteLine ("Personal namespaces:");
+				foreach (var ns in client.PersonalNamespaces)
+					Console.WriteLine ($"* \"{ns.Path}\" \"{ns.DirectorySeparator}\"");
+				Console.WriteLine ();
+				Console.WriteLine ("Shared namespaces:");
+				foreach (var ns in client.SharedNamespaces)
+					Console.WriteLine ($"* \"{ns.Path}\" \"{ns.DirectorySeparator}\"");
+				Console.WriteLine ();
+				Console.WriteLine ("Other namespaces:");
+				foreach (var ns in client.OtherNamespaces)
+					Console.WriteLine ($"* \"{ns.Path}\" \"{ns.DirectorySeparator}\"");
+				Console.WriteLine ();
+
+				// get the folder that represents the first personal namespace
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+
+				// list the folders under the first personal namespace
+				var subfolders = personal.GetSubfolders ();
+
+				Console.WriteLine ("The list of folders that are direct children of the first personmal namespace:");
+				foreach (var folder in subfolders)
+					Console.WriteLine ($"* {folder.Name}");
+
+				client.Disconnect (true);
+			}
+		}
+		#endregion
+
+		#region DownloadMessagesByUniqueId
 		public static void DownloadMessages ()
 		{
 			using (var client = new ImapClient ()) {
@@ -146,8 +181,8 @@ namespace MailKit.Examples {
 		}
 		#endregion
 
-		#region DownloadBodyParts
-		public static void DownloadBodyParts (string baseDirectory)
+		#region DownloadMessageStreamsByUniqueId
+		public static void DownloadMessages ()
 		{
 			using (var client = new ImapClient ()) {
 				client.Connect ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
@@ -156,57 +191,56 @@ namespace MailKit.Examples {
 
 				client.Inbox.Open (FolderAccess.ReadOnly);
 
-				// search for messages where the Subject header contains either "MimeKit" or "MailKit"
-				var query = SearchQuery.SubjectContains ("MimeKit").Or (SearchQuery.SubjectContains ("MailKit"));
-				var uids = client.Inbox.Search (query);
+				var uids = client.Inbox.Search (SearchQuery.All);
 
-				// fetch summary information for the search results (we will want the UID and the BODYSTRUCTURE
-				// of each message so that we can extract the text body and the attachments)
-				var items = client.Inbox.Fetch (uids, MessageSummaryItems.UniqueId | MessageSummaryItems.BodyStructure);
+				foreach (var uid in uids) {
+					using (var stream = client.Inbox.GetStream (uid)) {
+						using (var output = File.Create ($"{uid}.eml"))
+							stream.CopyTo (output);
+					}
+				}
 
-				foreach (var item in items) {
-					// determine a directory to save stuff in
-					var directory = Path.Combine (baseDirectory, item.UniqueId.ToString ());
+				client.Disconnect (true);
+			}
+		}
+		#endregion
 
-					// create the directory
-					Directory.CreateDirectory (directory);
+		#region DownloadMessagesByIndex
+		public static void DownloadMessages ()
+		{
+			using (var client = new ImapClient ()) {
+				client.Connect ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
 
-					// IMessageSummary.TextBody is a convenience property that finds the 'text/plain' body part for us
-					var bodyPart = item.TextBody;
+				client.Authenticate ("username", "password");
 
-					// download the 'text/plain' body part
-					var body = (TextPart) client.Inbox.GetBodyPart (item.UniqueId, bodyPart);
+				client.Inbox.Open (FolderAccess.ReadOnly);
 
-					// TextPart.Text is a convenience property that decodes the content and converts the result to
-					// a string for us
-					var text = body.Text;
+				for (int index = 0; index < client.Inbox.Count; index++) {
+					var message = client.Inbox.GetMessage (index);
 
-					File.WriteAllText (Path.Combine (directory, "body.txt"), text);
+					// write the message to a file
+					message.WriteTo (string.Format ("{0}.eml", index));
+				}
 
-					// now iterate over all of the attachments and save them to disk
-					foreach (var attachment in item.Attachments) {
-						// download the attachment just like we did with the body
-						var entity = client.Inbox.GetBodyPart (item.UniqueId, attachment);
+				client.Disconnect (true);
+			}
+		}
+		#endregion
 
-						// attachments can be either message/rfc822 parts or regular MIME parts
-						if (entity is MessagePart) {
-							var rfc822 = (MessagePart) entity;
+		#region DownloadMessageStreamsByIndex
+		public static void DownloadMessages ()
+		{
+			using (var client = new ImapClient ()) {
+				client.Connect ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
 
-							var path = Path.Combine (directory, attachment.PartSpecifier + ".eml");
+				client.Authenticate ("username", "password");
 
-							rfc822.Message.WriteTo (path);
-						} else {
-							var part = (MimePart) entity;
+				client.Inbox.Open (FolderAccess.ReadOnly);
 
-							// note: it's possible for this to be null, but most will specify a filename
-							var fileName = part.FileName;
-
-							var path = Path.Combine (directory, fileName);
-
-							// decode and save the content to a file
-							using (var stream = File.Create (path))
-								part.Content.DecodeTo (stream);
-						}
+				for (int index = 0; index < client.Inbox.Count; index++) {
+					using (var stream = client.Inbox.GetStream (index)) {
+						using (var output = File.Create ($"{index}.eml"))
+							stream.CopyTo (output);
 					}
 				}
 

@@ -24,11 +24,7 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-
-using NUnit.Framework;
 
 using MailKit.Security;
 
@@ -42,6 +38,7 @@ namespace UnitTests.Security {
 			Assert.Throws<ArgumentNullException> (() => new SaslException (null, SaslErrorCode.MissingChallenge, "message"));
 		}
 
+#if NET6_0
 		[Test]
 		public void TestSerialization ()
 		{
@@ -53,10 +50,11 @@ namespace UnitTests.Security {
 				stream.Position = 0;
 
 				var ex = (SaslException) formatter.Deserialize (stream);
-				Assert.AreEqual (expected.Message, ex.Message, "Unexpected Message.");
-				Assert.AreEqual (expected.Mechanism, ex.Mechanism, "Unexpected Mechanism.");
-				Assert.AreEqual (expected.ErrorCode, ex.ErrorCode, "Unexpected ErrorCode.");
+				Assert.That (ex.Message, Is.EqualTo (expected.Message), "Unexpected Message.");
+				Assert.That (ex.Mechanism, Is.EqualTo (expected.Mechanism), "Unexpected Mechanism.");
+				Assert.That (ex.ErrorCode, Is.EqualTo (expected.ErrorCode), "Unexpected ErrorCode.");
 			}
 		}
+#endif // NET6_0
 	}
 }

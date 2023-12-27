@@ -24,10 +24,7 @@
 // THE SOFTWARE.
 //
 
-using System;
 using System.Net;
-
-using NUnit.Framework;
 
 using MailKit.Security;
 
@@ -50,11 +47,11 @@ namespace UnitTests.Security {
 			const string expected = "bixhPXVzZXJAZXhhbXBsZS5jb20sAWhvc3Q9c2VydmVyLmV4YW1wbGUuY29tAXBvcnQ9MTQzAWF1dGg9QmVhcmVyIHZGOWRmdDRxbVRjMk52YjNSbGNrQmhiSFJoZG1semRHRXVZMjl0Q2c9PQEB";
 			string challenge;
 
-			Assert.IsTrue (sasl.SupportsInitialResponse, "SupportsInitialResponse");
+			Assert.That (sasl.SupportsInitialResponse, Is.True, "SupportsInitialResponse");
 			challenge = sasl.Challenge (string.Empty);
-			Assert.IsTrue (sasl.IsAuthenticated, "IsAuthenticated");
-			Assert.AreEqual (expected, challenge, "Challenge");
-			Assert.AreEqual ("AQ==", sasl.Challenge (string.Empty), "Already authenticated.");
+			Assert.That (sasl.IsAuthenticated, Is.True, "IsAuthenticated");
+			Assert.That (challenge, Is.EqualTo (expected), "Challenge");
+			Assert.That (sasl.Challenge (string.Empty), Is.EqualTo ("AQ=="), "Already authenticated.");
 		}
 
 		[Test]
@@ -81,11 +78,11 @@ namespace UnitTests.Security {
 			const string expected = "bixhPXVzZXJAZXhhbXBsZS5jb20sAWhvc3Q9c2VydmVyLmV4YW1wbGUuY29tAXBvcnQ9MTQzAWF1dGg9QmVhcmVyIHZGOWRmdDRxbVRjMk52YjNSbGNrQmhiSFJoZG1semRHRXVZMjl0Q2c9PQEB";
 			string challenge;
 
-			Assert.IsTrue (sasl.SupportsInitialResponse, "SupportsInitialResponse");
+			Assert.That (sasl.SupportsInitialResponse, Is.True, "SupportsInitialResponse");
 			challenge = sasl.Challenge (string.Empty);
-			Assert.IsTrue (sasl.IsAuthenticated, "IsAuthenticated");
-			Assert.AreEqual (expected, challenge, "Challenge");
-			Assert.AreEqual ("AQ==", sasl.Challenge (failureResponse), "Failure response.");
+			Assert.That (sasl.IsAuthenticated, Is.True, "IsAuthenticated");
+			Assert.That (challenge, Is.EqualTo (expected), "Challenge");
+			Assert.That (sasl.Challenge (failureResponse), Is.EqualTo ("AQ=="), "Failure response.");
 		}
 
 		[Test]
@@ -111,11 +108,11 @@ namespace UnitTests.Security {
 			const string expected = "bixhPXVzZXJAZXhhbXBsZS5jb20sAWhvc3Q9c2VydmVyLmV4YW1wbGUuY29tAXBvcnQ9NTg3AWF1dGg9QmVhcmVyIHZGOWRmdDRxbVRjMk52YjNSbGNrQmhiSFJoZG1semRHRXVZMjl0Q2c9PQEB";
 			string challenge;
 
-			Assert.IsTrue (sasl.SupportsInitialResponse, "SupportsInitialResponse");
+			Assert.That (sasl.SupportsInitialResponse, Is.True, "SupportsInitialResponse");
 			challenge = sasl.Challenge (string.Empty);
-			Assert.IsTrue (sasl.IsAuthenticated, "IsAuthenticated");
-			Assert.AreEqual (expected, challenge, "Challenge");
-			Assert.AreEqual ("AQ==", sasl.Challenge (string.Empty), "Already authenticated.");
+			Assert.That (sasl.IsAuthenticated, Is.True, "IsAuthenticated");
+			Assert.That (challenge, Is.EqualTo (expected), "Challenge");
+			Assert.That (sasl.Challenge (string.Empty), Is.EqualTo ("AQ=="), "Already authenticated.");
 		}
 
 		[Test]
@@ -142,11 +139,11 @@ namespace UnitTests.Security {
 			const string expected = "bixhPXVzZXJAZXhhbXBsZS5jb20sAWhvc3Q9c2VydmVyLmV4YW1wbGUuY29tAXBvcnQ9NTg3AWF1dGg9QmVhcmVyIHZGOWRmdDRxbVRjMk52YjNSbGNrQmhiSFJoZG1semRHRXVZMjl0Q2c9PQEB";
 			string challenge;
 
-			Assert.IsTrue (sasl.SupportsInitialResponse, "SupportsInitialResponse");
+			Assert.That (sasl.SupportsInitialResponse, Is.True, "SupportsInitialResponse");
 			challenge = sasl.Challenge (string.Empty);
-			Assert.IsTrue (sasl.IsAuthenticated, "IsAuthenticated");
-			Assert.AreEqual (expected, challenge, "Challenge");
-			Assert.AreEqual ("AQ==", sasl.Challenge (failureResponse), "Failure response.");
+			Assert.That (sasl.IsAuthenticated, Is.True, "IsAuthenticated");
+			Assert.That (challenge, Is.EqualTo (expected), "Challenge");
+			Assert.That (sasl.Challenge (failureResponse), Is.EqualTo ("AQ=="), "Failure response.");
 		}
 
 		[Test]

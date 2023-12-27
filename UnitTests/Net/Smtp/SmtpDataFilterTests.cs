@@ -24,11 +24,7 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.IO;
 using System.Text;
-
-using NUnit.Framework;
 
 using MimeKit.IO;
 using MailKit.Net.Smtp;
@@ -40,6 +36,38 @@ namespace UnitTests.Net.Smtp {
 		const string SimpleDataInput = "This is a simple stream of text\r\nthat has no need to be byte-stuffed\r\nat all.\r\n\r\nPlease don't get byte-stuffed!\r\n";
 		const string ComplexDataInput = "This is a bit more complicated\r\n... This line starts with a '.' and\r\ntherefore needs to be byte-stuffed\r\n. And so does this line!\r\n";
 		const string ComplexDataOutput = "This is a bit more complicated\r\n.... This line starts with a '.' and\r\ntherefore needs to be byte-stuffed\r\n.. And so does this line!\r\n";
+
+		[Test]
+		public void TestSmtpDataFilterDecode ()
+		{
+			var inputs = new string[] { SimpleDataInput, ComplexDataOutput };
+			var outputs = new string[] { SimpleDataInput, ComplexDataInput };
+			var filter = new SmtpDataFilter (decode: true);
+
+			for (int i = 0; i < inputs.Length; i++) {
+				using (var memory = new MemoryStream ()) {
+					byte[] buffer;
+					int n;
+
+					using (var filtered = new FilteredStream (memory)) {
+						filtered.Add (filter);
+
+						buffer = Encoding.ASCII.GetBytes (inputs[i]);
+						filtered.Write (buffer, 0, buffer.Length);
+						filtered.Flush ();
+					}
+
+					buffer = memory.GetBuffer ();
+					n = (int) memory.Length;
+
+					var text = Encoding.ASCII.GetString (buffer, 0, n);
+
+					Assert.That (text, Is.EqualTo (outputs[i]));
+
+					filter.Reset ();
+				}
+			}
+		}
 
 		[Test]
 		public void TestSmtpDataFilter ()
@@ -66,7 +94,7 @@ namespace UnitTests.Net.Smtp {
 
 					var text = Encoding.ASCII.GetString (buffer, 0, n);
 
-					Assert.AreEqual (outputs[i], text);
+					Assert.That (text, Is.EqualTo (outputs[i]));
 
 					filter.Reset ();
 				}
@@ -98,7 +126,7 @@ namespace UnitTests.Net.Smtp {
 
 					var text = Encoding.ASCII.GetString (buffer, 0, n);
 
-					Assert.AreEqual (outputs[i], text);
+					Assert.That (text, Is.EqualTo (outputs[i]));
 
 					filter.Reset ();
 				}
@@ -132,7 +160,7 @@ namespace UnitTests.Net.Smtp {
 
 				var text = Encoding.ASCII.GetString (buffer, 0, n);
 
-				Assert.AreEqual (output, text);
+				Assert.That (text, Is.EqualTo (output));
 			}
 		}
 
@@ -163,7 +191,7 @@ namespace UnitTests.Net.Smtp {
 
 				var text = Encoding.ASCII.GetString (buffer, 0, n);
 
-				Assert.AreEqual (output, text);
+				Assert.That (text, Is.EqualTo (output));
 			}
 		}
 
@@ -194,7 +222,7 @@ namespace UnitTests.Net.Smtp {
 
 				var text = Encoding.ASCII.GetString (buffer, 0, n);
 
-				Assert.AreEqual (output, text);
+				Assert.That (text, Is.EqualTo (output));
 			}
 		}
 
@@ -225,7 +253,7 @@ namespace UnitTests.Net.Smtp {
 
 				var text = Encoding.ASCII.GetString (buffer, 0, n);
 
-				Assert.AreEqual (output, text);
+				Assert.That (text, Is.EqualTo (output));
 			}
 		}
 	}

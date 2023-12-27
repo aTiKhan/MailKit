@@ -66,6 +66,23 @@ namespace MailKit.Net.Imap {
 		}
 
 		/// <summary>
+		/// Initializes a new instance of the <see cref="T:MailKit.Net.Imap.ImapEventGroup"/> class.
+		/// </summary>
+		/// <remarks>
+		/// Initializes a new instance of the <see cref="T:MailKit.Net.Imap.ImapEventGroup"/> class.
+		/// </remarks>
+		/// <param name="mailboxFilter">The mailbox filter.</param>
+		/// <param name="events">The list of IMAP events.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="mailboxFilter"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="events"/> is <c>null</c>.</para>
+		/// </exception>
+		public ImapEventGroup (ImapMailboxFilter mailboxFilter, params ImapEvent[] events) : this (mailboxFilter, (IList<ImapEvent>) events)
+		{
+		}
+
+		/// <summary>
 		/// Get the mailbox filter.
 		/// </summary>
 		/// <remarks>
@@ -102,9 +119,9 @@ namespace MailKit.Net.Imap {
 		{
 			bool isSelectedFilter = MailboxFilter == ImapMailboxFilter.Selected || MailboxFilter == ImapMailboxFilter.SelectedDelayed;
 
-			command.Append ("(");
+			command.Append ('(');
 			MailboxFilter.Format (engine, command, args);
-			command.Append (" ");
+			command.Append (' ');
 
 			if (Events.Count > 0) {
 				var haveAnnotationChange = false;
@@ -112,7 +129,7 @@ namespace MailKit.Net.Imap {
 				var haveMessageNew = false;
 				var haveFlagChange = false;
 
-				command.Append ("(");
+				command.Append ('(');
 
 				for (int i = 0; i < Events.Count; i++) {
 					var @event = Events[i];
@@ -130,11 +147,11 @@ namespace MailKit.Net.Imap {
 						haveAnnotationChange = true;
 
 					if (i > 0)
-						command.Append (" ");
+						command.Append (' ');
 
 					@event.Format (engine, command, args, isSelectedFilter);
 				}
-				command.Append (")");
+				command.Append (')');
 
 				// https://tools.ietf.org/html/rfc5465#section-5
 				if ((haveMessageNew && !haveMessageExpunge) || (!haveMessageNew && haveMessageExpunge))
@@ -148,7 +165,7 @@ namespace MailKit.Net.Imap {
 				command.Append ("NONE");
 			}
 
-			command.Append (")");
+			command.Append (')');
 		}
 	}
 
@@ -262,7 +279,7 @@ namespace MailKit.Net.Imap {
 			/// <para>The list of <paramref name="folders"/> contains folders that are not of
 			/// type <see cref="ImapFolder"/>.</para>
 			/// </exception>
-			public Mailboxes (params IMailFolder[] folders) : this ("MAILBOXES", folders)
+			public Mailboxes (params IMailFolder[] folders) : this ((IList<IMailFolder>) folders)
 			{
 			}
 
@@ -293,7 +310,7 @@ namespace MailKit.Net.Imap {
 
 				this.folders = new ImapFolder[folders.Count];
 				for (int i = 0; i < folders.Count; i++) {
-					if (!(folders[i] is ImapFolder folder))
+					if (folders[i] is not ImapFolder folder)
 						throw new ArgumentException ("All folders must be ImapFolders.", nameof (folders));
 
 					this.folders[i] = folder;
@@ -320,16 +337,16 @@ namespace MailKit.Net.Imap {
 					command.Append ("%F");
 					args.Add (folders[0]);
 				} else {
-					command.Append ("(");
+					command.Append ('(');
 
 					for (int i = 0; i < folders.Length; i++) {
 						if (i > 0)
-							command.Append (" ");
+							command.Append (' ');
 						command.Append ("%F");
 						args.Add (folders[i]);
 					}
 
-					command.Append (")");
+					command.Append (')');
 				}
 			}
 		}
@@ -379,7 +396,7 @@ namespace MailKit.Net.Imap {
 			/// <para>The list of <paramref name="folders"/> contains folders that are not of
 			/// type <see cref="ImapFolder"/>.</para>
 			/// </exception>
-			public Subtree (params IMailFolder[] folders) : base ("SUBTREE", folders)
+			public Subtree (params IMailFolder[] folders) : this ((IList<IMailFolder>) folders)
 			{
 			}
 		}
@@ -645,9 +662,8 @@ namespace MailKit.Net.Imap {
 			/// Initializes a new instance of the <see cref="T:MailKit.Net.Imap.ImapEvent.MessageNew"/> class.
 			/// </remarks>
 			/// <param name="items">The message summary items to automatically retrieve for new messages.</param>
-			public MessageNew (MessageSummaryItems items = MessageSummaryItems.None) : base ("MessageNew", true)
+			public MessageNew (MessageSummaryItems items = MessageSummaryItems.None) : this (new FetchRequest (items))
 			{
-				request = new FetchRequest (items);
 			}
 
 			/// <summary>
@@ -664,9 +680,8 @@ namespace MailKit.Net.Imap {
 			/// <exception cref="ArgumentException">
 			/// <para>One or more of the specified <paramref name="headers"/> is invalid.</para>
 			/// </exception>
-			public MessageNew (MessageSummaryItems items, IEnumerable<HeaderId> headers) : base ("MessageNew", true)
+			public MessageNew (MessageSummaryItems items, IEnumerable<HeaderId> headers) : this (new FetchRequest (items, headers))
 			{
-				request = new FetchRequest (items, headers);
 			}
 
 			/// <summary>
@@ -683,9 +698,8 @@ namespace MailKit.Net.Imap {
 			/// <exception cref="ArgumentException">
 			/// <para>One or more of the specified <paramref name="headers"/> is invalid.</para>
 			/// </exception>
-			public MessageNew (MessageSummaryItems items, IEnumerable<string> headers) : base ("MessageNew", true)
+			public MessageNew (MessageSummaryItems items, IEnumerable<string> headers) : this (new FetchRequest (items, headers))
 			{
-				request = new FetchRequest (items, headers);
 			}
 
 			/// <summary>
@@ -710,7 +724,7 @@ namespace MailKit.Net.Imap {
 				if (!isSelectedFilter)
 					throw new InvalidOperationException ("The MessageNew event cannot have any parameters for mailbox filters other than SELECTED and SELECTED-DELAYED.");
 
-				command.Append (" ");
+				command.Append (' ');
 				command.Append (ImapFolder.FormatSummaryItems (engine, request, out _, isNotify: true));
 			}
 		}

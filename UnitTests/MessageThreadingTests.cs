@@ -24,12 +24,7 @@
 // THE SOFTWARE.
 //
 
-using System;
-using System.Linq;
 using System.Text;
-using System.Collections.Generic;
-
-using NUnit.Framework;
 
 using MimeKit;
 using MimeKit.Utils;
@@ -46,7 +41,7 @@ namespace UnitTests {
 		{
 			var orderBy = new OrderBy[] { OrderBy.Arrival };
 			var messagesMissingInfo = new [] { new MessageSummary (0) };
-			var emptyOrderBy = new OrderBy[0];
+			var emptyOrderBy = Array.Empty<OrderBy> ();
 			int depth;
 
 			var summary = new MessageSummary (0);
@@ -75,38 +70,38 @@ namespace UnitTests {
 			int depth;
 
 			result = MessageThreader.GetThreadableSubject ("Re: simple subject", out depth);
-			Assert.AreEqual ("simple subject", result, "#1a");
-			Assert.AreEqual (1, depth, "#1b");
+			Assert.That (result, Is.EqualTo ("simple subject"), "#1a");
+			Assert.That (depth, Is.EqualTo (1), "#1b");
 
 			result = MessageThreader.GetThreadableSubject ("Re: simple subject  ", out depth);
-			Assert.AreEqual ("simple subject", result, "#2a");
-			Assert.AreEqual (1, depth, "#2b");
+			Assert.That (result, Is.EqualTo ("simple subject"), "#2a");
+			Assert.That (depth, Is.EqualTo (1), "#2b");
 
 			result = MessageThreader.GetThreadableSubject ("Re: Re: simple subject  ", out depth);
-			Assert.AreEqual ("simple subject", result, "#3a");
-			Assert.AreEqual (2, depth, "#3b");
+			Assert.That (result, Is.EqualTo ("simple subject"), "#3a");
+			Assert.That (depth, Is.EqualTo (2), "#3b");
 
 			result = MessageThreader.GetThreadableSubject ("Re: Re[4]: simple subject  ", out depth);
-			Assert.AreEqual ("simple subject", result, "#4a");
-			Assert.AreEqual (5, depth, "#4b");
+			Assert.That (result, Is.EqualTo ("simple subject"), "#4a");
+			Assert.That (depth, Is.EqualTo (5), "#4b");
 
 			result = MessageThreader.GetThreadableSubject ("Re: [Mailing-List] Re[4]: simple subject  ", out depth);
-			Assert.AreEqual ("simple subject", result, "#5a");
-			Assert.AreEqual (5, depth, "#5b");
+			Assert.That (result, Is.EqualTo ("simple subject"), "#5a");
+			Assert.That (depth, Is.EqualTo (5), "#5b");
 		}
 
-		MessageSummary MakeThreadable (ref int index, string subject, string msgid, string date, string refs)
-		{
-			DateTimeOffset value;
+		static readonly char[] Space = new[] { ' ' };
 
-			DateUtils.TryParse (date, out value);
+		static MessageSummary MakeThreadable (ref int index, string subject, string msgid, string date, string refs)
+		{
+			DateUtils.TryParse (date, out var value);
 
 			var summary = new MessageSummary (++index);
 			summary.UniqueId = new UniqueId ((uint) summary.Index);
 			summary.Envelope = new Envelope ();
 			summary.References = new MessageIdList ();
 			if (refs != null) {
-				foreach (var id in refs.Split (new [] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+				foreach (var id in refs.Split (Space, StringSplitOptions.RemoveEmptyEntries))
 					summary.References.Add (id);
 			}
 			summary.Envelope.MessageId = MimeUtils.EnumerateReferences (msgid).FirstOrDefault ();
@@ -163,7 +158,7 @@ namespace UnitTests {
 
 			//Console.WriteLine (builder);
 
-			Assert.AreEqual (expected, builder.ToString (), "Threading did not produce the expected results");
+			Assert.That (builder.ToString (), Is.EqualTo (expected), "Threading did not produce the expected results");
 		}
 
 		[Test]
@@ -306,7 +301,7 @@ Welcome to Netscape
 
 			//Console.WriteLine (builder);
 
-			Assert.AreEqual (expected, builder.ToString (), "Threading did not produce the expected results");
+			Assert.That (builder.ToString (), Is.EqualTo (expected), "Threading did not produce the expected results");
 		}
 
 		[Test]
@@ -314,23 +309,23 @@ Welcome to Netscape
 		{
 			var node = new MessageThreader.ThreadableNode (new MessageSummary (0));
 
-			Assert.IsNull (node.Folder, "Folder");
-			Assert.IsNull (node.Body, "Body");
-			Assert.IsNull (node.TextBody, "TextBody");
-			Assert.IsNull (node.HtmlBody, "HtmlBody");
-			Assert.IsNull (node.BodyParts, "BodyParts");
-			Assert.IsNull (node.Attachments, "Attachments");
-			Assert.IsNull (node.PreviewText, "PreviewText");
-			Assert.IsNull (node.Envelope, "Envelope");
-			Assert.IsFalse (node.Flags.HasValue, "Flags");
-			Assert.IsNull (node.Keywords, "Keywords");
-			Assert.IsNull (node.Headers, "Headers");
-			Assert.IsFalse (node.InternalDate.HasValue, "InternalDate");
-			Assert.IsNull (node.EmailId, "EmailId");
-			Assert.IsNull (node.ThreadId, "ThreadId");
-			Assert.IsFalse (node.GMailMessageId.HasValue, "GMailMessageId");
-			Assert.IsFalse (node.GMailThreadId.HasValue, "GMailThreadId");
-			Assert.IsNull (node.GMailLabels, "GMailLabels");
+			Assert.That (node.Folder, Is.Null, "Folder");
+			Assert.That (node.Body, Is.Null, "Body");
+			Assert.That (node.TextBody, Is.Null, "TextBody");
+			Assert.That (node.HtmlBody, Is.Null, "HtmlBody");
+			Assert.That (node.BodyParts, Is.Null, "BodyParts");
+			Assert.That (node.Attachments, Is.Null, "Attachments");
+			Assert.That (node.PreviewText, Is.Null, "PreviewText");
+			Assert.That (node.Envelope, Is.Null, "Envelope");
+			Assert.That (node.Flags.HasValue, Is.False, "Flags");
+			Assert.That (node.Keywords, Is.Null, "Keywords");
+			Assert.That (node.Headers, Is.Null, "Headers");
+			Assert.That (node.InternalDate.HasValue, Is.False, "InternalDate");
+			Assert.That (node.EmailId, Is.Null, "EmailId");
+			Assert.That (node.ThreadId, Is.Null, "ThreadId");
+			Assert.That (node.GMailMessageId.HasValue, Is.False, "GMailMessageId");
+			Assert.That (node.GMailThreadId.HasValue, Is.False, "GMailThreadId");
+			Assert.That (node.GMailLabels, Is.Null, "GMailLabels");
 		}
 	}
 }
