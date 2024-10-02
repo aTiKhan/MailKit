@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ using System.Text;
 namespace MailKit.Security.Ntlm {
 	class NtlmChallengeMessage : NtlmMessageBase
 	{
-		static readonly NtlmFlags DefaultFlags = NtlmFlags.NegotiateNtlm | NtlmFlags.NegotiateUnicode /*| NtlmFlags.NegotiateAlwaysSign*/;
+		const NtlmFlags DefaultFlags = NtlmFlags.NegotiateNtlm | NtlmFlags.NegotiateUnicode /*| NtlmFlags.NegotiateAlwaysSign*/;
 		byte[] serverChallenge;
 		byte[] cached;
 
@@ -98,7 +98,8 @@ namespace MailKit.Security.Ntlm {
 			Buffer.BlockCopy (message, startIndex + 24, serverChallenge, 0, 8);
 
 			var targetNameLength = BitConverterLE.ToUInt16 (message, startIndex + 12);
-			var targetNameOffset = BitConverterLE.ToUInt16 (message, startIndex + 16);
+			//var targetNameMaxLength = BitConverterLE.ToUInt16 (message, startIndex + 14);
+			var targetNameOffset = BitConverterLE.ToInt32 (message, startIndex + 16);
 
 			if (targetNameLength > 0) {
 				var encoding = (Flags & NtlmFlags.NegotiateUnicode) != 0 ? Encoding.Unicode : Encoding.UTF8;

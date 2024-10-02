@@ -1,5 +1,67 @@
 # Release Notes
 
+## MailKit 4.8.0 (2024-09-29)
+
+* Added a UniqueIdRange.SortOrder property.
+* Updated the protocol log help link for ProtocolExceptions.
+  (issue [#1800](https://github.com/jstedfast/MailKit/issues/1800))
+* Fix SmtpClient.Dispose() when telemetry is configured.
+  (issue [#1816](https://github.com/jstedfast/MailKit/issues/1816))
+* Added ProxyClient.SystemProxy as a convenience property that wraps
+  the default system proxy (aka HttpClient.DefaultProxy) on net6.0+.
+
+## MailKit 4.7.1 (2024-07-12)
+
+* Fixed ImapClient and Pop3Client.Connect/Async() when OTEL is enabled.
+  (issue [#1765](https://github.com/jstedfast/MailKit/issues/1765))
+* Bumped MimeKit dependency to 4.7.1 to fix a denial of service security issue in the System.Formats.Asn1
+  dependency.
+
+## MailKit 4.7.0 (2024-06-29)
+
+* Added Activity/Metrics for Imap/Pop3/SmtpClient.
+  (issue [#1499](https://github.com/jstedfast/MailKit/issues/1499))
+* Bumped MimeKit dependency to 4.7.0.
+
+## MailKit 4.6.0 (2024-05-17)
+
+* Swallow SMTP RSET exceptions. These obscure other Send/SendAsync exceptions. Fixes a regression
+  introduced in 4.4.0. (issue [#1748](https://github.com/jstedfast/MailKit/issues/1748))
+* Fixed ImapUtils.FormatInternalDate() to properly handle negative timezone offsets with non-zero minutes.
+  (issue [#1743](https://github.com/jstedfast/MailKit/pull/1753))
+* Bumped MimeKit dependency to 4.6.0.
+
+## MailKit 4.5.0 (2024-04-13)
+
+* Added a new SmtpClient.RequireTLS property to fix sending mail via Strato.de.
+  (issue [#1737](https://github.com/jstedfast/MailKit/issues/1737))
+* Fixed SmtpClient to track the most recent response from the SMTP server in order to include
+  it in SmtpProtocolExceptions caused by unexpected server disconnects to provide more context.
+  (issue [#1744](https://github.com/jstedfast/MailKit/issues/1744))
+* Bumped MimeKit dependency to 4.5.0.
+
+## MailKit 4.4.0 (2024-03-02)
+
+* Added net8.0 targets
+* Split more sync/async logic to reduce allocations made by async state machines when
+  calling the synchronous public APIs instead of the async APIs.
+  (issue [#1335](https://github.com/jstedfast/MailKit/issues/1335))
+* Fixed logic for formatting IMAP FETCH HEADER.FIELDS.NOT corner case that was exposed by newly
+  added unit tests.
+* Fixed SmtpClient to disconnect during Authenticate/Async on socket errors.
+* Fixed SmtpClient's re-EHLO logic to disconnect on errors.
+* Added workaround for Zoho IMAP servers returning MODSEQ -1.
+  (issue [#1686](https://github.com/jstedfast/MailKit/issues/1686))
+* Added workaround for some IMAP servers that use () instead of NIL for an unset Content-Location header
+  in the BODYSTRUCTURE response.
+  (issue [#1700](https://github.com/jstedfast/MailKit/issues/1700))
+* Fixed an issue in the Socket.ConnectAsync logic that could result in unhandled exceptions on the
+  async thread if the ConnectAsync was cancelled.
+  (issue [#1703](https://github.com/jstedfast/MailKit/issues/1703))
+* Added work-around for Yandex IMAP GetBodyPart() response not including content.
+  (issue [#1708](https://github.com/jstedfast/MailKit/issues/1708))
+* Bumped MimeKit dependency to 4.4.0.
+
 ## MailKit 4.3.0 (2023-11-11)
 
 * Fixed an ArgumentOutOfRangeException error in Fetch(int min, int max, ...) where min and max were greater

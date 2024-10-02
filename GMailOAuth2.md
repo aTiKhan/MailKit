@@ -69,14 +69,15 @@ server.
 const string GMailAccount = "username@gmail.com";
 
 var clientSecrets = new ClientSecrets {
-	ClientId = "XXX.apps.googleusercontent.com",
-	ClientSecret = "XXX"
+    ClientId = "XXX.apps.googleusercontent.com",
+    ClientSecret = "XXX"
 };
 
 var codeFlow = new GoogleAuthorizationCodeFlow (new GoogleAuthorizationCodeFlow.Initializer {
-	DataStore = new FileDataStore ("CredentialCacheFolder", false),
-	Scopes = new [] { "https://mail.google.com/" },
-	ClientSecrets = clientSecrets
+    DataStore = new FileDataStore ("CredentialCacheFolder", false),
+    Scopes = new [] { "https://mail.google.com/" },
+    ClientSecrets = clientSecrets,
+    LoginHint = GMailAccount
 });
 
 // Note: For a web app, you'll want to use AuthorizationCodeWebApp instead.
@@ -85,15 +86,15 @@ var authCode = new AuthorizationCodeInstalledApp (codeFlow, codeReceiver);
 
 var credential = await authCode.AuthorizeAsync (GMailAccount, CancellationToken.None);
 
-if (credential.Token.IsExpired (SystemClock.Default))
-	await credential.RefreshTokenAsync (CancellationToken.None);
+if (credential.Token.IsStale)
+    await credential.RefreshTokenAsync (CancellationToken.None);
 
 var oauth2 = new SaslMechanismOAuth2 (credential.UserId, credential.Token.AccessToken);
 
 using (var client = new ImapClient ()) {
-	await client.ConnectAsync ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
-	await client.AuthenticateAsync (oauth2);
-	await client.DisconnectAsync (true);
+    await client.ConnectAsync ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
+    await client.AuthenticateAsync (oauth2);
+    await client.DisconnectAsync (true);
 }
 ```
 
@@ -137,7 +138,7 @@ Ensure that you are using Authorization and HttpsRedirection in your **Program.c
 ```csharp
 app.UseHttpsRedirection ();
 app.UseStaticFiles ();
-	
+
 app.UseRouting ();
 
 app.UseAuthentication ();
@@ -150,7 +151,7 @@ Now, using the **GoogleScopedAuthorizeAttribute**, you can request scopes saved 
 [GoogleScopedAuthorize(DriveService.ScopeConstants.DriveReadonly)]
 public async Task AuthenticateAsync ([FromServices] IGoogleAuthProvider auth)
 {
-    GoogleCredential? googleCred = await _auth.GetCredentialAsync ();
+    GoogleCredential? googleCred = await auth.GetCredentialAsync ();
     string token = await googleCred.UnderlyingCredential.GetAccessTokenForRequestAsync ();
     
     var oauth2 = new SaslMechanismOAuth2 ("UserEmail", token);

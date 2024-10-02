@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@ namespace UnitTests.Net.Smtp {
 				Assert.That (ex.StatusCode, Is.EqualTo (expected.StatusCode), "Unexpected StatusCode.");
 
 				if (expected.Mailbox != null)
-					Assert.That (expected.Mailbox.Equals (ex.Mailbox), Is.True, "Unexpected Mailbox.");
+					Assert.That (ex.Mailbox, Is.EqualTo (expected.Mailbox), "Unexpected Mailbox.");
 				else
 					Assert.That (ex.Mailbox, Is.Null, "Expected Mailbox to be null.");
 			}

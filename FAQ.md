@@ -6,6 +6,7 @@
 
 * [Are MimeKit and MailKit completely free? Can I use them in my proprietary product(s)?](#completely-free)
 * [Why do I get `NotSupportedException: No data is available for encoding ######. For information on defining a custom encoding, see the documentation for the Encoding.RegisterProvider method.`?](#register-provider)
+* [Why do I get a `TypeLoadException` when I try to create a new MimeMessage?](#type-load-exception)
 * [Why do I get `"MailKit.Security.SslHandshakeException: An error occurred while attempting to establish an SSL or TLS connection."` when I try to Connect?](#ssl-handshake-exception)
 * [How can I get a protocol log for IMAP, POP3, or SMTP to see what is going wrong?](#protocol-log)
 * [Why doesn't MailKit find some of my GMail POP3 or IMAP messages?](#gmail-hidden-messages)
@@ -37,6 +38,7 @@
 * [Why doesn't ImapFolder.MoveTo() move the message out of the source folder?](#imap-move-does-not-move)
 * [How can I mark messages as read using IMAP?](#imap-mark-as-read)
 * [How can I re-synchronize the cache for an IMAP folder?](#imap-folder-resync)
+* [How can I login using a shared mailbox in Office365?](#office365-shared-mailboxes)
 
 ### SmtpClient
 
@@ -63,6 +65,34 @@ the following line of code to your program initialization (e.g. the beginning of
 
 ```csharp
 System.Text.Encoding.RegisterProvider (System.Text.CodePagesEncodingProvider.Instance);
+```
+
+### <a name="type-load-exception">Q: Why do I get a `TypeLoadException` when I try to create a new MimeMessage?</a>
+
+This only seems to happen in cases where the application is built for .NET Framework (v4.x) and seems to be most
+common for ASP.NET web applications that were built using Visual Studio 2019 (it is unclear whether this happens
+with Visual Studio 2022 as well).
+
+The issue is that some (older?) versions of MSBuild do not correctly generate `\*.dll.config`, `app.config`
+and/or `web.config` files with proper assembly version binding redirects.
+
+If this problem is happening to you, make sure to use MimeKit and MailKit >= v4.0 which include `MimeKit.dll.config`
+and `MailKit.dll.config`.
+
+The next step is to manually edit your application's `app.config` (or `web.config`) to add a binding redirect
+for `System.Runtime.CompilerServices.Unsafe`:
+
+```xml
+<configuration>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="System.Runtime.CompilerServices.Unsafe" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-6.0.0.0" newVersion="6.0.0.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
 ```
 
 ### <a id="ssl-handshake-exception">Q: Why do I get `"MailKit.Security.SslHandshakeException: An error occurred while attempting to establish an SSL or TLS connection."` when I try to Connect?</a>
@@ -114,12 +144,12 @@ by a known and trusted Certificate Authority, the above error will occur.
 If you are on a Linux system or are running a web service in a Linux container, it might be possible to use the following command to install
 the standard set of Certificate Authority root certificates using the following command:
 
-```
+```text
 apt update && apt install -y ca-certificates
 ```
 
 Another option is to work around this problem by supplying a custom [RemoteCertificateValidationCallback](https://msdn.microsoft.com/en-us/library/ms145054)
-and setting it on the client's [ServerCertificateValidationCallback](http://mimekit.net/docs/html/P_MailKit_MailService_ServerCertificateValidationCallback.htm)
+and setting it on the client's [ServerCertificateValidationCallback](https://mimekit.net/docs/html/P_MailKit_MailService_ServerCertificateValidationCallback.htm)
 property.
 
 In the simplest example, you could do something like this (although I would strongly recommend against it in
@@ -184,7 +214,7 @@ they *do* go down or are otherwise unreachable due to other network problems bet
 it becomes impossible to check the revocation status of one or more of the certificates in the chain.
 
 To ignore revocation checks, you can set the
-[CheckCertificateRevocation](http://www.mimekit.net/docs/html/P_MailKit_IMailService_CheckCertificateRevocation.htm)
+[CheckCertificateRevocation](https://www.mimekit.net/docs/html/P_MailKit_IMailService_CheckCertificateRevocation.htm)
 property of the IMAP, POP3 or SMTP client to `false` before you connect:
 
 ```csharp
@@ -206,7 +236,7 @@ the SSL and TLS protocols that are not supported by default are: SSL v2.0, SSL v
 
 You can override MailKit's default set of supported
 [SSL and TLS protocols](https://docs.microsoft.com/en-us/dotnet/api/system.security.authentication.sslprotocols?view=netframework-4.8)
-by setting the value of the [SslProtocols](http://www.mimekit.net/docs/html/P_MailKit_MailService_SslProtocols.htm)
+by setting the value of the [SslProtocols](https://www.mimekit.net/docs/html/P_MailKit_MailService_SslProtocols.htm)
 property on your SMTP, POP3 or IMAP client.
 
 For example:
@@ -225,9 +255,9 @@ using (var client = new SmtpClient ()) {
 ### <a id="protocol-log">Q: How can I get a protocol log for IMAP, POP3, or SMTP to see what is going wrong?</a>
 
 All of MailKit's client implementations have a constructor that takes a nifty
-[IProtocolLogger](http://www.mimekit.net/docs/html/T_MailKit_IProtocolLogger.htm)
+[IProtocolLogger](https://www.mimekit.net/docs/html/T_MailKit_IProtocolLogger.htm)
 interface for logging client/server communications. Out of the box, you can use the
-handy [ProtocolLogger](http://www.mimekit.net/docs/html/T_MailKit_ProtocolLogger.htm) class.
+handy [ProtocolLogger](https://www.mimekit.net/docs/html/T_MailKit_ProtocolLogger.htm) class.
 Here are some examples of how to use it:
 
 ```csharp
@@ -257,7 +287,7 @@ intended to behave according to their protocol specifications, you'll need to lo
 GMail account via your web browser and navigate to the `Forwarding and POP/IMAP` tab of your
 GMail Settings page and set your options to look like this:
 
-![GMail POP3 and IMAP Settings](http://content.screencast.com/users/jeff.xamarin/folders/Jing/media/7d50dada-6cb0-4ab1-b117-8600fb5e07d4/00000022.png "GMail POP3 and IMAP Settings")
+![GMail POP3 and IMAP Settings](https://content.screencast.com/users/jeff.xamarin/folders/Jing/media/7d50dada-6cb0-4ab1-b117-8600fb5e07d4/00000022.png "GMail POP3 and IMAP Settings")
 
 ### <a id="gmail-access">Q: How can I access GMail using MailKit?</a>
 
@@ -341,7 +371,7 @@ then add MIME parts to it that contain the content of the files you'd like to at
 the `Content-Disposition` header value to attachment. You'll probably also want to set the `filename`
 parameter on the `Content-Disposition` header as well as the `name` parameter on the `Content-Type`
 header. The most convenient way to do this is to use the
-[MimePart.FileName](http://www.mimekit.net/docs/html/P_MimeKit_MimePart_FileName.htm) property which
+[MimePart.FileName](https://www.mimekit.net/docs/html/P_MimeKit_MimePart_FileName.htm) property which
 will set both parameters for you as well as setting the `Content-Disposition` header value to `attachment`
 if it has not already been set to something else.
 
@@ -383,7 +413,7 @@ message.Body = multipart;
 ```
 
 A simpler way to construct messages with attachments is to take advantage of the
-[BodyBuilder](http://www.mimekit.net/docs/html/T_MimeKit_BodyBuilder.htm) class.
+[BodyBuilder](https://www.mimekit.net/docs/html/T_MimeKit_BodyBuilder.htm) class.
 
 ```csharp
 var message = new MimeMessage ();
@@ -411,7 +441,7 @@ builder.Attachments.Add (@"C:\Users\Joey\Documents\party.ics");
 message.Body = builder.ToMessageBody ();
 ```
 
-For more information, see [Creating Messages](http://www.mimekit.net/docs/html/Creating-Messages.htm).
+For more information, see [Creating Messages](https://www.mimekit.net/docs/html/Creating-Messages.htm).
 
 ### <a id="message-body">Q: How can I get the main body of a message?</a>
 
@@ -480,15 +510,15 @@ There are a few common message structures:
 <a name="message-body-tldr"></a>Now, if you don't care about any of that and just want to get the text of
 the first `text/plain` or `text/html` part you can find, that's easy.
 
-[MimeMessage](http://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm) has two convenience properties
-for this: [TextBody](http://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_TextBody.htm) and
-[HtmlBody](http://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_HtmlBody.htm).
+[MimeMessage](https://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm) has two convenience properties
+for this: [TextBody](https://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_TextBody.htm) and
+[HtmlBody](https://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_HtmlBody.htm).
 
 `MimeMessage.HtmlBody`, as the name implies, will traverse the MIME structure for you and find the most
 appropriate body part with a `Content-Type` of `text/html` that can be interpreted as the message body.
 Likewise, the `TextBody` property can be used to get the `text/plain` version of the message body.
 
-For more information, see [Working with Messages](http://www.mimekit.net/docs/html/Working-With-Messages.htm).
+For more information, see [Working with Messages](https://www.mimekit.net/docs/html/Working-With-Messages.htm).
 
 ### <a id="has-attachments">Q: How can I tell if a message has attachments?</a>
 
@@ -498,7 +528,7 @@ typically the textual body of the message, but it is not always quite that simpl
 
 In general, MIME attachments will have a `Content-Disposition` header with a value of `attachment`.
 To get the list of body parts matching this criteria, you can use the
-[MimeMessage.Attachments](http://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_Attachments.htm) property.
+[MimeMessage.Attachments](https://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_Attachments.htm) property.
 
 Unfortunately, not all mail clients follow this convention and so you may need to write your own custom logic.
 For example, you may wish to treat all body parts having a `name` or `filename` parameter set on them:
@@ -786,8 +816,8 @@ property.
 The MimeKit API was designed to use the existing MIME format for serialization. In light of this, the ability
 to use the .NET serialization API and format did not make much sense to support.
 
-You can easily serialize a [MimeMessage](http://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm) to a stream using the
-[WriteTo](http://www.mimekit.net/docs/html/Overload_MimeKit_MimeMessage_WriteTo.htm) methods.
+You can easily serialize a [MimeMessage](https://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm) to a stream using the
+[WriteTo](https://www.mimekit.net/docs/html/Overload_MimeKit_MimeMessage_WriteTo.htm) methods.
 
 For more information on this topic, see the following other two topics:
 
@@ -799,7 +829,7 @@ For more information on this topic, see the following other two topics:
 One of the more common operations that MimeKit is meant for is parsing email messages from arbitrary streams.
 There are two ways of accomplishing this task.
 
-The first way is to use one of the [Load](http://www.mimekit.net/docs/html/Overload_MimeKit_MimeMessage_Load.htm) methods
+The first way is to use one of the [Load](https://www.mimekit.net/docs/html/Overload_MimeKit_MimeMessage_Load.htm) methods
 on `MimeMessage`:
 
 ```csharp
@@ -814,7 +844,7 @@ Or you can load a message from a file path:
 var message = MimeMessage.Load ("message.eml");
 ```
 
-The second way is to use the [MimeParser](http://www.mimekit.net/docs/html/T_MimeKit_MimeParser.htm) class. For the most
+The second way is to use the [MimeParser](https://www.mimekit.net/docs/html/T_MimeKit_MimeParser.htm) class. For the most
 part, using the `MimeParser` directly is not necessary unless you wish to parse a Unix mbox file stream. However, this is
 how you would do it:
 
@@ -838,8 +868,8 @@ while (!parser.IsEndOfStream) {
 
 ### <a id="save-messages">Q: How can I save messages?</a>
 
-One you've got a [MimeMessage](http://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm), you can save
-it to a file using the [WriteTo](http://mimekit.net/docs/html/Overload_MimeKit_MimeMessage_WriteTo.htm) method:
+One you've got a [MimeMessage](https://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm), you can save
+it to a file using the [WriteTo](https://mimekit.net/docs/html/Overload_MimeKit_MimeMessage_WriteTo.htm) method:
 
 ```csharp
 message.WriteTo ("message.eml");
@@ -849,7 +879,7 @@ The `WriteTo` method also has overloads that allow you to write the message to a
 
 By default, the `WriteTo` method will save the message using DOS line-endings on Windows and Unix
 line-endings on Unix-based systems such as macOS and Linux. You can override this behavior by
-passing a [FormatOptions](http://mimekit.net/docs/html/T_MimeKit_FormatOptions.htm) argument to
+passing a [FormatOptions](https://mimekit.net/docs/html/T_MimeKit_FormatOptions.htm) argument to
 the method:
 
 ```csharp
@@ -870,7 +900,7 @@ single charset to do the conversion (which is *exactly* what `ToString` does).
 
 ### <a id="save-attachments">Q: How can I save attachments?</a>
 
-If you've already got a [MimePart](http://www.mimekit.net/docs/html/T_MimeKit_MimePart.htm) that represents
+If you've already got a [MimePart](https://www.mimekit.net/docs/html/T_MimeKit_MimePart.htm) that represents
 the attachment that you'd like to save, here's how you might save it:
 
 ```csharp
@@ -880,7 +910,7 @@ using (var stream = File.Create (fileName))
 
 Pretty simple, right?
 
-But what if your attachment is actually a [MessagePart](http://www.mimekit.net/docs/html/T_MimeKit_MessagePart.htm)?
+But what if your attachment is actually a [MessagePart](https://www.mimekit.net/docs/html/T_MimeKit_MessagePart.htm)?
 
 To save the content of a `message/rfc822` part, you'd use the following code snippet:
 
@@ -911,26 +941,26 @@ foreach (var attachment in message.Attachments) {
 
 ### <a id="address-headers">Q: How can I get the email addresses in the From, To, and Cc headers?</a>
 
-The [From](http://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_From.htm),
-[To](http://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_To.htm), and
-[Cc](http://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_Cc.htm) properties of a
-[MimeMessage](http://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm) are all of type
-[InternetAddressList](http://www.mimekit.net/docs/html/T_MimeKit_InternetAddressList.htm). An
+The [From](https://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_From.htm),
+[To](https://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_To.htm), and
+[Cc](https://www.mimekit.net/docs/html/P_MimeKit_MimeMessage_Cc.htm) properties of a
+[MimeMessage](https://www.mimekit.net/docs/html/T_MimeKit_MimeMessage.htm) are all of type
+[InternetAddressList](https://www.mimekit.net/docs/html/T_MimeKit_InternetAddressList.htm). An
 `InternetAddressList` is a list of
-[InternetAddress](http://www.mimekit.net/docs/html/T_MimeKit_InternetAddress.htm) items. This is
+[InternetAddress](https://www.mimekit.net/docs/html/T_MimeKit_InternetAddress.htm) items. This is
 where most people start to get lost because an `InternetAddress` is an abstract class that only
-really has a [Name](http://www.mimekit.net/docs/html/P_MimeKit_InternetAddress_Name.htm) property.
+really has a [Name](https://www.mimekit.net/docs/html/P_MimeKit_InternetAddress_Name.htm) property.
 
 As you've probably already discovered, the `Name` property contains the name of the person
 (if available), but what you want is his or her email address, not their name.
 
 To get the email address, you'll need to figure out what subclass of address each `InternetAddress`
 really is. There are 2 subclasses of `InternetAddress`:
-[GroupAddress](http://www.mimekit.net/docs/html/T_MimeKit_GroupAddress.htm) and
-[MailboxAddress](http://www.mimekit.net/docs/html/T_MimeKit_MailboxAddress.htm).
+[GroupAddress](https://www.mimekit.net/docs/html/T_MimeKit_GroupAddress.htm) and
+[MailboxAddress](https://www.mimekit.net/docs/html/T_MimeKit_MailboxAddress.htm).
 
 A `GroupAddress` is a named group of more `InternetAddress` items that are contained within the
-[Members](http://www.mimekit.net/docs/html/P_MimeKit_GroupAddress_Members.htm) property. To get
+[Members](https://www.mimekit.net/docs/html/P_MimeKit_GroupAddress_Members.htm) property. To get
 an idea of what a group address represents, consider the following examples:
 
 ```
@@ -951,7 +981,7 @@ To: undisclosed-recipients:;
 
 Most of the time, the `From`, `To`, and `Cc` headers will only contain mailbox addresses. As you will
 notice, a `MailboxAddress` has an
-[Address](http://www.mimekit.net/docs/html/P_MimeKit_MailboxAddress_Address.htm) property which will
+[Address](https://www.mimekit.net/docs/html/P_MimeKit_MailboxAddress_Address.htm) property which will
 contain the email address of the mailbox. In the following example, the `Address` property will
 contain the value `john@smith.com`:
 
@@ -984,7 +1014,7 @@ rfc2047 and until Outlook 2007, did not support filenames encoded using the mech
 
 As of MimeKit v1.2.18, it is possible to configure MimeKit to use the rfc2047 encoding mechanism for
 filenames (and other `Content-Disposition` and `Content-Type` parameter values) by setting the encoding
-method on each individual [Parameter](http://www.mimekit.net/docs/html/T_MimeKit_Parameter.htm):
+method on each individual [Parameter](https://www.mimekit.net/docs/html/T_MimeKit_Parameter.htm):
 
 ```csharp
 Parameter param;
@@ -1008,7 +1038,7 @@ of the message rather than using the PGP/MIME format that MimeKit prefers.
 
 These messages often look something like this:
 
-```
+```text
 Return-Path: <pgp-enthusiast@example.com>
 Received: from [127.0.0.1] (hostname.example.com. [201.95.8.17])
     by mx.google.com with ESMTPSA id l67sm26628445yha.8.2014.04.27.13.49.44
@@ -1094,6 +1124,8 @@ the same way you'd create any other message. There are only a few slight differe
 3. You will want to copy the original message's `References` header into the reply message's
    `References` header and then append the original message's `Message-Id` header.
 4. You will probably want to "quote" the original message's text in the reply.
+5. If you are generating an automatic reply, you should also follow [RFC3834](https://www.rfc-editor.org/rfc/rfc3834)
+   and set the `Auto-Submitted` value to `auto-replied`.
 
 If this logic were to be expressed in code, it might look something like this:
 
@@ -1120,8 +1152,8 @@ public static MimeMessage Reply (MimeMessage message, MailboxAddress from, bool 
     }
 
     // set the reply subject
-    if (!message.Subject.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
-        reply.Subject = "Re: " + message.Subject;
+    if (!message.Subject?.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
+        reply.Subject = "Re: " + (message.Subject ?? string.Empty);
     else
         reply.Subject = message.Subject;
 
@@ -1132,6 +1164,9 @@ public static MimeMessage Reply (MimeMessage message, MailboxAddress from, bool 
             reply.References.Add (id);
         reply.References.Add (message.MessageId);
     }
+
+    // if this is an automatic reply, be sure to specify this using the Auto-Submitted header in order to avoid (infinite) mail loops
+    reply.Headers.Add (HeaderId.AutoSubmitted, "auto-replied");
 
     // quote the original message text
     using (var quoted = new StringWriter ()) {
@@ -1162,7 +1197,7 @@ body (assuming it has an HTML body) while still including the embedded images?
 This gets a bit more complicated, but it's still doable...
 
 The first thing we'd need to do is implement our own
-[MimeVisitor](http://www.mimekit.net/docs/html/T_MimeKit_MimeVisitor.htm) to handle this:
+[MimeVisitor](https://www.mimekit.net/docs/html/T_MimeKit_MimeVisitor.htm) to handle this:
 
 ```csharp
 public class ReplyVisitor : MimeVisitor
@@ -1247,8 +1282,8 @@ public class ReplyVisitor : MimeVisitor
         }
 
         // set the reply subject
-        if (!message.Subject.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
-            reply.Subject = "Re: " + message.Subject;
+        if (!message.Subject?.StartsWith ("Re:", StringComparison.OrdinalIgnoreCase))
+            reply.Subject = "Re: " + (message.Subject ?? string.Empty);
         else
             reply.Subject = message.Subject;
 
@@ -1434,8 +1469,8 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
     message.To.AddRange (to);
 
     // set the forwarded subject
-    if (!original.Subject.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
-        message.Subject = "FW: " + original.Subject;
+    if (!original.Subject?.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
+        message.Subject = "FW: " + (original.Subject ?? string.Empty);
     else
         message.Subject = original.Subject;
 
@@ -1467,8 +1502,8 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
     message.To.AddRange (to);
 
     // set the forwarded subject
-    if (!original.Subject.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
-        message.Subject = "FW: " + original.Subject;
+    if (!original.Subject?.StartsWith ("FW:", StringComparison.OrdinalIgnoreCase))
+        message.Subject = "FW: " + (original.Subject ?? string.Empty);
     else
         message.Subject = original.Subject;
 
@@ -1476,7 +1511,7 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
     using (var text = new StringWriter ()) {
         text.WriteLine ();
         text.WriteLine ("-------- Original Message --------");
-        text.WriteLine ("Subject: {0}", original.Subject);
+        text.WriteLine ("Subject: {0}", original.Subject ?? string.Empty);
         text.WriteLine ("Date: {0}", DateUtils.FormatDate (original.Date));
         text.WriteLine ("From: {0}", original.From);
         text.WriteLine ("To: {0}", original.To);
@@ -1515,13 +1550,13 @@ Note: The above code snippet should be safe to call in .NET Framework versions >
 
 ### <a id="imap-unread-count">Q: How can I get the number of unread messages in a folder?</a>
 
-If the folder is open (via [Open](http://www.mimekit.net/docs/html/Overload_MailKit_Net_Imap_ImapFolder_Open.htm)),
-then the [ImapFolder.Unread](http://www.mimekit.net/docs/html/P_MailKit_MailFolder_Unread.htm) property will be kept
+If the folder is open (via [Open](https://www.mimekit.net/docs/html/Overload_MailKit_Net_Imap_ImapFolder_Open.htm)),
+then the [ImapFolder.Unread](https://www.mimekit.net/docs/html/P_MailKit_MailFolder_Unread.htm) property will be kept
 up to date (at least as-of the latest command issued to the server).
 
 If the folder *isn't* open, then you will need to query the unread state of the folder using the
-[Status](http://www.mimekit.net/docs/html/M_MailKit_Net_Imap_ImapFolder_Status.htm) method with the
-appropriate [StatusItems](http://www.mimekit.net/docs/html/T_MailKit_StatusItems.htm) flag(s).
+[Status](https://www.mimekit.net/docs/html/M_MailKit_Net_Imap_ImapFolder_Status.htm) method with the
+appropriate [StatusItems](https://www.mimekit.net/docs/html/T_MailKit_StatusItems.htm) flag(s).
 
 For example, to get the total *and* unread counts, you can do this:
 
@@ -1557,8 +1592,8 @@ var results = folder.Search (query);
 
 If you get an InvalidOperationException with the message, "The ImapClient is currently busy processing a
 command.", it means that you are trying to use the
-[ImapClient](http://www.mimekit.net/docs/html/T_MailKit_Net_Imap_ImapClient.htm) and/or one of its
-[ImapFolder](http://www.mimekit.net/docs/html/T_MailKit_Net_Imap_ImapFolder.htm)s from multiple
+[ImapClient](https://www.mimekit.net/docs/html/T_MailKit_Net_Imap_ImapClient.htm) and/or one of its
+[ImapFolder](https://www.mimekit.net/docs/html/T_MailKit_Net_Imap_ImapFolder.htm)s from multiple
 threads.
 
 To avoid this situation, you'll need to lock the `SyncRoot` property of the `ImapClient` and `ImapFolder`
@@ -1579,8 +1614,8 @@ already do this locking for you.
 
 If you get this exception, it's probably because you thought you had to open the destination folder that you
 passed as an argument to one of the
-[CopyTo](http://www.mimekit.net/docs/html/Overload_MailKit_MailFolder_CopyTo.htm) or
-[MoveTo](http://www.mimekit.net/docs/html/Overload_MailKit_MailFolder_MoveTo.htm) methods. When you opened
+[CopyTo](https://www.mimekit.net/docs/html/Overload_MailKit_MailFolder_CopyTo.htm) or
+[MoveTo](https://www.mimekit.net/docs/html/Overload_MailKit_MailFolder_MoveTo.htm) methods. When you opened
 that destination folder, you also inadvertently closed the source folder which is why you are getting this
 exception.
 
@@ -1621,7 +1656,7 @@ The way to mark messages as read using the IMAP protocol is to set the `\Seen` f
 To do this using MailKit, you will first need to know either the index(es) or the UID(s) of the messages
 that you would like to set the `\Seen` flag on. Once you have that information, you will want to call
 one of the
-[AddFlags](http://www.mimekit.net/docs/html/Overload_MailKit_MailFolder_AddFlags.htm) methods on the
+[AddFlags](https://www.mimekit.net/docs/html/Overload_MailKit_MailFolder_AddFlags.htm) methods on the
 `ImapFolder`. For example:
 
 ```csharp
@@ -1730,6 +1765,31 @@ static void ResyncFolder (ImapFolder folder, List<CachedMessageInfo> cache, ref 
     // Tada! Now we are resynchronized with the server!
 }
 ```
+
+### <a href="office365-shared-mailboxes">Q: How can I login using a shared mailbox in Office365?</a>
+
+```csharp
+var result = await GetPublicClientOAuth2CredentialsAsync ("IMAP", "sharedMailboxName@custom-domain.com");
+
+// Note: We always use result.Account.Username instead of `Username` because the user may have selected an alternative account.
+var oauth2 = new SaslMechanismOAuth2 (result.Account.Username, result.AccessToken);
+
+using (var client = new ImapClient ()) {
+    await client.ConnectAsync ("outlook.office365.com", 993, SecureSocketOptions.SslOnConnect);
+    await client.AuthenticateAsync (oauth2);
+
+    // ...
+
+    await client.DisconnectAsync (true);
+}
+```
+
+Notes:
+
+1. The `GetPublicClientOAuth2CredentialsAsync()` method used in this example code snippet can be found in the
+[ExchangeOAuth2.md](ExchangeOAuth2.md#desktop-and-mobile-applications) documentation.
+2. Some users have reported that they need to use `"username@custom-domain.com\\sharedMailboxName"` as their
+username instead of `"sharedMailboxName@custom-domain.com"`.
 
 ## SmtpClient
 
@@ -1881,7 +1941,7 @@ if (report != null && report.ReportType.Equals ("disposition-notification", Stri
 The first part of the `multipart/report` will be a human-readable explanation of the notification.
 
 The second part will have a MIME-type of `message/disposition-notification` and be represented by
-a [MessageDispositionNotification](http://www.mimekit.net/docs/html/T_MimeKit_MessageDispositionNotification.htm).
+a [MessageDispositionNotification](https://www.mimekit.net/docs/html/T_MimeKit_MessageDispositionNotification.htm).
 
 This notification part will contain a list of header-like fields containing information about the
 message that this notification is for such as the `Original-Message-Id`, `Original-Recipient`, etc.

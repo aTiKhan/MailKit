@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,18 +66,19 @@ namespace UnitTests.Net.Smtp {
 		SendResponse,
 		WaitForCommand,
 		WaitForEndOfData,
+		UnexpectedDisconnect
 	}
 
 	class SmtpReplayStream : Stream
 	{
 		readonly MemoryStream sent = new MemoryStream ();
 		readonly IList<SmtpReplayCommand> commands;
+		readonly SmtpResponseMode mode;
+		readonly bool asyncIO;
 		int timeout = 100000;
 		SmtpReplayState state;
-		SmtpResponseMode mode;
 		Stream stream;
 		bool disposed;
-		bool asyncIO;
 		bool isAsync;
 		int index;
 
@@ -142,6 +143,9 @@ namespace UnitTests.Net.Smtp {
 			} else {
 				Assert.That (isAsync, Is.False, "Trying to ReadAsync in a non-async unit test.");
 			}
+
+			if (state == SmtpReplayState.UnexpectedDisconnect)
+				return 0;
 
 			Assert.That (state, Is.EqualTo (SmtpReplayState.SendResponse), "Trying to read when no command given.");
 			Assert.That (stream, Is.Not.Null, "Trying to read when no data available.");

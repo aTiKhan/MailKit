@@ -11,7 +11,7 @@
     <AssemblyOriginatorKeyFile>..\MailKit\mailkit.snk</AssemblyOriginatorKeyFile>
     <IsPackable>false</IsPackable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>1701;1702;CA1835;IDE0016;IDE0056;IDE0057;IDE0063;IDE0066;IDE0090;SYSLIB0011</NoWarn>
+    <NoWarn>1701;1702;CA1835;IDE0016;IDE0056;IDE0057;IDE0063;IDE0066;IDE0090;SYSLIB0011;NUnit2010;NUnit2045</NoWarn>
 
     <SQLiteRuntime>win-x64</SQLiteRuntime>
     <SQLiteRuntime Condition=" '$(MonoRuntime)' == 'true' ">linux-x64</SQLiteRuntime>
@@ -23,24 +23,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AltCover" Version="8.6.95" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="AltCover" Version="8.9.3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="nunit" Version="3.14.0" />
-    <PackageReference Include="NUnit.Analyzers" Version="3.10.0">
+    <PackageReference Include="nunit" Version="4.2.2" />
+    <PackageReference Include="NUnit.Analyzers" Version="4.3.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NUnit.ConsoleRunner" Version="3.16.3" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0">
+    <PackageReference Include="NUnit.ConsoleRunner" Version="3.18.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
     <PackageReference Include="Stub.System.Data.SQLite.Core.NetFramework" Version="1.0.118" GeneratePathProperty="true" Condition=" $(TargetFramework.StartsWith('net4')) ">
       <IncludeAssets>all</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.118" GeneratePathProperty="true" Condition=" !$(TargetFramework.StartsWith('net4')) ">
+    <PackageReference Include="Stub.System.Data.SQLite.Core.NetStandard" Version="1.0.119" GeneratePathProperty="true" Condition=" !$(TargetFramework.StartsWith('net4')) ">
       <IncludeAssets>all</IncludeAssets>
     </PackageReference>
   </ItemGroup>

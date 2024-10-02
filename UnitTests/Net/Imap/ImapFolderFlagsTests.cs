@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -65,7 +65,7 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				var inbox = (ImapFolder) client.Inbox;
 				inbox.Open (FolderAccess.ReadWrite);
@@ -73,102 +73,54 @@ namespace UnitTests.Net.Imap {
 				// AddFlags
 				Assert.Throws<ArgumentException> (() => inbox.AddFlags (-1, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (-1, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (0, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (0, MessageFlags.None, true));
 				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueId.Invalid, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueId.Invalid, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueId.MinValue, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueId.MinValue, MessageFlags.None, true));
 				Assert.Throws<ArgumentException> (() => inbox.AddFlags (-1, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (-1, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (0, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (0, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueId.Invalid, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueId.Invalid, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueId.MinValue, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueId.MinValue, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<int>) null, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<int>) null, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (new int[1], MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (new int[1], MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<UniqueId>) null, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<UniqueId>) null, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueIdRange.All, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueIdRange.All, MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<int>) null, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<int>) null, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (new int[1], MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (new int[1], MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<UniqueId>) null, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<UniqueId>) null, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueIdRange.All, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueIdRange.All, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<int>) null, 1, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<int>) null, 1, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (new int[1], 1, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (new int[1], 1, MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<UniqueId>) null, 1, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<UniqueId>) null, 1, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueIdRange.All, 1, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueIdRange.All, 1, MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<int>) null, 1, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<int>) null, 1, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (new int[1], 1, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (new int[1], 1, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddFlags ((IList<UniqueId>) null, 1, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddFlagsAsync ((IList<UniqueId>) null, 1, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddFlags (UniqueIdRange.All, 1, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddFlagsAsync (UniqueIdRange.All, 1, MessageFlags.None, null, true));
 
 				// RemoveFlags
 				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (-1, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (-1, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (0, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (0, MessageFlags.None, true));
 				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueId.Invalid, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueId.Invalid, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueId.MinValue, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueId.MinValue, MessageFlags.None, true));
 				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (-1, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (-1, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (0, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (0, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueId.Invalid, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueId.Invalid, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueId.MinValue, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueId.MinValue, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<int>) null, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<int>) null, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (new int[1], MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (new int[1], MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<UniqueId>) null, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<UniqueId>) null, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueIdRange.All, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueIdRange.All, MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<int>) null, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<int>) null, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (new int[1], MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (new int[1], MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<UniqueId>) null, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<UniqueId>) null, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueIdRange.All, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueIdRange.All, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<int>) null, 1, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<int>) null, 1, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (new int[1], 1, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (new int[1], 1, MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<UniqueId>) null, 1, MessageFlags.Seen, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<UniqueId>) null, 1, MessageFlags.Seen, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueIdRange.All, 1, MessageFlags.None, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueIdRange.All, 1, MessageFlags.None, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<int>) null, 1, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<int>) null, 1, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (new int[1], 1, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (new int[1], 1, MessageFlags.None, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveFlags ((IList<UniqueId>) null, 1, MessageFlags.Seen, keywords, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveFlagsAsync ((IList<UniqueId>) null, 1, MessageFlags.Seen, keywords, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveFlags (UniqueIdRange.All, 1, MessageFlags.None, null, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveFlagsAsync (UniqueIdRange.All, 1, MessageFlags.None, null, true));
 
 				// SetFlags
 				Assert.Throws<ArgumentException> (() => inbox.SetFlags (-1, MessageFlags.Seen, true));
@@ -233,10 +185,6 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddLabelsAsync (new int [] { 0 }, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddLabels (UniqueIdRange.All, null, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddLabelsAsync (UniqueIdRange.All, null, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddLabels (new int [] { 0 }, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddLabelsAsync (new int [] { 0 }, emptyLabels, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddLabels (UniqueIdRange.All, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddLabelsAsync (UniqueIdRange.All, emptyLabels, true));
 
 				Assert.Throws<ArgumentNullException> (() => inbox.AddLabels ((IList<int>) null, 1, labels, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddLabelsAsync ((IList<int>) null, 1, labels, true));
@@ -246,10 +194,6 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddLabelsAsync (new int [] { 0 }, 1, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.AddLabels (UniqueIdRange.All, 1, null, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.AddLabelsAsync (UniqueIdRange.All, 1, null, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddLabels (new int [] { 0 }, 1, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddLabelsAsync (new int [] { 0 }, 1, emptyLabels, true));
-				Assert.Throws<ArgumentException> (() => inbox.AddLabels (UniqueIdRange.All, 1, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.AddLabelsAsync (UniqueIdRange.All, 1, emptyLabels, true));
 
 				// RemoveLabels
 				Assert.Throws<ArgumentException> (() => inbox.RemoveLabels (-1, labels, true));
@@ -266,10 +210,6 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveLabelsAsync (new int [] { 0 }, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveLabels (UniqueIdRange.All, null, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveLabelsAsync (UniqueIdRange.All, null, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveLabels (new int [] { 0 }, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveLabelsAsync (new int [] { 0 }, emptyLabels, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveLabels (UniqueIdRange.All, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveLabelsAsync (UniqueIdRange.All, emptyLabels, true));
 
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveLabels ((IList<int>) null, 1, labels, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveLabelsAsync ((IList<int>) null, 1, labels, true));
@@ -279,10 +219,6 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveLabelsAsync (new int [] { 0 }, 1, null, true));
 				Assert.Throws<ArgumentNullException> (() => inbox.RemoveLabels (UniqueIdRange.All, 1, null, true));
 				Assert.ThrowsAsync<ArgumentNullException> (() => inbox.RemoveLabelsAsync (UniqueIdRange.All, 1, null, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveLabels (new int [] { 0 }, 1, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveLabelsAsync (new int [] { 0 }, 1, emptyLabels, true));
-				Assert.Throws<ArgumentException> (() => inbox.RemoveLabels (UniqueIdRange.All, 1, emptyLabels, true));
-				Assert.ThrowsAsync<ArgumentException> (() => inbox.RemoveLabelsAsync (UniqueIdRange.All, 1, emptyLabels, true));
 
 				// SetLabels
 				Assert.Throws<ArgumentException> (() => inbox.SetLabels (-1, labels, true));
@@ -362,7 +298,7 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				// disable all features
 				client.Capabilities = ImapCapabilities.None;
@@ -430,10 +366,9 @@ namespace UnitTests.Net.Imap {
 			}
 		}
 
-		[Test]
-		public void TestChangingFlagsOnEmptyListOfMessages ()
+		static IList<ImapReplayCommand> CreateChangingFlagsOnEmptyListOfMessagesCommands ()
 		{
-			var commands = new List<ImapReplayCommand> {
+			return new List<ImapReplayCommand> {
 				new ImapReplayCommand ("", "dovecot.greeting.txt"),
 				new ImapReplayCommand ("A00000000 LOGIN username password\r\n", "dovecot.authenticate+gmail-capabilities.txt"),
 				new ImapReplayCommand ("A00000001 NAMESPACE\r\n", "dovecot.namespace.txt"),
@@ -441,6 +376,12 @@ namespace UnitTests.Net.Imap {
 				new ImapReplayCommand ("A00000003 LIST (SPECIAL-USE) \"\" \"*\" RETURN (SUBSCRIBED CHILDREN)\r\n", "dovecot.list-special-use.txt"),
 				new ImapReplayCommand ("A00000004 SELECT INBOX (CONDSTORE)\r\n", "common.select-inbox.txt")
 			};
+		}
+
+		[Test]
+		public void TestChangingFlagsOnEmptyListOfMessages ()
+		{
+			var commands = CreateChangingFlagsOnEmptyListOfMessagesCommands ();
 
 			using (var client = new ImapClient () { TagPrefix = 'A' }) {
 				var credentials = new NetworkCredential ("username", "password");
@@ -460,7 +401,7 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				var inbox = (ImapFolder) client.Inbox;
 				inbox.Open (FolderAccess.ReadWrite);
@@ -473,49 +414,131 @@ namespace UnitTests.Net.Imap {
 
 				// AddFlags
 				unmodifiedIndexes = inbox.AddFlags (indexes, modseq, MessageFlags.Seen, true);
-				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedIndexes, Is.Empty);
 
 				unmodifiedUids = inbox.AddFlags (uids, modseq, MessageFlags.Seen, true);
-				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedUids, Is.Empty);
 
 				// RemoveFlags
 				unmodifiedIndexes = inbox.RemoveFlags (indexes, modseq, MessageFlags.Seen, true);
-				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedIndexes, Is.Empty);
 
 				unmodifiedUids = inbox.RemoveFlags (uids, modseq, MessageFlags.Seen, true);
-				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedUids, Is.Empty);
 
 				// SetFlags
 				unmodifiedIndexes = inbox.SetFlags (indexes, modseq, MessageFlags.Seen, true);
-				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedIndexes, Is.Empty);
 
 				unmodifiedUids = inbox.SetFlags (uids, modseq, MessageFlags.Seen, true);
-				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedUids, Is.Empty);
 
 				var labels = new string[] { "Label1", "Label2" };
 
 				// AddLabels
 				unmodifiedIndexes = inbox.AddLabels (indexes, modseq, labels, true);
-				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedIndexes, Is.Empty);
 
 				unmodifiedUids = inbox.AddLabels (uids, modseq, labels, true);
-				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedUids, Is.Empty);
 
 				// RemoveLabels
 				unmodifiedIndexes = inbox.RemoveLabels (indexes, modseq, labels, true);
-				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedIndexes, Is.Empty);
 
 				unmodifiedUids = inbox.RemoveLabels (uids, modseq, labels, true);
-				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedUids, Is.Empty);
 
 				// SetLabels
 				unmodifiedIndexes = inbox.SetLabels (indexes, modseq, labels, true);
-				Assert.That (unmodifiedIndexes.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedIndexes, Is.Empty);
 
 				unmodifiedUids = inbox.SetLabels (uids, modseq, labels, true);
-				Assert.That (unmodifiedUids.Count, Is.EqualTo (0));
+				Assert.That (unmodifiedUids, Is.Empty);
 
 				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestChangingFlagsOnEmptyListOfMessagesAsync ()
+		{
+			var commands = CreateChangingFlagsOnEmptyListOfMessagesCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				var credentials = new NetworkCredential ("username", "password");
+
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: we do not want to use SASL at all...
+				client.AuthenticationMechanisms.Clear ();
+
+				try {
+					await client.AuthenticateAsync (credentials);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
+
+				var inbox = (ImapFolder) client.Inbox;
+				await inbox.OpenAsync (FolderAccess.ReadWrite);
+
+				ulong modseq = 409601020304;
+				var uids = Array.Empty<UniqueId> ();
+				var indexes = Array.Empty<int> ();
+				IList<UniqueId> unmodifiedUids;
+				IList<int> unmodifiedIndexes;
+
+				// AddFlags
+				unmodifiedIndexes = await inbox.AddFlagsAsync (indexes, modseq, MessageFlags.Seen, true);
+				Assert.That (unmodifiedIndexes, Is.Empty);
+
+				unmodifiedUids = await inbox.AddFlagsAsync (uids, modseq, MessageFlags.Seen, true);
+				Assert.That (unmodifiedUids, Is.Empty);
+
+				// RemoveFlags
+				unmodifiedIndexes = await inbox.RemoveFlagsAsync (indexes, modseq, MessageFlags.Seen, true);
+				Assert.That (unmodifiedIndexes, Is.Empty);
+
+				unmodifiedUids = await inbox.RemoveFlagsAsync (uids, modseq, MessageFlags.Seen, true);
+				Assert.That (unmodifiedUids, Is.Empty);
+
+				// SetFlags
+				unmodifiedIndexes = await inbox.SetFlagsAsync (indexes, modseq, MessageFlags.Seen, true);
+				Assert.That (unmodifiedIndexes, Is.Empty);
+
+				unmodifiedUids = await inbox.SetFlagsAsync (uids, modseq, MessageFlags.Seen, true);
+				Assert.That (unmodifiedUids, Is.Empty);
+
+				var labels = new string[] { "Label1", "Label2" };
+
+				// AddLabels
+				unmodifiedIndexes = await inbox.AddLabelsAsync (indexes, modseq, labels, true);
+				Assert.That (unmodifiedIndexes, Is.Empty);
+
+				unmodifiedUids = await inbox.AddLabelsAsync (uids, modseq, labels, true);
+				Assert.That (unmodifiedUids, Is.Empty);
+
+				// RemoveLabels
+				unmodifiedIndexes = await inbox.RemoveLabelsAsync (indexes, modseq, labels, true);
+				Assert.That (unmodifiedIndexes, Is.Empty);
+
+				unmodifiedUids = await inbox.RemoveLabelsAsync (uids, modseq, labels, true);
+				Assert.That (unmodifiedUids, Is.Empty);
+
+				// SetLabels
+				unmodifiedIndexes = await inbox.SetLabelsAsync (indexes, modseq, labels, true);
+				Assert.That (unmodifiedIndexes, Is.Empty);
+
+				unmodifiedUids = await inbox.SetLabelsAsync (uids, modseq, labels, true);
+				Assert.That (unmodifiedUids, Is.Empty);
+
+				await client.DisconnectAsync (false);
 			}
 		}
 	}

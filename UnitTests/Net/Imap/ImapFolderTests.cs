@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 
 using System.Net;
 using System.Text;
+using System.Globalization;
 
 using MimeKit;
 
@@ -116,10 +117,10 @@ namespace UnitTests.Net.Imap {
 					dates.Add (DateTimeOffset.Now);
 					flags.Add (MessageFlags.Seen);
 					multiappend.Add (new AppendRequest (messages[i], flags[i], dates[i]));
-					replace = replace ?? new ReplaceRequest (messages[i], flags[i], dates[i]);
+					replace ??= new ReplaceRequest (messages[i], flags[i], dates[i]);
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				var inbox = (ImapFolder) client.Inbox;
 				inbox.Open (FolderAccess.ReadWrite);
@@ -409,7 +410,7 @@ namespace UnitTests.Net.Imap {
 					flags.Add (MessageFlags.Seen);
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				var inbox = (ImapFolder) client.Inbox;
 
@@ -492,6 +493,173 @@ namespace UnitTests.Net.Imap {
 			}
 		}
 
+		static IList<ImapReplayCommand> CreateLiteralFolderNamesCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "common.basic-greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "common.capability.txt"),
+				new ImapReplayCommand ("A00000001 LOGIN username password\r\n", ImapReplayCommandResponse.OK),
+				new ImapReplayCommand ("A00000002 CAPABILITY\r\n", "common.capability.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"\"\r\n", "common.list-namespace.txt"),
+				new ImapReplayCommand ("A00000004 LIST \"\" \"INBOX\"\r\n", "common.list-inbox.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "common.list-literal-subfolders.txt"),
+				new ImapReplayCommand ("A00000006 STATUS \"Literal Folder Name\" (MESSAGES)\r\n", "common.status-literal-folder.txt"),
+			};
+		}
+
+		[Test]
+		public void TestLiteralFolderNames ()
+		{
+			var commands = CreateLiteralFolderNamesCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var subfolders = personal.GetSubfolders (false);
+
+				Assert.That (subfolders, Has.Count.EqualTo (2), "Count");
+				Assert.That (subfolders[0].Name, Is.EqualTo ("INBOX"));
+				Assert.That (subfolders[1].Name, Is.EqualTo ("Literal Folder Name"));
+
+				subfolders[1].Status (StatusItems.Count);
+
+				Assert.That (subfolders[1], Has.Count.EqualTo (60), "Count");
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestLiteralFolderNamesAsync ()
+		{
+			var commands = CreateLiteralFolderNamesCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var subfolders = await personal.GetSubfoldersAsync (false);
+
+				Assert.That (subfolders, Has.Count.EqualTo (2), "Count");
+				Assert.That (subfolders[0].Name, Is.EqualTo ("INBOX"));
+				Assert.That (subfolders[1].Name, Is.EqualTo ("Literal Folder Name"));
+
+				await subfolders[1].StatusAsync (StatusItems.Count);
+
+				Assert.That (subfolders[1], Has.Count.EqualTo (60), "Count");
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		static IList<ImapReplayCommand> CreateNilDirectorySeparatorCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "common.basic-greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "common.capability.txt"),
+				new ImapReplayCommand ("A00000001 LOGIN username password\r\n", ImapReplayCommandResponse.OK),
+				new ImapReplayCommand ("A00000002 CAPABILITY\r\n", "common.capability.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"\"\r\n", "common.list-namespace.txt"),
+				new ImapReplayCommand ("A00000004 LIST \"\" \"INBOX\"\r\n", "common.list-inbox.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "common.list-nil-folder-delim.txt"),
+			};
+		}
+
+		[Test]
+		public void TestNilDirectorySeparator ()
+		{
+			var commands = CreateNilDirectorySeparatorCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var subfolders = personal.GetSubfolders (false);
+
+				Assert.That (subfolders, Has.Count.EqualTo (3), "Count");
+				Assert.That (subfolders[0].Name, Is.EqualTo ("INBOX"));
+				Assert.That (subfolders[1].Name, Is.EqualTo ("Folder1"));
+				Assert.That (subfolders[1].DirectorySeparator, Is.EqualTo ('\0'));
+				Assert.That (subfolders[2].Name, Is.EqualTo ("Folder2"));
+				Assert.That (subfolders[2].DirectorySeparator, Is.EqualTo ('\0'));
+
+				Assert.Throws<FolderNotFoundException> (() => subfolders[1].GetSubfolder ("Subfolder"));
+
+				var empty = subfolders[1].GetSubfolders (false);
+				Assert.That (empty, Is.Empty, "GetSubfolders when DirectorySeparator is nil");
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestNilDirectorySeparatorAsync ()
+		{
+			var commands = CreateNilDirectorySeparatorCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var subfolders = await personal.GetSubfoldersAsync (false);
+
+				Assert.That (subfolders, Has.Count.EqualTo (3), "Count");
+				Assert.That (subfolders[0].Name, Is.EqualTo ("INBOX"));
+				Assert.That (subfolders[1].Name, Is.EqualTo ("Folder1"));
+				Assert.That (subfolders[1].DirectorySeparator, Is.EqualTo ('\0'));
+				Assert.That (subfolders[2].Name, Is.EqualTo ("Folder2"));
+				Assert.That (subfolders[2].DirectorySeparator, Is.EqualTo ('\0'));
+
+				Assert.ThrowsAsync<FolderNotFoundException> (() => subfolders[1].GetSubfolderAsync ("Subfolder"));
+
+				var empty = await subfolders[1].GetSubfoldersAsync (false);
+				Assert.That (empty, Is.Empty, "GetSubfolders when DirectorySeparator is nil");
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
 		static IList<ImapReplayCommand> CreateAppendLimitCommands ()
 		{
 			return new List<ImapReplayCommand> {
@@ -536,10 +704,10 @@ namespace UnitTests.Net.Imap {
 
 				var personal = client.GetFolder (client.PersonalNamespaces[0]);
 				var subfolders = personal.GetSubfolders (StatusItems.Count | StatusItems.Unread | StatusItems.Size | StatusItems.AppendLimit, subscribedOnly: false);
-				Assert.That (subfolders.Count, Is.EqualTo (2), "Count");
+				Assert.That (subfolders, Has.Count.EqualTo (2), "Count");
 				Assert.That (subfolders[0].Name, Is.EqualTo ("INBOX"));
 				Assert.That (subfolders[0].AppendLimit, Is.EqualTo (1234567890), "Inbox.AppendLimit");
-				Assert.That (subfolders[0].Count, Is.EqualTo (10), "Inbox.Count");
+				Assert.That (subfolders[0], Has.Count.EqualTo (10), "Inbox.Count");
 				Assert.That (subfolders[0].Unread, Is.EqualTo (1), "Inbox.Unread");
 				Assert.That (subfolders[0].Size, Is.EqualTo (123456789), "Inbox.Size");
 
@@ -576,10 +744,10 @@ namespace UnitTests.Net.Imap {
 
 				var personal = client.GetFolder (client.PersonalNamespaces[0]);
 				var subfolders = await personal.GetSubfoldersAsync (StatusItems.Count | StatusItems.Unread | StatusItems.Size | StatusItems.AppendLimit, subscribedOnly: false);
-				Assert.That (subfolders.Count, Is.EqualTo (2), "Count");
+				Assert.That (subfolders, Has.Count.EqualTo (2), "Count");
 				Assert.That (subfolders[0].Name, Is.EqualTo ("INBOX"));
 				Assert.That (subfolders[0].AppendLimit, Is.EqualTo (1234567890), "Inbox.AppendLimit");
-				Assert.That (subfolders[0].Count, Is.EqualTo (10), "Inbox.Count");
+				Assert.That (subfolders[0], Has.Count.EqualTo (10), "Inbox.Count");
 				Assert.That (subfolders[0].Unread, Is.EqualTo (1), "Inbox.Unread");
 				Assert.That (subfolders[0].Size, Is.EqualTo (123456789), "Inbox.Size");
 
@@ -647,11 +815,11 @@ namespace UnitTests.Net.Imap {
 					command.AppendFormat ("\"{0}\" ", ImapUtils.FormatInternalDate (message.Date));
 
 				if (length > 4096) {
-					command.Append ('{').Append (length.ToString ()).Append ("}\r\n");
+					command.Append ('{').Append (length.ToString (CultureInfo.InvariantCulture)).Append ("}\r\n");
 					commands.Add (new ImapReplayCommand (command.ToString (), ImapReplayCommandResponse.Plus));
 					commands.Add (new ImapReplayCommand (tag, latin1 + "\r\n", string.Format ("dovecot.append.{0}.txt", i + 1)));
 				} else {
-					command.Append ('{').Append (length.ToString ()).Append ("+}\r\n").Append (latin1).Append ("\r\n");
+					command.Append ('{').Append (length.ToString (CultureInfo.InvariantCulture)).Append ("+}\r\n").Append (latin1).Append ("\r\n");
 					commands.Add (new ImapReplayCommand (command.ToString (), string.Format ("dovecot.append.{0}.txt", i + 1)));
 				}
 			}
@@ -916,7 +1084,7 @@ namespace UnitTests.Net.Imap {
 					uids = client.Inbox.Append (messages, flags);
 				}
 
-				Assert.That (uids.Count, Is.EqualTo (8), "Unexpected number of messages appended");
+				Assert.That (uids, Has.Count.EqualTo (8), "Unexpected number of messages appended");
 
 				for (int i = 0; i < uids.Count; i++)
 					Assert.That (uids[i].Id, Is.EqualTo (i + 1), "Unexpected UID");
@@ -942,7 +1110,7 @@ namespace UnitTests.Net.Imap {
 					uids = client.Inbox.Append (messages, flags);
 				}
 
-				Assert.That (uids.Count, Is.EqualTo (8), "Unexpected number of messages appended");
+				Assert.That (uids, Has.Count.EqualTo (8), "Unexpected number of messages appended");
 
 				for (int i = 0; i < uids.Count; i++)
 					Assert.That (uids[i].Id, Is.EqualTo (i + 1), "Unexpected UID");
@@ -1000,7 +1168,7 @@ namespace UnitTests.Net.Imap {
 					uids = await client.Inbox.AppendAsync (messages, flags);
 				}
 
-				Assert.That (uids.Count, Is.EqualTo (8), "Unexpected number of messages appended");
+				Assert.That (uids, Has.Count.EqualTo (8), "Unexpected number of messages appended");
 
 				for (int i = 0; i < uids.Count; i++)
 					Assert.That (uids[i].Id, Is.EqualTo (i + 1), "Unexpected UID");
@@ -1026,7 +1194,7 @@ namespace UnitTests.Net.Imap {
 					uids = await client.Inbox.AppendAsync (messages, flags);
 				}
 
-				Assert.That (uids.Count, Is.EqualTo (8), "Unexpected number of messages appended");
+				Assert.That (uids, Has.Count.EqualTo (8), "Unexpected number of messages appended");
 
 				for (int i = 0; i < uids.Count; i++)
 					Assert.That (uids[i].Id, Is.EqualTo (i + 1), "Unexpected UID");
@@ -1108,7 +1276,7 @@ namespace UnitTests.Net.Imap {
 				//	commands.Add (new ImapReplayCommand (command.ToString (), ImapReplayCommandResponse.Plus));
 				//	commands.Add (new ImapReplayCommand (tag, latin1 + "\r\n", string.Format ("dovecot.append.{0}.txt", i + 1)));
 				//} else {
-					command.Append ('{').Append (length.ToString ()).Append ("+}\r\n").Append (latin1).Append ("\r\n");
+					command.Append ('{').Append (length.ToString (CultureInfo.InvariantCulture)).Append ("+}\r\n").Append (latin1).Append ("\r\n");
 					commands.Add (new ImapReplayCommand (command.ToString (), string.Format ("dovecot.append.{0}.txt", i + 1)));
 				//}
 
@@ -1323,7 +1491,7 @@ namespace UnitTests.Net.Imap {
 				//	commands.Add (new ImapReplayCommand (command.ToString (), ImapReplayCommandResponse.Plus));
 				//	commands.Add (new ImapReplayCommand (tag, latin1 + "\r\n", string.Format ("dovecot.append.{0}.txt", i + 1)));
 				//} else {
-				command.Append ('{').Append (length.ToString ()).Append ("+}\r\n").Append (latin1).Append ("\r\n");
+				command.Append ('{').Append (length.ToString (CultureInfo.InvariantCulture)).Append ("+}\r\n").Append (latin1).Append ("\r\n");
 				commands.Add (new ImapReplayCommand (command.ToString (), string.Format ("dovecot.append.{0}.txt", i + 1)));
 				//}
 
@@ -1737,7 +1905,9 @@ namespace UnitTests.Net.Imap {
 				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
 				new ImapReplayCommand ("A00000005 CREATE \"[Gmail]/Archives\" (USE (\\Archive))\r\n", "gmail.create-mailboxid.txt"),
 				new ImapReplayCommand ("A00000006 LIST \"\" \"[Gmail]/Archives\"\r\n", "gmail.list-archives.txt"),
-				new ImapReplayCommand ("A00000007 LOGOUT\r\n", "gmail.logout.txt")
+				new ImapReplayCommand ("A00000007 CREATE \"[Gmail]/Flagged\" (USE (\\Flagged))\r\n", "gmail.create-mailboxid.txt"),
+				new ImapReplayCommand ("A00000008 LIST \"\" \"[Gmail]/Flagged\"\r\n", "gmail.list-flagged.txt"),
+				new ImapReplayCommand ("A00000009 LOGOUT\r\n", "gmail.logout.txt")
 			};
 		}
 
@@ -1766,10 +1936,15 @@ namespace UnitTests.Net.Imap {
 				var personal = client.GetFolder (client.PersonalNamespaces[0]);
 				var gmail = personal.GetSubfolder ("[Gmail]");
 
-				var archive = gmail.Create ("Archives", SpecialFolder.Archive);
-				Assert.That (archive.Attributes, Is.EqualTo (FolderAttributes.HasNoChildren | FolderAttributes.Archive));
-				Assert.That (client.GetFolder (SpecialFolder.Archive), Is.EqualTo (archive));
-				Assert.That (archive.Id, Is.EqualTo ("25dcfa84-fd65-41c3-abc3-633c8f10923f"));
+				var archives = gmail.Create ("Archives", SpecialFolder.Archive);
+				Assert.That (archives.Attributes, Is.EqualTo (FolderAttributes.HasNoChildren | FolderAttributes.Archive));
+				Assert.That (client.GetFolder (SpecialFolder.Archive), Is.EqualTo (archives));
+				Assert.That (archives.Id, Is.EqualTo ("25dcfa84-fd65-41c3-abc3-633c8f10923f"));
+
+				var flagged = gmail.Create ("Flagged", SpecialFolder.Flagged);
+				Assert.That (flagged.Attributes, Is.EqualTo (FolderAttributes.HasNoChildren | FolderAttributes.Flagged));
+				Assert.That (client.GetFolder (SpecialFolder.Flagged), Is.EqualTo (flagged));
+				Assert.That (flagged.Id, Is.EqualTo ("25dcfa84-fd65-41c3-abc3-633c8f10923f"));
 
 				client.Disconnect (true);
 			}
@@ -1800,10 +1975,15 @@ namespace UnitTests.Net.Imap {
 				var personal = client.GetFolder (client.PersonalNamespaces[0]);
 				var gmail = await personal.GetSubfolderAsync ("[Gmail]");
 
-				var archive = await gmail.CreateAsync ("Archives", SpecialFolder.Archive);
-				Assert.That (archive.Attributes, Is.EqualTo (FolderAttributes.HasNoChildren | FolderAttributes.Archive));
-				Assert.That (client.GetFolder (SpecialFolder.Archive), Is.EqualTo (archive));
-				Assert.That (archive.Id, Is.EqualTo ("25dcfa84-fd65-41c3-abc3-633c8f10923f"));
+				var archives = await gmail.CreateAsync ("Archives", SpecialFolder.Archive);
+				Assert.That (archives.Attributes, Is.EqualTo (FolderAttributes.HasNoChildren | FolderAttributes.Archive));
+				Assert.That (client.GetFolder (SpecialFolder.Archive), Is.EqualTo (archives));
+				Assert.That (archives.Id, Is.EqualTo ("25dcfa84-fd65-41c3-abc3-633c8f10923f"));
+
+				var flagged = await gmail.CreateAsync ("Flagged", SpecialFolder.Flagged);
+				Assert.That (flagged.Attributes, Is.EqualTo (FolderAttributes.HasNoChildren | FolderAttributes.Flagged));
+				Assert.That (client.GetFolder (SpecialFolder.Flagged), Is.EqualTo (flagged));
+				Assert.That (flagged.Id, Is.EqualTo ("25dcfa84-fd65-41c3-abc3-633c8f10923f"));
 
 				await client.DisconnectAsync (true);
 			}
@@ -2001,13 +2181,13 @@ namespace UnitTests.Net.Imap {
 				// Test copying using the UIDPLUS extension
 				var copied = inbox.CopyTo (uids, archived);
 
-				Assert.That (copied.Destination.Count, Is.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (copied.Destination, Has.Count.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
 
 				// Disable UIDPLUS and try again (to test GetIndexesAsync() and CopyTo(IList<int>, IMailFolder)
 				client.Capabilities &= ~ImapCapabilities.UidPlus;
 				copied = inbox.CopyTo (uids, archived);
 
-				Assert.That (copied.Destination.Count, Is.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (copied.Destination, Has.Count.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
 
 				client.Disconnect (true);
 			}
@@ -2046,13 +2226,13 @@ namespace UnitTests.Net.Imap {
 				// Test copying using the UIDPLUS extension
 				var copied = await inbox.CopyToAsync (uids, archived);
 
-				Assert.That (copied.Destination.Count, Is.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (copied.Destination, Has.Count.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
 
 				// Disable UIDPLUS and try again (to test GetIndexesAsync() and CopyTo(IList<int>, IMailFolder)
 				client.Capabilities &= ~ImapCapabilities.UidPlus;
 				copied = await inbox.CopyToAsync (uids, archived);
 
-				Assert.That (copied.Destination.Count, Is.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (copied.Destination, Has.Count.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
 
 				await client.DisconnectAsync (true);
 			}
@@ -2106,7 +2286,7 @@ namespace UnitTests.Net.Imap {
 				var uids = new[] { new UniqueId (31) };
 				var copied = inbox.MoveTo (uids, level1);
 
-				Assert.That (copied.Destination.Count, Is.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (copied.Destination, Has.Count.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
 				Assert.That (uids[0], Is.EqualTo (copied.Source[0]), "Source[0]");
 				Assert.That (new UniqueId (6), Is.EqualTo (copied.Destination[0]), "Destination[0]");
 
@@ -2146,7 +2326,7 @@ namespace UnitTests.Net.Imap {
 				var uids = new[] { new UniqueId (31) };
 				var copied = await inbox.MoveToAsync (uids, level1);
 
-				Assert.That (copied.Destination.Count, Is.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (copied.Destination, Has.Count.EqualTo (copied.Source.Count), "Source and Destination UID counts do not match");
 				Assert.That (uids[0], Is.EqualTo (copied.Source[0]), "Source[0]");
 				Assert.That (new UniqueId (6), Is.EqualTo (copied.Destination[0]), "Destination[0]");
 
@@ -2318,7 +2498,7 @@ namespace UnitTests.Net.Imap {
 				// Test copying using the MOVE & UIDPLUS extensions
 				var moved = inbox.MoveTo (uids, archived);
 
-				Assert.That (moved.Destination.Count, Is.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (moved.Destination, Has.Count.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
 				Assert.That (expunged, Is.EqualTo (21), "Expunged event");
 				Assert.That (changed, Is.EqualTo (1), "CountChanged event");
 
@@ -2331,7 +2511,7 @@ namespace UnitTests.Net.Imap {
 
 				moved = inbox.MoveTo (uids, archived);
 
-				Assert.That (moved.Destination.Count, Is.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (moved.Destination, Has.Count.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
 				Assert.That (expunged, Is.EqualTo (21), "Expunged event");
 				Assert.That (changed, Is.EqualTo (1), "CountChanged event");
 
@@ -2377,7 +2557,7 @@ namespace UnitTests.Net.Imap {
 				// Test moving using the MOVE & UIDPLUS extensions
 				var moved = await inbox.MoveToAsync (uids, archived);
 
-				Assert.That (moved.Destination.Count, Is.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (moved.Destination, Has.Count.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
 				Assert.That (expunged, Is.EqualTo (21), "Expunged event");
 				Assert.That (changed, Is.EqualTo (1), "CountChanged event");
 
@@ -2390,7 +2570,7 @@ namespace UnitTests.Net.Imap {
 
 				moved = await inbox.MoveToAsync (uids, archived);
 
-				Assert.That (moved.Destination.Count, Is.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
+				Assert.That (moved.Destination, Has.Count.EqualTo (moved.Source.Count), "Source and Destination UID counts do not match");
 				Assert.That (expunged, Is.EqualTo (21), "Expunged event");
 				Assert.That (changed, Is.EqualTo (1), "CountChanged event");
 
@@ -2465,7 +2645,7 @@ namespace UnitTests.Net.Imap {
 
 				Assert.That (expunged, Is.EqualTo (3), "Unexpected number of Expunged events");
 				Assert.That (changed, Is.EqualTo (1), "Unexpected number of CountChanged events");
-				Assert.That (inbox.Count, Is.EqualTo (18), "Count");
+				Assert.That (inbox, Has.Count.EqualTo (18), "Count");
 
 				client.Disconnect (true);
 			}
@@ -2511,7 +2691,7 @@ namespace UnitTests.Net.Imap {
 
 				Assert.That (expunged, Is.EqualTo (3), "Unexpected number of Expunged events");
 				Assert.That (changed, Is.EqualTo (1), "Unexpected number of CountChanged events");
-				Assert.That (inbox.Count, Is.EqualTo (18), "Count");
+				Assert.That (inbox, Has.Count.EqualTo (18), "Count");
 
 				await client.DisconnectAsync (true);
 			}
@@ -2575,7 +2755,7 @@ namespace UnitTests.Net.Imap {
 
 				client.NoOp ();
 
-				Assert.That (client.Inbox.Count, Is.EqualTo (1), "Count");
+				Assert.That (client.Inbox, Has.Count.EqualTo (1), "Count");
 				Assert.That (countChangedEmitted, Is.EqualTo (1), "CountChanged was not emitted the expected number of times");
 				Assert.That (countChangedValue, Is.EqualTo (1), "Count was not correct inside of the CountChanged event handler");
 
@@ -2628,7 +2808,7 @@ namespace UnitTests.Net.Imap {
 
 				await client.NoOpAsync ();
 
-				Assert.That (client.Inbox.Count, Is.EqualTo (1), "Count");
+				Assert.That (client.Inbox, Has.Count.EqualTo (1), "Count");
 				Assert.That (countChangedEmitted, Is.EqualTo (1), "CountChanged was not emitted the expected number of times");
 				Assert.That (countChangedValue, Is.EqualTo (1), "Count was not correct inside of the CountChanged event handler");
 
@@ -2698,7 +2878,7 @@ namespace UnitTests.Net.Imap {
 
 				client.NoOp ();
 
-				Assert.That (client.Inbox.Count, Is.EqualTo (0), "Count");
+				Assert.That (client.Inbox, Has.Count.EqualTo (0), "Count");
 				Assert.That (countChangedEmitted, Is.EqualTo (1), "CountChanged was not emitted the expected number of times");
 				Assert.That (countChangedValue, Is.EqualTo (0), "Count was not correct inside of the CountChanged event handler");
 
@@ -2751,7 +2931,7 @@ namespace UnitTests.Net.Imap {
 
 				await client.NoOpAsync ();
 
-				Assert.That (client.Inbox.Count, Is.EqualTo (0), "Count");
+				Assert.That (client.Inbox, Has.Count.EqualTo (0), "Count");
 				Assert.That (countChangedEmitted, Is.EqualTo (1), "CountChanged was not emitted the expected number of times");
 				Assert.That (countChangedValue, Is.EqualTo (0), "Count was not correct inside of the CountChanged event handler");
 
@@ -2772,7 +2952,7 @@ namespace UnitTests.Net.Imap {
 			Assert.That (folder.Attributes, Is.EqualTo (attributes), "Attributes");
 			Assert.That (folder.IsSubscribed, Is.EqualTo (subscribed), "IsSubscribed");
 			Assert.That (folder.HighestModSeq, Is.EqualTo (highestmodseq), "HighestModSeq");
-			Assert.That (folder.Count, Is.EqualTo (count), "Count");
+			Assert.That (folder, Has.Count.EqualTo (count), "Count");
 			Assert.That (folder.Recent, Is.EqualTo (recent), "Recent");
 			Assert.That (folder.Unread, Is.EqualTo (unread), "Unread");
 			Assert.That (folder.UidNext.HasValue ? folder.UidNext.Value.Id : (uint)0, Is.EqualTo (uidnext), "UidNext");
@@ -2826,7 +3006,7 @@ namespace UnitTests.Net.Imap {
 				var gmail = personal.GetSubfolder ("[Gmail]");
 				var all = StatusItems.Count | StatusItems.HighestModSeq | StatusItems.Recent | StatusItems.UidNext | StatusItems.UidValidity | StatusItems.Unread;
 				var folders = gmail.GetSubfolders (all, true);
-				Assert.That (folders.Count, Is.EqualTo (7), "Unexpected folder count.");
+				Assert.That (folders, Has.Count.EqualTo (7), "Unexpected folder count.");
 
 				AssertFolder (folders[0], "[Gmail]/All Mail", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3);
 				AssertFolder (folders[1], "[Gmail]/Drafts", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0);
@@ -2847,20 +3027,20 @@ namespace UnitTests.Net.Imap {
 				// Now make the same query but disable LIST-STATUS
 				client.Capabilities &= ~ImapCapabilities.ListStatus;
 				folders = gmail.GetSubfolders (all, false);
-				Assert.That (folders.Count, Is.EqualTo (7), "Unexpected folder count.");
+				Assert.That (folders, Has.Count.EqualTo (7), "Unexpected folder count.");
 
 				AssertFolder (folders[0], "[Gmail]/All Mail", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3);
 				AssertFolder (folders[1], "[Gmail]/Drafts", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0);
-				AssertFolder (folders[2], "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0);
-				AssertFolder (folders[3], "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0);
+				AssertFolder (folders[2], "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important | FolderAttributes.Marked, true, 41234, 58, 0, 307, 9, 0);
+				AssertFolder (folders[3], "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent | FolderAttributes.Unmarked, true, 41234, 4, 0, 7, 5, 0);
 				AssertFolder (folders[4], "[Gmail]/Spam", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0);
 				AssertFolder (folders[5], "[Gmail]/Starred", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0);
 				AssertFolder (folders[6], "[Gmail]/Trash", FolderAttributes.HasNoChildren | FolderAttributes.Trash, true, 41234, 0, 0, 1143, 2, 0);
 
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0);
-				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0);
-				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important | FolderAttributes.Marked, true, 41234, 58, 0, 307, 9, 0);
+				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent | FolderAttributes.Unmarked, true, 41234, 4, 0, 7, 5, 0);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0);
 				AssertFolder (client.GetFolder (SpecialFolder.Trash), "[Gmail]/Trash", FolderAttributes.HasNoChildren | FolderAttributes.Trash, true, 41234, 0, 0, 1143, 2, 0);
@@ -2891,7 +3071,7 @@ namespace UnitTests.Net.Imap {
 				var gmail = await personal.GetSubfolderAsync ("[Gmail]");
 				var all = StatusItems.Count | StatusItems.HighestModSeq | StatusItems.Recent | StatusItems.UidNext | StatusItems.UidValidity | StatusItems.Unread;
 				var folders = await gmail.GetSubfoldersAsync (all, true);
-				Assert.That (folders.Count, Is.EqualTo (7), "Unexpected folder count.");
+				Assert.That (folders, Has.Count.EqualTo (7), "Unexpected folder count.");
 
 				AssertFolder (folders[0], "[Gmail]/All Mail", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3);
 				AssertFolder (folders[1], "[Gmail]/Drafts", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0);
@@ -2912,20 +3092,20 @@ namespace UnitTests.Net.Imap {
 				// Now make the same query but disable LIST-STATUS
 				client.Capabilities &= ~ImapCapabilities.ListStatus;
 				folders = await gmail.GetSubfoldersAsync (all, false);
-				Assert.That (folders.Count, Is.EqualTo (7), "Unexpected folder count.");
+				Assert.That (folders, Has.Count.EqualTo (7), "Unexpected folder count.");
 
 				AssertFolder (folders[0], "[Gmail]/All Mail", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3);
 				AssertFolder (folders[1], "[Gmail]/Drafts", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0);
-				AssertFolder (folders[2], "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0);
-				AssertFolder (folders[3], "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0);
+				AssertFolder (folders[2], "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important | FolderAttributes.Marked, true, 41234, 58, 0, 307, 9, 0);
+				AssertFolder (folders[3], "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent | FolderAttributes.Unmarked, true, 41234, 4, 0, 7, 5, 0);
 				AssertFolder (folders[4], "[Gmail]/Spam", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0);
 				AssertFolder (folders[5], "[Gmail]/Starred", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0);
 				AssertFolder (folders[6], "[Gmail]/Trash", FolderAttributes.HasNoChildren | FolderAttributes.Trash, true, 41234, 0, 0, 1143, 2, 0);
 
 				AssertFolder (client.GetFolder (SpecialFolder.All), "[Gmail]/All Mail", FolderAttributes.HasNoChildren | FolderAttributes.All, true, 41234, 67, 0, 1210, 11, 3);
 				AssertFolder (client.GetFolder (SpecialFolder.Drafts), "[Gmail]/Drafts", FolderAttributes.HasNoChildren | FolderAttributes.Drafts, true, 41234, 0, 0, 1, 6, 0);
-				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important, true, 41234, 58, 0, 307, 9, 0);
-				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent, true, 41234, 4, 0, 7, 5, 0);
+				AssertFolder (client.GetFolder (SpecialFolder.Important), "[Gmail]/Important", FolderAttributes.HasNoChildren | FolderAttributes.Important | FolderAttributes.Marked, true, 41234, 58, 0, 307, 9, 0);
+				AssertFolder (client.GetFolder (SpecialFolder.Sent), "[Gmail]/Sent Mail", FolderAttributes.HasNoChildren | FolderAttributes.Sent | FolderAttributes.Unmarked, true, 41234, 4, 0, 7, 5, 0);
 				AssertFolder (client.GetFolder (SpecialFolder.Junk), "[Gmail]/Spam", FolderAttributes.HasNoChildren | FolderAttributes.Junk, true, 41234, 0, 0, 1, 3, 0);
 				AssertFolder (client.GetFolder (SpecialFolder.Flagged), "[Gmail]/Starred", FolderAttributes.HasNoChildren | FolderAttributes.Flagged, true, 41234, 1, 0, 7, 4, 0);
 				AssertFolder (client.GetFolder (SpecialFolder.Trash), "[Gmail]/Trash", FolderAttributes.HasNoChildren | FolderAttributes.Trash, true, 41234, 0, 0, 1143, 2, 0);

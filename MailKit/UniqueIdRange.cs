@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,8 @@ using System;
 using System.Collections;
 using System.Globalization;
 using System.Collections.Generic;
+
+using MailKit.Search;
 
 namespace MailKit {
 	/// <summary>
@@ -111,6 +113,17 @@ namespace MailKit {
 			this.validity = start.Validity;
 			this.start = start.Id;
 			this.end = end.Id;
+		}
+
+		/// <summary>
+		/// Gets the sort order of the unique identifiers.
+		/// </summary>
+		/// <remarks>
+		/// Gets the sort order of the unique identifiers.
+		/// </remarks>
+		/// <value>The sort order.</value>
+		public SortOrder SortOrder {
+			get { return start <= end ? SortOrder.Ascending : SortOrder.Descending; }
 		}
 
 		/// <summary>

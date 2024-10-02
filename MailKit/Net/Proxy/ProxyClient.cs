@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,10 @@ using System.Threading;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
+#if NET6_0_OR_GREATER
+using System.Net.Http;
+#endif
+
 namespace MailKit.Net.Proxy
 {
 	/// <summary>
@@ -40,8 +44,30 @@ namespace MailKit.Net.Proxy
 	/// A proxy client can be used to connect to a service through a firewall that
 	/// would otherwise be blocked.
 	/// </remarks>
+	/// <example>
+	/// <code language="c#" source="Examples\ProxyExamples.cs" region="ProxyClient" />
+	/// </example>
 	public abstract class ProxyClient : IProxyClient
 	{
+#if NET6_0_OR_GREATER
+		static IProxyClient systemProxy;
+
+		/// <summary>
+		/// Get a client for the default system proxy.
+		/// </summary>
+		/// <remarks>
+		/// Gets a client for the default system proxy.
+		/// </remarks>
+		/// <value>A client for the default system proxy.</value>
+		public static IProxyClient SystemProxy {
+			get {
+				systemProxy ??= new WebProxyClient (HttpClient.DefaultProxy);
+
+				return systemProxy;
+			}
+		}
+#endif
+
 		/// <summary>
 		/// Initializes a new instance of the <see cref="T:MailKit.Net.Proxy.ProxyClient"/> class.
 		/// </summary>
@@ -282,8 +308,8 @@ namespace MailKit.Net.Proxy
 		/// Connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="host"/> is <c>null</c>.
@@ -312,8 +338,8 @@ namespace MailKit.Net.Proxy
 		/// Asynchronously connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="host"/> is <c>null</c>.
@@ -342,8 +368,8 @@ namespace MailKit.Net.Proxy
 		/// Connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="timeout">The timeout, in milliseconds.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -393,8 +419,8 @@ namespace MailKit.Net.Proxy
 		/// Asynchronously connects to the target host and port through the proxy server.
 		/// </remarks>
 		/// <returns>The connected network stream.</returns>
-		/// <param name="host">The host name of the proxy server.</param>
-		/// <param name="port">The proxy server port.</param>
+		/// <param name="host">The host name of the target server.</param>
+		/// <param name="port">The target server port.</param>
 		/// <param name="timeout">The timeout, in milliseconds.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">

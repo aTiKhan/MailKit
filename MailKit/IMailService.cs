@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -156,6 +156,9 @@ namespace MailKit {
 		/// Gets or sets the proxy client to use when connecting to a remote host via any of the
 		/// <a href="Overload_MailKit_IMailService_Connect.htm">Connect</a> methods.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\ProxyExamples.cs" region="ProxyClient" />
+		/// </example>
 		/// <value>The proxy client.</value>
 		IProxyClient ProxyClient { get; set; }
 

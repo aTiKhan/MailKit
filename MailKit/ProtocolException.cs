@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,8 @@ namespace MailKit {
 #endif
 	public abstract class ProtocolException : Exception
 	{
+		const string ProtocolLogHelpLink = "https://github.com/jstedfast/MailKit/blob/master/FAQ.md#protocol-log";
+
 #if SERIALIZABLE
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MailKit.ProtocolException"/> class.
@@ -72,7 +74,7 @@ namespace MailKit {
 		/// <param name="innerException">An inner exception.</param>
 		protected ProtocolException (string message, Exception innerException) : base (message, innerException)
 		{
-			HelpLink = "https://github.com/jstedfast/MailKit/blob/master/FAQ.md#ProtocolLog";
+			HelpLink = ProtocolLogHelpLink;
 		}
 
 		/// <summary>
@@ -84,7 +86,7 @@ namespace MailKit {
 		/// <param name="message">The error message.</param>
 		protected ProtocolException (string message) : base (message)
 		{
-			HelpLink = "https://github.com/jstedfast/MailKit/blob/master/FAQ.md#ProtocolLog";
+			HelpLink = ProtocolLogHelpLink;
 		}
 
 		/// <summary>
@@ -95,7 +97,7 @@ namespace MailKit {
 		/// </remarks>
 		protected ProtocolException ()
 		{
-			HelpLink = "https://github.com/jstedfast/MailKit/blob/master/FAQ.md#ProtocolLog";
+			HelpLink = ProtocolLogHelpLink;
 		}
 	}
 }

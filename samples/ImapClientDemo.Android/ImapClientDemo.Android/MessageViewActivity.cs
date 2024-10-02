@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jeff@xamarin.com>
 //
-// Copyright (c) 2013-2022 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2024 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,12 +42,12 @@ namespace ImapClientDemo
 		{
 			base.OnCreate (bundle);
 
-			SetContentView (Resource.Layout.ViewMessageLayout);
+			SetContentView (ImapClientDemo.Android.Resource.Layout.ViewMessageLayout);
 
-			textSubject = FindViewById<TextView> (Resource.Id.textSubject);
-			textFrom = FindViewById<TextView> (Resource.Id.textFrom);
-			textDate = FindViewById<TextView> (Resource.Id.textDate);
-			textBody = FindViewById<TextView> (Resource.Id.textBody);
+			textSubject = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textSubject);
+			textFrom = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textFrom);
+			textDate = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textDate);
+			textBody = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textBody);
 
 			var msg = Mail.CurrentMessage;
 

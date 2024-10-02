@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,44 +33,6 @@ using System.Runtime.Serialization;
 using MimeKit;
 
 namespace MailKit.Net.Smtp {
-	/// <summary>
-	/// An enumeration of the possible error codes that may be reported by a <see cref="SmtpCommandException"/>.
-	/// </summary>
-	/// <remarks>
-	/// An enumeration of the possible error codes that may be reported by a <see cref="SmtpCommandException"/>.
-	/// </remarks>
-	/// <example>
-	/// <code language="c#" source="Examples\SmtpExamples.cs" region="ExceptionHandling"/>
-	/// </example>
-	public enum SmtpErrorCode {
-		/// <summary>
-		/// The message was not accepted for delivery. This may happen if
-		/// the server runs out of available disk space.
-		/// </summary>
-		MessageNotAccepted,
-
-		/// <summary>
-		/// The sender's mailbox address was not accepted. Check the
-		/// <see cref="SmtpCommandException.Mailbox"/> property for the
-		/// mailbox used as the sender's mailbox address.
-		/// </summary>
-		SenderNotAccepted,
-
-		/// <summary>
-		/// A recipient's mailbox address was not accepted. Check the
-		/// <see cref="SmtpCommandException.Mailbox"/> property for the
-		/// particular recipient mailbox that was not acccepted.
-		/// </summary>
-		RecipientNotAccepted,
-
-		/// <summary>
-		/// An unexpected status code was returned by the server.
-		/// For more details, the <see cref="Exception.Message"/>
-		/// property may provide some additional hints.
-		/// </summary>
-		UnexpectedStatusCode,
-	}
-
 	/// <summary>
 	/// An SMTP protocol exception.
 	/// </summary>
@@ -210,7 +172,7 @@ namespace MailKit.Net.Smtp {
 #endif
 
 		/// <summary>
-		/// Gets the error code which may provide additional information.
+		/// Get the error code which may provide additional information.
 		/// </summary>
 		/// <remarks>
 		/// The error code can be used to programatically deal with the
@@ -226,7 +188,7 @@ namespace MailKit.Net.Smtp {
 		}
 
 		/// <summary>
-		/// Gets the mailbox that the error occurred on.
+		/// Get the mailbox that the error occurred on.
 		/// </summary>
 		/// <remarks>
 		/// This property will only be available when the <see cref="ErrorCode"/>
@@ -243,7 +205,7 @@ namespace MailKit.Net.Smtp {
 		}
 
 		/// <summary>
-		/// Gets the status code returned by the SMTP server.
+		/// Get the status code returned by the SMTP server.
 		/// </summary>
 		/// <remarks>
 		/// The raw SMTP status code that resulted in the <see cref="SmtpCommandException"/>

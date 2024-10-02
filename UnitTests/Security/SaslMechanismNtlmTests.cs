@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -517,7 +517,7 @@ namespace UnitTests.Security {
 			var actual = Convert.FromBase64String (response);
 			var expected = authenticate.Encode ();
 
-			Assert.That (actual.Length, Is.EqualTo (expected.Length), $"Final challenge differs in length: {expected.Length} vs {actual.Length}");
+			Assert.That (actual, Has.Length.EqualTo (expected.Length), $"Final challenge differs in length: {expected.Length} vs {actual.Length}");
 
 			for (int i = 0; i < expected.Length; i++)
 				Assert.That (actual[i], Is.EqualTo (expected[i]), $"Final challenge differs at index {i}");
@@ -561,7 +561,7 @@ namespace UnitTests.Security {
 		}
 
 		// From Section 4.2.4.3
-		static byte[] ExampleNtlmV2ChallengeMessage = new byte[] {
+		static readonly byte[] ExampleNtlmV2ChallengeMessage = new byte[] {
 			0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00, 0x02, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x0c, 0x00,
 			0x38, 0x00, 0x00, 0x00, 0x33, 0x82, 0x8a, 0xe2, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x24, 0x00, 0x24, 0x00, 0x44, 0x00, 0x00, 0x00,
@@ -572,7 +572,7 @@ namespace UnitTests.Security {
 		};
 
 		// From Section 4.2.4.3
-		static byte[] ExampleNtlmV2AuthenticateMessageOriginal = new byte[] {
+		static readonly byte[] ExampleNtlmV2AuthenticateMessageOriginal = new byte[] {
 			0x4e, 0x54, 0x4c, 0x4d, 0x53, 0x53, 0x50, 0x00, 0x03, 0x00, 0x00, 0x00, 0x18, 0x00, 0x18, 0x00,
 			0x6c, 0x00, 0x00, 0x00, 0x54, 0x00, 0x54, 0x00, 0x84, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x0c, 0x00,
 			0x48, 0x00, 0x00, 0x00, 0x08, 0x00, 0x08, 0x00, 0x54, 0x00, 0x00, 0x00, 0x10, 0x00, 0x10, 0x00,
@@ -638,6 +638,28 @@ namespace UnitTests.Security {
 			return new NtlmTargetInfo (ntChallengeResponse, index, targetInfoLength, true);
 		}
 
+		static byte[] GetNtChallengeResponseClientChallenge (byte[] ntChallengeResponse)
+		{
+			int index = 0;
+
+			// Proof (16-bytes) HMACMD5 of the following data
+			index += 16;
+
+			// 2 bytes of version info
+			index += 2;
+
+			// Z6
+			index += 6;
+
+			// Timestamp
+			index += 8;
+
+			var clientChallenge = new byte[8];
+			Buffer.BlockCopy (ntChallengeResponse, index, clientChallenge, 0, 8);
+
+			return clientChallenge;
+		}
+
 		[Test]
 		public void TestNtlmv2Example ()
 		{
@@ -668,7 +690,7 @@ namespace UnitTests.Security {
 
 			//var initializer = ToCSharpByteArrayInitializer ("ExampleNtlmV2AuthenticateMessage", actual);
 
-			Assert.That (actual.Length, Is.EqualTo (ExampleNtlmV2AuthenticateMessage.Length), "Raw message lengths differ.");
+			Assert.That (actual, Has.Length.EqualTo (ExampleNtlmV2AuthenticateMessage.Length), "Raw message lengths differ.");
 
 			// Note: The EncryptedRandomSessionKey is random and is the last 16 bytes of the message.
 			for (int i = 0; i < ExampleNtlmV2AuthenticateMessage.Length - 16; i++)
@@ -735,7 +757,7 @@ namespace UnitTests.Security {
 
 			//var expected = DecodeAuthenticateMessage (Convert.ToBase64String (ExampleNtlmV2AuthenticateMessageWithChannelBinding));
 
-			Assert.That (actual.Length, Is.EqualTo (ExampleNtlmV2AuthenticateMessageWithChannelBinding.Length), "Raw message lengths differ.");
+			Assert.That (actual, Has.Length.EqualTo (ExampleNtlmV2AuthenticateMessageWithChannelBinding.Length), "Raw message lengths differ.");
 
 			// Note: The EncryptedRandomSessionKey is random and is the last 16 bytes of the message.
 			for (int i = 0; i < ExampleNtlmV2AuthenticateMessageWithChannelBinding.Length - 16; i++)
@@ -787,7 +809,7 @@ namespace UnitTests.Security {
 
 			//var initializer = ToCSharpByteArrayInitializer ("ExampleNtlmV2AuthenticateMessage", actual);
 
-			Assert.That (actual.Length, Is.EqualTo (ExampleNtlmV2AuthenticateMessageWithChannelBinding.Length), "Raw message lengths differ.");
+			Assert.That (actual, Has.Length.EqualTo (ExampleNtlmV2AuthenticateMessageWithChannelBinding.Length), "Raw message lengths differ.");
 
 			// Note: The EncryptedRandomSessionKey is random and is the last 16 bytes of the message.
 			for (int i = 0; i < ExampleNtlmV2AuthenticateMessageWithChannelBinding.Length - 16; i++)
@@ -841,25 +863,25 @@ namespace UnitTests.Security {
 			Assert.That (auth.Workstation, Is.EqualTo (authenticate.Workstation), "Workstation");
 			Assert.That (auth.OSVersion, Is.EqualTo (authenticate.OSVersion), "OSVersion");
 
-			Assert.That (auth.LmChallengeResponse.Length, Is.EqualTo (authenticate.LmChallengeResponse.Length), "LmChallengeResponseLength");
+			Assert.That (auth.LmChallengeResponse, Has.Length.EqualTo (authenticate.LmChallengeResponse.Length), "LmChallengeResponseLength");
 			for (int i = 0; i < auth.LmChallengeResponse.Length; i++)
 				Assert.That (auth.LmChallengeResponse[i], Is.EqualTo (0), $"LmChallengeResponse[{i}]");
 			Assert.That (auth.Mic, Is.Not.Null, "Mic");
-			Assert.That (auth.Mic.Length, Is.EqualTo (authenticate.Mic.Length), "Mic");
+			Assert.That (auth.Mic, Has.Length.EqualTo (authenticate.Mic.Length), "Mic");
 
 			var targetInfo = GetNtChallengeResponseTargetInfo (auth.NtChallengeResponse);
 			var expected = GetNtChallengeResponseTargetInfo (authenticate.NtChallengeResponse);
 			Assert.That (targetInfo.ChannelBinding, Is.Not.Null, "ChannelBinding");
-			Assert.That (targetInfo.ChannelBinding.Length, Is.EqualTo (expected.ChannelBinding.Length), "ChannelBinding");
-			Assert.That (targetInfo.ServerName, Is.EqualTo (expected.ServerName), "ServerName");
-			Assert.That (targetInfo.DomainName, Is.EqualTo (expected.DomainName), "DomainName");
-			Assert.That (targetInfo.DnsServerName, Is.EqualTo (expected.DnsServerName), "DnsServerName");
+			Assert.That (targetInfo.ChannelBinding, Has.Length.EqualTo (expected.ChannelBinding.Length), "ChannelBinding");
 			Assert.That (targetInfo.DnsDomainName, Is.EqualTo (expected.DnsDomainName), "DnsDomainName");
+			Assert.That (targetInfo.DnsServerName, Is.EqualTo (expected.DnsServerName), "DnsServerName");
 			Assert.That (targetInfo.DnsTreeName, Is.EqualTo (expected.DnsTreeName), "DnsTreeName");
+			Assert.That (targetInfo.DomainName, Is.EqualTo (expected.DomainName), "DomainName");
 			Assert.That (targetInfo.Flags, Is.EqualTo (expected.Flags), "Flags");
+			Assert.That (targetInfo.ServerName, Is.EqualTo (expected.ServerName), "ServerName");
+			Assert.That (targetInfo.SingleHost, Is.EqualTo (expected.SingleHost), "SingleHost");
+			Assert.That (targetInfo.TargetName, Is.EqualTo (expected.TargetName), "TargetName");
 			Assert.That (targetInfo.Timestamp, Is.EqualTo (expected.Timestamp), "Timestamp");
-
-			Console.WriteLine ();
 		}
 	}
 }

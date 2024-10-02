@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jeff@xamarin.com>
 //
-// Copyright (c) 2013-2022 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2024 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,14 +46,14 @@ namespace ImapClientDemo
 		{
 			base.OnCreate (bundle);
 
-			SetContentView (Resource.Layout.LoginLayout);
+			SetContentView (ImapClientDemo.Android.Resource.Layout.LoginLayout);
 
-			textServer = FindViewById<TextView> (Resource.Id.textServer);
-			textPort = FindViewById<TextView> (Resource.Id.textPort);
-			textLogin = FindViewById<TextView> (Resource.Id.textLogin);
-			textPassword = FindViewById<TextView> (Resource.Id.textPassword);
-			checkSsl = FindViewById<CheckBox> (Resource.Id.checkSsl);
-			buttonLogin = FindViewById<Button> (Resource.Id.buttonLogin);
+			textServer = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textServer);
+			textPort = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textPort);
+			textLogin = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textLogin);
+			textPassword = FindViewById<TextView> (ImapClientDemo.Android.Resource.Id.textPassword);
+			checkSsl = FindViewById<CheckBox> (ImapClientDemo.Android.Resource.Id.checkSsl);
+			buttonLogin = FindViewById<Button> (ImapClientDemo.Android.Resource.Id.buttonLogin);
 
 			buttonLogin.Click += buttonLogin_Click;
 		}
@@ -80,7 +80,7 @@ namespace ImapClientDemo
 						"need to go into your GMail settings to enable \"less secure apps\" in order " + 
 						"to get this demo to work.\n\n" +
 						"For a real Mail application, you'll want to add support for obtaining the " +
-						"user's OAuth2 credentials to prevent the need for user's to enable this, but " +
+						"user's OAuth2 credentials to prevent the need for users to enable this, but " +
 						"that is beyond the scope of this demo.",
 						ToastLength.Long).Show ();
 				}

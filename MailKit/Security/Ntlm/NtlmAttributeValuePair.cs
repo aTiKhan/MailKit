@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,10 @@
 //
 
 // https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nlmp/b38c36ed-2804-4868-a9ff-8dd3182128e4
+
+using System;
+using System.Text;
+using System.Diagnostics;
 
 namespace MailKit.Security.Ntlm {
 	/// <summary>
@@ -57,6 +61,47 @@ namespace MailKit.Security.Ntlm {
 		public NtlmAttribute Attribute {
 			get; private set;
 		}
+
+		protected static void EncodeInt16 (byte[] buf, ref int index, short value)
+		{
+			buf[index++] = (byte) (value);
+			buf[index++] = (byte) (value >> 8);
+		}
+
+		protected static void EncodeInt32 (byte[] buf, ref int index, int value)
+		{
+			buf[index++] = (byte) (value);
+			buf[index++] = (byte) (value >> 8);
+			buf[index++] = (byte) (value >> 16);
+			buf[index++] = (byte) (value >> 24);
+		}
+
+		protected static void EncodeTypeAndLength (byte[] buf, ref int index, NtlmAttribute attr, short length)
+		{
+			EncodeInt16 (buf, ref index, (short) attr);
+			EncodeInt16 (buf, ref index, length);
+		}
+
+		/// <summary>
+		/// Get the number of bytes needed for encoding the attribute value.
+		/// </summary>
+		/// <remarks>
+		/// Gets the number of bytes needed for encoding the attribute value.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <returns>The number of bytes needed to encode the value.</returns>
+		public abstract int GetEncodedLength (Encoding encoding);
+
+		/// <summary>
+		/// Encode the attribute value to the specified buffer.
+		/// </summary>
+		/// <remarks>
+		/// Encodes the attribute value to the specified buffer.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <param name="buffer">The output buffer.</param>
+		/// <param name="index">The index into the buffer to start appending the encoded attribute.</param>
+		public abstract void EncodeTo (Encoding encoding, byte[] buffer, ref int index);
 	}
 
 	/// <summary>
@@ -65,6 +110,7 @@ namespace MailKit.Security.Ntlm {
 	/// <remarks>
 	/// An NTLM attribute and value pair consisting of a string value.
 	/// </remarks>
+	[DebuggerDisplay ("{Attribute} = {Value}")]
 	sealed class NtlmAttributeStringValuePair : NtlmAttributeValuePair
 	{
 		/// <summary>
@@ -90,6 +136,37 @@ namespace MailKit.Security.Ntlm {
 		public string Value {
 			get; set;
 		}
+
+		/// <summary>
+		/// Get the number of bytes needed for encoding the attribute value.
+		/// </summary>
+		/// <remarks>
+		/// Gets the number of bytes needed for encoding the attribute value.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <returns>The number of bytes needed to encode the value.</returns>
+		public override int GetEncodedLength (Encoding encoding)
+		{
+			return 4 + encoding.GetByteCount (Value);
+		}
+
+		/// <summary>
+		/// Encode the attribute value to the specified buffer.
+		/// </summary>
+		/// <remarks>
+		/// Encodes the attribute value to the specified buffer.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <param name="buffer">The output buffer.</param>
+		/// <param name="index">The index into the buffer to start appending the encoded attribute.</param>
+		public override void EncodeTo (Encoding encoding, byte[] buffer, ref int index)
+		{
+			int length = encoding.GetByteCount (Value);
+
+			EncodeTypeAndLength (buffer, ref index, Attribute, (short) length);
+			encoding.GetBytes (Value, 0, Value.Length, buffer, index);
+			index += length;
+		}
 	}
 
 	/// <summary>
@@ -98,6 +175,7 @@ namespace MailKit.Security.Ntlm {
 	/// <remarks>
 	/// An NTLM attribute and value pair consisting of a flags value.
 	/// </remarks>
+	[DebuggerDisplay ("{Attribute} = {Value}")]
 	sealed class NtlmAttributeFlagsValuePair : NtlmAttributeValuePair
 	{
 		/// <summary>
@@ -147,6 +225,38 @@ namespace MailKit.Security.Ntlm {
 		public int Value {
 			get; set;
 		}
+
+		/// <summary>
+		/// Get the number of bytes needed for encoding the attribute value.
+		/// </summary>
+		/// <remarks>
+		/// Gets the number of bytes needed for encoding the attribute value.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <returns>The number of bytes needed to encode the value.</returns>
+		public override int GetEncodedLength (Encoding encoding)
+		{
+			return 4 + Size;
+		}
+
+		/// <summary>
+		/// Encode the attribute value to the specified buffer.
+		/// </summary>
+		/// <remarks>
+		/// Encodes the attribute value to the specified buffer.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <param name="buffer">The output buffer.</param>
+		/// <param name="index">The index into the buffer to start appending the encoded attribute.</param>
+		public override void EncodeTo (Encoding encoding, byte[] buffer, ref int index)
+		{
+			EncodeTypeAndLength (buffer, ref index, Attribute, Size);
+
+			switch (Size) {
+			case 2: EncodeInt16 (buffer, ref index, (short) Value); break;
+			default: EncodeInt32 (buffer, ref index, Value); break;
+			}
+		}
 	}
 
 	/// <summary>
@@ -155,6 +265,7 @@ namespace MailKit.Security.Ntlm {
 	/// <remarks>
 	/// An NTLM attribute and value pair consisting of a timestamp value.
 	/// </remarks>
+	[DebuggerDisplay ("{Attribute} = {Value}")]
 	sealed class NtlmAttributeTimestampValuePair : NtlmAttributeValuePair
 	{
 		/// <summary>
@@ -204,6 +315,42 @@ namespace MailKit.Security.Ntlm {
 		public long Value {
 			get; set;
 		}
+
+		/// <summary>
+		/// Get the number of bytes needed for encoding the attribute value.
+		/// </summary>
+		/// <remarks>
+		/// Gets the number of bytes needed for encoding the attribute value.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <returns>The number of bytes needed to encode the value.</returns>
+		public override int GetEncodedLength (Encoding encoding)
+		{
+			return 4 + Size;
+		}
+
+		/// <summary>
+		/// Encode the attribute value to the specified buffer.
+		/// </summary>
+		/// <remarks>
+		/// Encodes the attribute value to the specified buffer.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <param name="buffer">The output buffer.</param>
+		/// <param name="index">The index into the buffer to start appending the encoded attribute.</param>
+		public override void EncodeTo (Encoding encoding, byte[] buffer, ref int index)
+		{
+			EncodeTypeAndLength (buffer, ref index, Attribute, Size);
+
+			switch (Size) {
+			case 2: EncodeInt16 (buffer, ref index, (short) (Value & 0xffff)); break;
+			case 4: EncodeInt32 (buffer, ref index, (int) (Value & 0xffffffff)); break;
+			default:
+				EncodeInt32 (buffer, ref index, (int) (Value & 0xffffffff));
+				EncodeInt32 (buffer, ref index, (int) (Value >> 32));
+				break;
+			}
+		}
 	}
 
 	/// <summary>
@@ -236,6 +383,36 @@ namespace MailKit.Security.Ntlm {
 		/// <value>The attribute value.</value>
 		public byte[] Value {
 			get; set;
+		}
+
+		/// <summary>
+		/// Get the number of bytes needed for encoding the attribute value.
+		/// </summary>
+		/// <remarks>
+		/// Gets the number of bytes needed for encoding the attribute value.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <returns>The number of bytes needed to encode the value.</returns>
+		public override int GetEncodedLength (Encoding encoding)
+		{
+			return 4 + Value.Length;
+		}
+
+		/// <summary>
+		/// Encode the attribute value to the specified buffer.
+		/// </summary>
+		/// <remarks>
+		/// Encodes the attribute value to the specified buffer.
+		/// </remarks>
+		/// <param name="encoding">The text encoding.</param>
+		/// <param name="buffer">The output buffer.</param>
+		/// <param name="index">The index into the buffer to start appending the encoded attribute.</param>
+		public override void EncodeTo (Encoding encoding, byte[] buffer, ref int index)
+		{
+			EncodeTypeAndLength (buffer, ref index, Attribute, (short) Value.Length);
+
+			Buffer.BlockCopy (Value, 0, buffer, index, Value.Length);
+			index += Value.Length;
 		}
 	}
 }

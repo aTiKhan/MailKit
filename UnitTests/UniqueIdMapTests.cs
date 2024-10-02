@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,17 +46,15 @@ namespace UnitTests {
 			int i = 0;
 			uint u;
 
-			Assert.That (map.Count, Is.EqualTo (7), "Count");
+			Assert.That (map, Has.Count.EqualTo (7), "Count");
 
 			for (u = 1; u < 8; u++)
 				Assert.That (map.ContainsKey (new UniqueId (1436832101, u)), Is.True, $"ContainsKey {u}");
 			Assert.That (map.ContainsKey (new UniqueId (1436832101, u)), Is.False, $"ContainsKey {u}");
 
 			foreach (var key in map.Keys) {
-				UniqueId value;
-
 				Assert.That (key, Is.EqualTo (map.Source[i]), $"Source[{i}] vs Key[{i}]");
-				Assert.That (map.TryGetValue (key, out value), Is.True, $"TryGetValue ({key})");
+				Assert.That (map.TryGetValue (key, out var value), Is.True, $"TryGetValue ({key})");
 				Assert.That (value, Is.EqualTo (map.Destination[i]), $"Destination[{i}] vs value");
 				i++;
 			}

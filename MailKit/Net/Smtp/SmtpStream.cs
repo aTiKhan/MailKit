@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,6 +56,7 @@ namespace MailKit.Net.Smtp {
 
 		readonly IProtocolLogger logger;
 		int inputIndex, inputEnd;
+		string lastResponse;
 		bool disposed;
 
 		/// <summary>
@@ -243,6 +244,8 @@ namespace MailKit.Net.Smtp {
 
 					// Optimization hack used by ReadResponse
 					input[inputEnd] = (byte) '\n';
+				} else if (lastResponse is not null) {
+					throw new SmtpProtocolException ($"The SMTP server has unexpectedly disconnected: {lastResponse}");
 				} else {
 					throw new SmtpProtocolException ("The SMTP server has unexpectedly disconnected.");
 				}
@@ -271,6 +274,8 @@ namespace MailKit.Net.Smtp {
 
 					// Optimization hack used by ReadResponse
 					input[inputEnd] = (byte) '\n';
+				} else if (lastResponse is not null) {
+					throw new SmtpProtocolException ($"The SMTP server has unexpectedly disconnected: {lastResponse}");
 				} else {
 					throw new SmtpProtocolException ("The SMTP server has unexpectedly disconnected.");
 				}
@@ -447,6 +452,28 @@ namespace MailKit.Net.Smtp {
 #endif
 		}
 
+		static bool TryParseStatusCode (byte[] text, int startIndex, out int code)
+		{
+			int endIndex = startIndex + 3;
+
+			code = 0;
+
+			for (int index = startIndex; index < endIndex; index++) {
+				if (text[index] < (byte) '0' || text[index] > (byte) '9')
+					return false;
+
+				int digit = text[index] - (byte) '0';
+				code = (code * 10) + digit;
+			}
+
+			return true;
+		}
+
+		static bool IsLegalAfterStatusCode (byte c)
+		{
+			return c == (byte) '-' || c == (byte) ' ' || c == (byte) '\r' || c == (byte) '\n';
+		}
+
 		bool ReadResponse (ByteArrayBuilder builder, ref bool newLine, ref bool more, ref int code)
 		{
 			do {
@@ -454,14 +481,13 @@ namespace MailKit.Net.Smtp {
 
 				if (newLine) {
 					if (inputIndex + 3 < inputEnd) {
-						if (!ByteArrayBuilder.TryParse (input, ref inputIndex, inputEnd, out int value))
+						if (!TryParseStatusCode (input, inputIndex, out int value))
 							throw new SmtpProtocolException ("Unable to parse status code returned by the server.");
 
-						if (inputIndex == inputEnd) {
-							// Need input.
-							inputIndex = startIndex;
-							return true;
-						}
+						inputIndex += 3;
+
+						if (value < 100 || !IsLegalAfterStatusCode (input[inputIndex]))
+							throw new SmtpProtocolException ("Invalid status code returned by the server.");
 
 						if (code == 0) {
 							code = value;
@@ -542,6 +568,8 @@ namespace MailKit.Net.Smtp {
 
 				var message = builder.ToString ();
 
+				lastResponse = message;
+
 				return new SmtpResponse ((SmtpStatusCode) code, message);
 			}
 		}
@@ -584,6 +612,8 @@ namespace MailKit.Net.Smtp {
 				} while (more || !newLine);
 
 				var message = builder.ToString ();
+
+				lastResponse = message;
 
 				return new SmtpResponse ((SmtpStatusCode) code, message);
 			}

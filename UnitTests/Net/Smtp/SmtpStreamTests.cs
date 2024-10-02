@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -68,17 +68,78 @@ namespace UnitTests.Net.Smtp {
 			}
 		}
 
-		[Test]
-		public void TestReadResponseInvalidResponseCode ()
+		[TestCase ("XXX")]
+		[TestCase ("0")]
+		[TestCase ("01")]
+		[TestCase ("012")]
+		[TestCase ("1234")]
+		public void TestReadResponseInvalidStatusCode (string statusCode)
 		{
 			using (var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ())) {
-				var buffer = Encoding.ASCII.GetBytes ("XXX This is an invalid response.\r\n");
+				var buffer = Encoding.ASCII.GetBytes ($"{statusCode} This is an invalid response.\r\n");
 				var dummy = (MemoryStream) stream.Stream;
 
 				dummy.Write (buffer, 0, buffer.Length);
 				dummy.Position = 0;
 
 				Assert.Throws<SmtpProtocolException> (() => stream.ReadResponse (CancellationToken.None));
+			}
+		}
+
+		static string GenerateCrossBoundaryResponse (int statusCodeUnderflow)
+		{
+			const string lastLine = "250 ...And this is the final line of the response.\r\n";
+			var builder = new StringBuilder ();
+			int lineNumber = 1;
+			string line;
+
+			do {
+				line = $"250-This is line #{lineNumber++} of a really long SMTP response.\r\n";
+
+				if (builder.Length + line.Length + 6 + statusCodeUnderflow > 4096)
+					break;
+
+				builder.Append (line);
+			} while (true);
+
+			line = "250-" + new string ('a', 4096 - builder.Length - 6 - statusCodeUnderflow) + "\r\n";
+			builder.Append (line);
+			builder.Append (lastLine);
+
+			// At this point, the last line's status code (and the following <SPACE>) is just barely
+			// contained within the first 4096 byte read.
+
+			var input = builder.ToString ();
+
+			var expected = lastLine.Substring (statusCodeUnderflow);
+			var buffer2 = input.Substring (4096);
+
+			Assert.That (buffer2, Is.EqualTo (expected));
+
+			return input;
+		}
+
+		[TestCase (0)]
+		[TestCase (1)]
+		[TestCase (2)]
+		[TestCase (3)]
+		[TestCase (4)]
+		public void TestReadResponseStatusCodeUnderflow (int underflow)
+		{
+			var input = GenerateCrossBoundaryResponse (underflow);
+			var expected = input.Replace ("250-", "").Replace ("250 ", "").Replace ("\r\n", "\n").TrimEnd ();
+
+			using (var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ())) {
+				var buffer = Encoding.ASCII.GetBytes (input);
+				var dummy = (MemoryStream) stream.Stream;
+
+				dummy.Write (buffer, 0, buffer.Length);
+				dummy.Position = 0;
+
+				var response = stream.ReadResponse (CancellationToken.None);
+
+				Assert.That ((int) response.StatusCode, Is.EqualTo (250));
+				Assert.That (response.Response, Is.EqualTo (expected));
 			}
 		}
 
@@ -300,6 +361,21 @@ namespace UnitTests.Net.Smtp {
 		}
 
 		[Test]
+		public async Task TestQueueReallyLongCommandAsync ()
+		{
+			using var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ());
+			var memory = (MemoryStream) stream.Stream;
+			var command = "AUTH GSSAPI YIIkMgYGK" + new string ('X', 4096) + "\r\n";
+
+			await stream.QueueCommandAsync (command, default);
+			stream.Flush ();
+
+			var actual = Encoding.ASCII.GetString (memory.GetBuffer (), 0, (int) memory.Length);
+
+			Assert.That (actual, Is.EqualTo (command));
+		}
+
+		[Test]
 		public void TestQueueReallyLongCommandAfterShortCommand ()
 		{
 			using var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ());
@@ -315,6 +391,96 @@ namespace UnitTests.Net.Smtp {
 			var actual = Encoding.ASCII.GetString (memory.GetBuffer (), 0, (int) memory.Length);
 
 			Assert.That (actual, Is.EqualTo (shortCommand + longCommand));
+		}
+
+		[Test]
+		public async Task TestQueueReallyLongCommandAfterShortCommandAsync ()
+		{
+			using var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ());
+			var memory = (MemoryStream) stream.Stream;
+
+			var shortCommand = "EHLO [192.168.1.1]\r\n";
+			var longCommand = "AUTH GSSAPI YIIkMgYGK" + new string ('X', 4096) + "\r\n";
+
+			await stream.QueueCommandAsync (shortCommand, default);
+			await stream.QueueCommandAsync (longCommand, default);
+			stream.Flush ();
+
+			var actual = Encoding.ASCII.GetString (memory.GetBuffer (), 0, (int) memory.Length);
+
+			Assert.That (actual, Is.EqualTo (shortCommand + longCommand));
+		}
+
+		[Test]
+		public void TestQueueOverflowRemainingOutputBufferCommand ()
+		{
+			using var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ());
+			var memory = (MemoryStream) stream.Stream;
+
+			var shortCommand = "EHLO [192.168.1.1]\r\n";
+			var longCommand = "AUTH GSSAPI YIIkMgYGK" + new string ('X', 4096 - shortCommand.Length - 22) + "\r\n";
+
+			stream.QueueCommand (shortCommand, default);
+			stream.QueueCommand (longCommand, default);
+			stream.Flush ();
+
+			var actual = Encoding.ASCII.GetString (memory.GetBuffer (), 0, (int) memory.Length);
+
+			Assert.That (actual, Is.EqualTo (shortCommand + longCommand));
+		}
+
+		[Test]
+		public async Task TestQueueOverflowRemainingOutputBufferCommandAsync ()
+		{
+			using var stream = new SmtpStream (new DummyNetworkStream (), new NullProtocolLogger ());
+			var memory = (MemoryStream) stream.Stream;
+
+			var shortCommand = "EHLO [192.168.1.1]\r\n";
+			var longCommand = "AUTH GSSAPI YIIkMgYGK" + new string ('X', 4096 - shortCommand.Length - 22) + "\r\n";
+
+			await stream.QueueCommandAsync (shortCommand, default);
+			await stream.QueueCommandAsync (longCommand, default);
+			stream.Flush ();
+
+			var actual = Encoding.ASCII.GetString (memory.GetBuffer (), 0, (int) memory.Length);
+
+			Assert.That (actual, Is.EqualTo (shortCommand + longCommand));
+		}
+
+		[Test]
+		public void TestDisconnectOnWriteException ()
+		{
+			using var stream = new SmtpStream (new DummyNetworkStream (throwOnWrite: true), new NullProtocolLogger ());
+			var memory = (MemoryStream) stream.Stream;
+
+			var command = new string ('a', 4094) + "\r\n";
+			var buffer = Encoding.ASCII.GetBytes (command);
+
+			try {
+				stream.Write (buffer, 0, buffer.Length, CancellationToken.None);
+				Assert.Fail ("Expected IOException to be thrown.");
+			} catch (IOException) {
+			}
+
+			Assert.That (stream.IsConnected, Is.False);
+		}
+
+		[Test]
+		public async Task TestDisconnectOnWriteExceptionAsync ()
+		{
+			using var stream = new SmtpStream (new DummyNetworkStream (throwOnWrite: true), new NullProtocolLogger ());
+			var memory = (MemoryStream) stream.Stream;
+
+			var command = new string ('a', 4094) + "\r\n";
+			var buffer = Encoding.ASCII.GetBytes (command);
+
+			try {
+				await stream.WriteAsync (buffer, 0, buffer.Length, CancellationToken.None);
+				Assert.Fail ("Expected IOException to be thrown.");
+			} catch (IOException) {
+			}
+
+			Assert.That (stream.IsConnected, Is.False);
 		}
 	}
 }

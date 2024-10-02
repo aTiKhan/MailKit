@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -113,7 +113,7 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				var inbox = (ImapFolder) client.Inbox;
 				inbox.Open (FolderAccess.ReadWrite);
@@ -430,7 +430,7 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.IsInstanceOf<ImapEngine> (client.Inbox.SyncRoot, "SyncRoot");
+				Assert.That (client.Inbox.SyncRoot, Is.InstanceOf<ImapEngine> (), "SyncRoot");
 
 				// disable all features
 				client.Capabilities = ImapCapabilities.None;
@@ -467,6 +467,400 @@ namespace UnitTests.Net.Imap {
 				Assert.ThrowsAsync<NotSupportedException> (async () => await inbox.FetchAsync (uids, modseq, MessageSummaryItems.All, fields));
 
 				client.Disconnect (false);
+			}
+		}
+
+		static List<ImapReplayCommand> CreateEmptyFetchRequestCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "gmail.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "gmail.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"),
+				new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"),
+			};
+		}
+
+		[Test]
+		public void TestEmptyFetchRequest ()
+		{
+			var commands = CreateEmptyFetchRequestCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = personal.GetSubfolders ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				inbox.Open (FolderAccess.ReadOnly);
+
+				// First, test a non-empty requests with empty message sets
+				var request = new FetchRequest (MessageSummaryItems.Flags);
+
+				var messages = inbox.Fetch (Array.Empty<UniqueId> (), request);
+				Assert.That (messages, Is.Empty, "UID FETCH (0 uids)");
+
+				messages = inbox.Fetch (Array.Empty<int> (), request);
+				Assert.That (messages, Is.Empty, "FETCH (0 indexes)");
+
+				// Now make the FetchRequest empty
+				request = new FetchRequest (MessageSummaryItems.None);
+
+				messages = inbox.Fetch (UniqueIdRange.All, request);
+				Assert.That (messages, Is.Empty, "UID FETCH (None)");
+
+				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5 }, request);
+				Assert.That (messages, Is.Empty, "FETCH (None)");
+
+				messages = inbox.Fetch (0, -1, request);
+				Assert.That (messages, Is.Empty, "FETCH min:max (None)");
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestEmptyFetchRequestAsync ()
+		{
+			var commands = CreateEmptyFetchRequestCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = await personal.GetSubfoldersAsync ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				await inbox.OpenAsync (FolderAccess.ReadOnly);
+
+				// First, test a non-empty requests with empty message sets
+				var request = new FetchRequest (MessageSummaryItems.Flags);
+
+				var messages = await inbox.FetchAsync (Array.Empty<UniqueId> (), request);
+				Assert.That (messages, Is.Empty, "UID FETCH (0 uids)");
+
+				messages = await inbox.FetchAsync (Array.Empty<int> (), request);
+				Assert.That (messages, Is.Empty, "FETCH (0 indexes)");
+
+				// Now make the FetchRequest empty
+				request = new FetchRequest (MessageSummaryItems.None);
+
+				messages = await inbox.FetchAsync (UniqueIdRange.All, request);
+				Assert.That (messages, Is.Empty, "UID FETCH (None)");
+
+				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5 }, request);
+				Assert.That (messages, Is.Empty, "FETCH (None)");
+
+				messages = await inbox.FetchAsync (0, -1, request);
+				Assert.That (messages, Is.Empty, "FETCH min:max (None)");
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		static List<ImapReplayCommand> CreateFetchAllHeadersCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "gmail.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "gmail.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"),
+				new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"),
+				new ImapReplayCommand ("A00000007 UID FETCH 1:* (UID FLAGS BODY.PEEK[HEADER])\r\n", "gmail.fetch-all-headers.txt"),
+				new ImapReplayCommand ("A00000008 FETCH 1:6 (UID FLAGS BODY.PEEK[HEADER])\r\n", "gmail.fetch-all-headers.txt"),
+				new ImapReplayCommand ("A00000009 FETCH 1:* (UID FLAGS BODY.PEEK[HEADER])\r\n", "gmail.fetch-all-headers.txt")
+			};
+		}
+
+		[Test]
+		public void TestFetchAllHeaders ()
+		{
+			var commands = CreateFetchAllHeadersCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = personal.GetSubfolders ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				inbox.Open (FolderAccess.ReadOnly);
+
+				var request = new FetchRequest (MessageSummaryItems.Flags | MessageSummaryItems.UniqueId) {
+					Headers = HeaderSet.All
+				};
+
+				var messages = inbox.Fetch (UniqueIdRange.All, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "UID FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "UID FETCH fields");
+
+				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5 }, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH fields");
+
+				messages = inbox.Fetch (0, -1, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH min:max");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH min:max fields");
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestFetchAllHeadersAsync ()
+		{
+			var commands = CreateFetchAllHeadersCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = await personal.GetSubfoldersAsync ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				await inbox.OpenAsync (FolderAccess.ReadOnly);
+
+				var request = new FetchRequest (MessageSummaryItems.Flags | MessageSummaryItems.UniqueId) {
+					Headers = HeaderSet.All
+				};
+
+				var messages = await inbox.FetchAsync (UniqueIdRange.All, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "UID FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "UID FETCH fields");
+
+				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5 }, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH fields");
+
+				messages = await inbox.FetchAsync (0, -1, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH min:max");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH min:max fields");
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		static List<ImapReplayCommand> CreateFetchInvalidHeadersCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "gmail.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "gmail.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"),
+				new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"),
+				new ImapReplayCommand ("A00000007 UID FETCH 1:* (UID FLAGS BODY.PEEK[HEADER])\r\n", "gmail.fetch-invalid-headers.txt"),
+				new ImapReplayCommand ("A00000008 FETCH 1:6 (UID FLAGS BODY.PEEK[HEADER])\r\n", "gmail.fetch-invalid-headers.txt"),
+				new ImapReplayCommand ("A00000009 FETCH 1:* (UID FLAGS BODY.PEEK[HEADER])\r\n", "gmail.fetch-invalid-headers.txt")
+			};
+		}
+
+		[Test]
+		public void TestFetchInvalidHeaders ()
+		{
+			var commands = CreateFetchInvalidHeadersCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = personal.GetSubfolders ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				inbox.Open (FolderAccess.ReadOnly);
+
+				var request = new FetchRequest (MessageSummaryItems.Flags | MessageSummaryItems.UniqueId) {
+					Headers = HeaderSet.All
+				};
+
+				var messages = inbox.Fetch (UniqueIdRange.All, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "UID FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "UID FETCH fields");
+
+				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5 }, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH fields");
+
+				messages = inbox.Fetch (0, -1, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH min:max");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH min:max fields");
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestFetchInvalidHeadersAsync ()
+		{
+			var commands = CreateFetchInvalidHeadersCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = await personal.GetSubfoldersAsync ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				await inbox.OpenAsync (FolderAccess.ReadOnly);
+
+				var request = new FetchRequest (MessageSummaryItems.Flags | MessageSummaryItems.UniqueId) {
+					Headers = HeaderSet.All
+				};
+
+				var messages = await inbox.FetchAsync (UniqueIdRange.All, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "UID FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "UID FETCH fields");
+
+				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5 }, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH fields");
+
+				messages = await inbox.FetchAsync (0, -1, request);
+				Assert.That (messages, Has.Count.EqualTo (6), "FETCH min:max");
+				for (int i = 0; i < messages.Count; i++)
+					Assert.That (messages[i].Fields, Is.EqualTo (request.Items | MessageSummaryItems.Headers | MessageSummaryItems.References), "FETCH min:max fields");
+
+				await client.DisconnectAsync (false);
 			}
 		}
 
@@ -531,17 +925,17 @@ namespace UnitTests.Net.Imap {
 				inbox.Open (FolderAccess.ReadOnly);
 
 				var messages = inbox.Fetch (UniqueIdRange.All, MessageSummaryItems.All | MessageSummaryItems.PreviewText);
-				Assert.That (messages.Count, Is.EqualTo (PreviewTextValues.Length), "UID FETCH");
+				Assert.That (messages, Has.Count.EqualTo (PreviewTextValues.Length), "UID FETCH");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (PreviewTextValues[i]));
 
 				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5 }, MessageSummaryItems.All | MessageSummaryItems.PreviewText);
-				Assert.That (messages.Count, Is.EqualTo (PreviewTextValues.Length), "FETCH");
+				Assert.That (messages, Has.Count.EqualTo (PreviewTextValues.Length), "FETCH");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (PreviewTextValues[i]));
 
 				messages = inbox.Fetch (0, -1, MessageSummaryItems.All | MessageSummaryItems.PreviewText);
-				Assert.That (messages.Count, Is.EqualTo (PreviewTextValues.Length), "FETCH min:max");
+				Assert.That (messages, Has.Count.EqualTo (PreviewTextValues.Length), "FETCH min:max");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (PreviewTextValues[i]));
 
@@ -584,17 +978,17 @@ namespace UnitTests.Net.Imap {
 				await inbox.OpenAsync (FolderAccess.ReadOnly);
 
 				var messages = await inbox.FetchAsync (UniqueIdRange.All, MessageSummaryItems.All | MessageSummaryItems.PreviewText);
-				Assert.That (messages.Count, Is.EqualTo (PreviewTextValues.Length), "UID FETCH");
+				Assert.That (messages, Has.Count.EqualTo (PreviewTextValues.Length), "UID FETCH");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (PreviewTextValues[i]));
 
 				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5 }, MessageSummaryItems.All | MessageSummaryItems.PreviewText);
-				Assert.That (messages.Count, Is.EqualTo (PreviewTextValues.Length), "FETCH");
+				Assert.That (messages, Has.Count.EqualTo (PreviewTextValues.Length), "FETCH");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (PreviewTextValues[i]));
 
 				messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.All | MessageSummaryItems.PreviewText);
-				Assert.That (messages.Count, Is.EqualTo (PreviewTextValues.Length), "FETCH min:max");
+				Assert.That (messages, Has.Count.EqualTo (PreviewTextValues.Length), "FETCH min:max");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (PreviewTextValues[i]));
 
@@ -735,7 +1129,8 @@ namespace UnitTests.Net.Imap {
 			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…",
 			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…",
 			"Don’t miss our celebrity guest Monday evening",
-			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…"
+			"Planet Fitness https://view.email.planetfitness.com/?qs=9a098a031cabde68c0a4260051cd6fe473a2e997a53678ff26b4b199a711a9d2ad0536530d6f837c246b09f644d42016ecfb298f930b7af058e9e454b34f3d818ceb3052ae317b1ac4594aab28a2d788 View web ver…",
+			string.Empty
 		};
 
 		static List<ImapReplayCommand> CreateFetchSimulatedPreviewTextCommands ()
@@ -753,7 +1148,7 @@ namespace UnitTests.Net.Imap {
 				new ImapReplayCommand ("A00000008 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"),
 				new ImapReplayCommand ("A00000009 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"),
 				new ImapReplayCommand ("A00000010 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"),
-				new ImapReplayCommand ("A00000011 FETCH 1:6 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"),
+				new ImapReplayCommand ("A00000011 FETCH 1:7 (UID FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODYSTRUCTURE)\r\n", "gmail.fetch-previewtext-bodystructure.txt"),
 				new ImapReplayCommand ("A00000012 UID FETCH 1,4 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-only.txt"),
 				new ImapReplayCommand ("A00000013 UID FETCH 3,6 (BODY.PEEK[1]<0.512>)\r\n", "gmail.fetch-previewtext-peek-text-alternative.txt"),
 				new ImapReplayCommand ("A00000014 UID FETCH 2,5 (BODY.PEEK[TEXT]<0.16384>)\r\n", "gmail.fetch-previewtext-peek-html-only.txt"),
@@ -802,7 +1197,7 @@ namespace UnitTests.Net.Imap {
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (SimulatedPreviewTextValues[i]));
 
-				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				messages = inbox.Fetch (new int[] { 0, 1, 2, 3, 4, 5, 6 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (SimulatedPreviewTextValues[i]));
 
@@ -852,13 +1247,327 @@ namespace UnitTests.Net.Imap {
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (SimulatedPreviewTextValues[i]));
 
-				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
+				messages = await inbox.FetchAsync (new int[] { 0, 1, 2, 3, 4, 5, 6 }, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (SimulatedPreviewTextValues[i]));
 
 				messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.Full | MessageSummaryItems.PreviewText);
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].PreviewText, Is.EqualTo (SimulatedPreviewTextValues[i]));
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		static List<ImapReplayCommand> CreateFetchSimulatedKoreanPreviewTextCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "gmail.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "gmail.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"),
+				new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"),
+				new ImapReplayCommand ("A00000007 UID FETCH 1 (UID BODYSTRUCTURE)\r\n", "gmail.fetch-korean-previewtext-bodystructure.txt"),
+				new ImapReplayCommand ("A00000008 UID FETCH 1 (BODY.PEEK[TEXT]<0.512>)\r\n", "gmail.fetch-korean-previewtext-peek-text-only.txt"),
+			};
+		}
+
+		[Test]
+		public void TestFetchSimulatedKoreanPreviewText ()
+		{
+			const string koreanPreviewText = "서기 250년경 고분 시대가 시작되면서 고분이라고 불리는 거대한 무덤이 건설된 것은 보다 집약적인 농업과 철기 기술의 도입에 힘입어 강력한 전사 엘리트의 출현을 나타냅니다. 일본은 철과 기타 물품의 공급을 확보하기 위해 남한의 연안 지배 집단과 집중적인 접촉을 벌이면서 중국에 사신을 파견하면서 대륙 본토와의 접촉이 증가했습니다(238, 243, 247). 4세기 동안 지속된 한반도의 한국 세력과";
+			var commands = CreateFetchSimulatedKoreanPreviewTextCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = personal.GetSubfolders ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				inbox.Open (FolderAccess.ReadOnly);
+
+				var messages = inbox.Fetch (new[] { new UniqueId (1) }, MessageSummaryItems.PreviewText);
+				Assert.That (messages.Count, Is.EqualTo (1), "Expected 1 message to be fetched.");
+				Assert.That (messages[0].PreviewText, Is.EqualTo (koreanPreviewText));
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestFetchSimulatedKoreanPreviewTextAsync ()
+		{
+			const string koreanPreviewText = "서기 250년경 고분 시대가 시작되면서 고분이라고 불리는 거대한 무덤이 건설된 것은 보다 집약적인 농업과 철기 기술의 도입에 힘입어 강력한 전사 엘리트의 출현을 나타냅니다. 일본은 철과 기타 물품의 공급을 확보하기 위해 남한의 연안 지배 집단과 집중적인 접촉을 벌이면서 중국에 사신을 파견하면서 대륙 본토와의 접촉이 증가했습니다(238, 243, 247). 4세기 동안 지속된 한반도의 한국 세력과";
+			var commands = CreateFetchSimulatedKoreanPreviewTextCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = await personal.GetSubfoldersAsync ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				await inbox.OpenAsync (FolderAccess.ReadOnly);
+
+				var messages = await inbox.FetchAsync (new[] { new UniqueId (1) }, MessageSummaryItems.PreviewText);
+				Assert.That (messages.Count, Is.EqualTo (1), "Expected 1 message to be fetched.");
+				Assert.That (messages[0].PreviewText, Is.EqualTo (koreanPreviewText));
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		static List<ImapReplayCommand> CreateFetchQuotedStringCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "gmail.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "gmail.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"),
+				new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"),
+				new ImapReplayCommand ("A00000007 FETCH 1:* (UID BODYSTRUCTURE)\r\n", "gmail.fetch-quoted-string-bodystructure.txt"),
+				new ImapReplayCommand ("A00000008 UID FETCH 1 (BODY.PEEK[1.TEXT]<0.512>)\r\n", "gmail.fetch-quoted-string.txt"),
+			};
+		}
+
+		[Test]
+		public void TestFetchQuotedString ()
+		{
+			var commands = CreateFetchQuotedStringCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = personal.GetSubfolders ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				inbox.Open (FolderAccess.ReadOnly);
+
+				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.BodyStructure);
+				using (var stream = inbox.GetStream (messages[0].UniqueId, messages[0].TextBody.PartSpecifier + ".TEXT", 0, 512)) {
+					var text = Encoding.UTF8.GetString (((MemoryStream) stream).ToArray ());
+
+					Assert.That (text, Is.EqualTo ("This is the message body as a quoted-string."), "The message body does not match.");
+				}
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestFetchQuotedStringAsync ()
+		{
+			var commands = CreateFetchQuotedStringCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = await personal.GetSubfoldersAsync ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				await inbox.OpenAsync (FolderAccess.ReadOnly);
+
+				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.BodyStructure);
+				using (var stream = await inbox.GetStreamAsync (messages[0].UniqueId, messages[0].TextBody.PartSpecifier + ".TEXT", 0, 512)) {
+					var text = Encoding.UTF8.GetString (((MemoryStream) stream).ToArray ());
+
+					Assert.That (text, Is.EqualTo ("This is the message body as a quoted-string."), "The message body does not match.");
+				}
+
+				await client.DisconnectAsync (false);
+			}
+		}
+
+		static List<ImapReplayCommand> CreateFetchNilCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "gmail.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "gmail.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "gmail.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "gmail.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "gmail.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "gmail.xlist.txt"),
+				new ImapReplayCommand ("A00000005 LIST \"\" \"%\"\r\n", "gmail.list-personal.txt"),
+				new ImapReplayCommand ("A00000006 EXAMINE INBOX (CONDSTORE)\r\n", "gmail.examine-inbox.txt"),
+				new ImapReplayCommand ("A00000007 FETCH 1:* (UID BODYSTRUCTURE)\r\n", "gmail.fetch-nil-bodystructure.txt"),
+				new ImapReplayCommand ("A00000008 UID FETCH 1 (BODY.PEEK[1.TEXT]<0.512>)\r\n", "gmail.fetch-nil.txt"),
+			};
+		}
+
+		[Test]
+		public void TestFetchNil ()
+		{
+			var commands = CreateFetchNilCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = personal.GetSubfolders ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				inbox.Open (FolderAccess.ReadOnly);
+
+				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.BodyStructure);
+				using (var stream = inbox.GetStream (messages[0].UniqueId, messages[0].TextBody.PartSpecifier + ".TEXT", 0, 512)) {
+					var text = Encoding.UTF8.GetString (((MemoryStream) stream).ToArray ());
+
+					Assert.That (text, Is.EqualTo (string.Empty), "The message body does not match.");
+				}
+
+				client.Disconnect (false);
+			}
+		}
+
+		[Test]
+		public async Task TestFetchNilAsync ()
+		{
+			var commands = CreateFetchNilCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				// Note: Do not try XOAUTH2
+				client.AuthenticationMechanisms.Remove ("XOAUTH2");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				// disable LIST-EXTENDED
+				client.Capabilities &= ~ImapCapabilities.ListExtended;
+
+				var personal = client.GetFolder (client.PersonalNamespaces[0]);
+				var folders = await personal.GetSubfoldersAsync ();
+				Assert.That (folders[0], Is.EqualTo (client.Inbox), "Expected the first folder to be the Inbox.");
+				Assert.That (folders[1].FullName, Is.EqualTo ("[Gmail]"), "Expected the second folder to be [Gmail].");
+				Assert.That (folders[1].Attributes, Is.EqualTo (FolderAttributes.NoSelect | FolderAttributes.HasChildren), "Expected [Gmail] folder to be \\Noselect \\HasChildren.");
+
+				var inbox = client.Inbox;
+
+				await inbox.OpenAsync (FolderAccess.ReadOnly);
+
+				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.BodyStructure);
+				using (var stream = await inbox.GetStreamAsync (messages[0].UniqueId, messages[0].TextBody.PartSpecifier + ".TEXT", 0, 512)) {
+					var text = Encoding.UTF8.GetString (((MemoryStream) stream).ToArray ());
+
+					Assert.That (text, Is.EqualTo (string.Empty), "The message body does not match.");
+				}
 
 				await client.DisconnectAsync (false);
 			}
@@ -916,7 +1625,7 @@ namespace UnitTests.Net.Imap {
 				var range = new UniqueIdRange (0, 1, 6);
 				var messages = inbox.Fetch (range, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Envelope);
 
-				Assert.That (messages.Count, Is.EqualTo (4), "Count");
+				Assert.That (messages, Has.Count.EqualTo (4), "Count");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].Index, Is.EqualTo (i), $"Index #{i}");
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo ((uint) 1), "UniqueId #0");
@@ -965,7 +1674,7 @@ namespace UnitTests.Net.Imap {
 				var range = new UniqueIdRange (0, 1, 6);
 				var messages = await inbox.FetchAsync (range, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate | MessageSummaryItems.Envelope);
 
-				Assert.That (messages.Count, Is.EqualTo (4), "Count");
+				Assert.That (messages, Has.Count.EqualTo (4), "Count");
 				for (int i = 0; i < messages.Count; i++)
 					Assert.That (messages[i].Index, Is.EqualTo (i), $"Index #{i}");
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo ((uint) 1), "UniqueId #0");
@@ -1167,7 +1876,7 @@ namespace UnitTests.Net.Imap {
 				inbox.Open (FolderAccess.ReadOnly);
 
 				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.EmailId | MessageSummaryItems.ThreadId);
-				Assert.That (messages.Count, Is.EqualTo (4), "Count");
+				Assert.That (messages, Has.Count.EqualTo (4), "Count");
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo (1), "UniqueId");
 				Assert.That (messages[0].EmailId, Is.EqualTo ("M6d99ac3275bb4e"), "EmailId");
 				Assert.That (messages[0].ThreadId, Is.EqualTo ("T64b478a75b7ea9"), "ThreadId");
@@ -1209,7 +1918,7 @@ namespace UnitTests.Net.Imap {
 				await inbox.OpenAsync (FolderAccess.ReadOnly);
 
 				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.EmailId | MessageSummaryItems.ThreadId);
-				Assert.That (messages.Count, Is.EqualTo (4), "Count");
+				Assert.That (messages, Has.Count.EqualTo (4), "Count");
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo (1), "UniqueId");
 				Assert.That (messages[0].EmailId, Is.EqualTo ("M6d99ac3275bb4e"), "EmailId");
 				Assert.That (messages[0].ThreadId, Is.EqualTo ("T64b478a75b7ea9"), "ThreadId");
@@ -1268,7 +1977,7 @@ namespace UnitTests.Net.Imap {
 				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.SaveDate);
 				var dto = new DateTimeOffset (2023, 9, 12, 13, 39, 01, new TimeSpan (-4, 0, 0));
 
-				Assert.That (messages.Count, Is.EqualTo (4), "Count");
+				Assert.That (messages, Has.Count.EqualTo (4), "Count");
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo (1), "UniqueId");
 				Assert.That (messages[0].SaveDate, Is.EqualTo (dto), "SaveDate");
 				Assert.That (messages[1].UniqueId.Id, Is.EqualTo (2), "UniqueId");
@@ -1308,7 +2017,7 @@ namespace UnitTests.Net.Imap {
 				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.SaveDate);
 				var dto = new DateTimeOffset (2023, 9, 12, 13, 39, 01, new TimeSpan (-4, 0, 0));
 
-				Assert.That (messages.Count, Is.EqualTo (4), "Count");
+				Assert.That (messages, Has.Count.EqualTo (4), "Count");
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo (1), "UniqueId");
 				Assert.That (messages[0].SaveDate, Is.EqualTo (dto), "SaveDate");
 				Assert.That (messages[1].UniqueId.Id, Is.EqualTo (2), "UniqueId");
@@ -1367,35 +2076,35 @@ namespace UnitTests.Net.Imap {
 				//Assert.That (inbox.MaxAnnotationSize, Is.EqualTo (20480), "MaxAnnotationSize");
 
 				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Annotations);
-				Assert.That (messages.Count, Is.EqualTo (3), "Count");
+				Assert.That (messages, Has.Count.EqualTo (3), "Count");
 
 				IReadOnlyList<Annotation> annotations;
 
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo (1), "UniqueId");
 				annotations = messages[0].Annotations;
-				Assert.That (annotations.Count, Is.EqualTo (1), "Count");
+				Assert.That (annotations, Has.Count.EqualTo (1), "Count");
 				Assert.That (annotations[0].Entry, Is.EqualTo (AnnotationEntry.Comment), "Entry");
-				Assert.That (annotations[0].Properties.Count, Is.EqualTo (2), "Properties.Count");
+				Assert.That (annotations[0].Properties, Has.Count.EqualTo (2), "Properties.Count");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My comment"), "value.priv");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "value.shared");
 
 				Assert.That (messages[1].UniqueId.Id, Is.EqualTo (2), "UniqueId");
 				annotations = messages[1].Annotations;
-				Assert.That (annotations.Count, Is.EqualTo (2), "Count");
+				Assert.That (annotations, Has.Count.EqualTo (2), "Count");
 				Assert.That (annotations[0].Entry, Is.EqualTo (AnnotationEntry.Comment), "annotations[0].Entry");
-				Assert.That (annotations[0].Properties.Count, Is.EqualTo (2), "annotations[0].Properties.Count");
+				Assert.That (annotations[0].Properties, Has.Count.EqualTo (2), "annotations[0].Properties.Count");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My comment"), "annotations[0] value.priv");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[0] value.shared");
 				Assert.That (annotations[1].Entry, Is.EqualTo (AnnotationEntry.AltSubject), "annotations[1].Entry");
-				Assert.That (annotations[1].Properties.Count, Is.EqualTo (2), "annotations[1].Properties.Count");
+				Assert.That (annotations[1].Properties, Has.Count.EqualTo (2), "annotations[1].Properties.Count");
 				Assert.That (annotations[1].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My subject"), "annotations[1] value.priv");
 				Assert.That (annotations[1].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[1] value.shared");
 
 				Assert.That (messages[2].UniqueId.Id, Is.EqualTo (3), "UniqueId");
 				annotations = messages[2].Annotations;
-				Assert.That (annotations.Count, Is.EqualTo (1), "Count");
+				Assert.That (annotations, Has.Count.EqualTo (1), "Count");
 				Assert.That (annotations[0].Entry, Is.EqualTo (AnnotationEntry.Comment), "annotations[0].Entry");
-				Assert.That (annotations[0].Properties.Count, Is.EqualTo (4), "annotations[0].Properties.Count");
+				Assert.That (annotations[0].Properties, Has.Count.EqualTo (4), "annotations[0].Properties.Count");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My comment"), "annotations[0] value.priv");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[0] value.shared");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateSize], Is.EqualTo ("10"), "annotations[0] size.priv");
@@ -1409,7 +2118,7 @@ namespace UnitTests.Net.Imap {
 
 				client.NoOp ();
 
-				Assert.That (annotationsChanged.Count, Is.EqualTo (3), "# AnnotationsChanged events");
+				Assert.That (annotationsChanged, Has.Count.EqualTo (3), "# AnnotationsChanged events");
 
 				client.Disconnect (false);
 			}
@@ -1446,35 +2155,35 @@ namespace UnitTests.Net.Imap {
 				//Assert.That (inbox.MaxAnnotationSize, Is.EqualTo (20480), "MaxAnnotationSize");
 
 				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Annotations);
-				Assert.That (messages.Count, Is.EqualTo (3), "Count");
+				Assert.That (messages, Has.Count.EqualTo (3), "Count");
 
 				IReadOnlyList<Annotation> annotations;
 
 				Assert.That (messages[0].UniqueId.Id, Is.EqualTo (1), "UniqueId");
 				annotations = messages[0].Annotations;
-				Assert.That (annotations.Count, Is.EqualTo (1), "Count");
+				Assert.That (annotations, Has.Count.EqualTo (1), "Count");
 				Assert.That (annotations[0].Entry, Is.EqualTo (AnnotationEntry.Comment), "Entry");
-				Assert.That (annotations[0].Properties.Count, Is.EqualTo (2), "Properties.Count");
+				Assert.That (annotations[0].Properties, Has.Count.EqualTo (2), "Properties.Count");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My comment"), "value.priv");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "value.shared");
 
 				Assert.That (messages[1].UniqueId.Id, Is.EqualTo (2), "UniqueId");
 				annotations = messages[1].Annotations;
-				Assert.That (annotations.Count, Is.EqualTo (2), "Count");
+				Assert.That (annotations, Has.Count.EqualTo (2), "Count");
 				Assert.That (annotations[0].Entry, Is.EqualTo (AnnotationEntry.Comment), "annotations[0].Entry");
-				Assert.That (annotations[0].Properties.Count, Is.EqualTo (2), "annotations[0].Properties.Count");
+				Assert.That (annotations[0].Properties, Has.Count.EqualTo (2), "annotations[0].Properties.Count");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My comment"), "annotations[0] value.priv");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[0] value.shared");
 				Assert.That (annotations[1].Entry, Is.EqualTo (AnnotationEntry.AltSubject), "annotations[1].Entry");
-				Assert.That (annotations[1].Properties.Count, Is.EqualTo (2), "annotations[1].Properties.Count");
+				Assert.That (annotations[1].Properties, Has.Count.EqualTo (2), "annotations[1].Properties.Count");
 				Assert.That (annotations[1].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My subject"), "annotations[1] value.priv");
 				Assert.That (annotations[1].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[1] value.shared");
 
 				Assert.That (messages[2].UniqueId.Id, Is.EqualTo (3), "UniqueId");
 				annotations = messages[2].Annotations;
-				Assert.That (annotations.Count, Is.EqualTo (1), "Count");
+				Assert.That (annotations, Has.Count.EqualTo (1), "Count");
 				Assert.That (annotations[0].Entry, Is.EqualTo (AnnotationEntry.Comment), "annotations[0].Entry");
-				Assert.That (annotations[0].Properties.Count, Is.EqualTo (4), "annotations[0].Properties.Count");
+				Assert.That (annotations[0].Properties, Has.Count.EqualTo (4), "annotations[0].Properties.Count");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateValue], Is.EqualTo ("My comment"), "annotations[0] value.priv");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[0] value.shared");
 				Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateSize], Is.EqualTo ("10"), "annotations[0] size.priv");
@@ -1488,7 +2197,7 @@ namespace UnitTests.Net.Imap {
 
 				await client.NoOpAsync ();
 
-				Assert.That (annotationsChanged.Count, Is.EqualTo (3), "# AnnotationsChanged events");
+				Assert.That (annotationsChanged, Has.Count.EqualTo (3), "# AnnotationsChanged events");
 
 				client.Disconnect (false);
 			}
@@ -1529,15 +2238,15 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.That (client.PersonalNamespaces.Count, Is.EqualTo (1), "Personal Count");
+				Assert.That (client.PersonalNamespaces, Has.Count.EqualTo (1), "Personal Count");
 				Assert.That (client.PersonalNamespaces[0].Path, Is.EqualTo (""), "Personal Path");
 				Assert.That (client.PersonalNamespaces[0].DirectorySeparator, Is.EqualTo ('\\'), "Personal DirectorySeparator");
 
-				Assert.That (client.OtherNamespaces.Count, Is.EqualTo (1), "Other Count");
+				Assert.That (client.OtherNamespaces, Has.Count.EqualTo (1), "Other Count");
 				Assert.That (client.OtherNamespaces[0].Path, Is.EqualTo ("Other"), "Other Path");
 				Assert.That (client.OtherNamespaces[0].DirectorySeparator, Is.EqualTo ('\\'), "Other DirectorySeparator");
 
-				Assert.That (client.SharedNamespaces.Count, Is.EqualTo (1), "Shared Count");
+				Assert.That (client.SharedNamespaces, Has.Count.EqualTo (1), "Shared Count");
 				Assert.That (client.SharedNamespaces[0].Path, Is.EqualTo ("Shared"), "Shared Path");
 				Assert.That (client.SharedNamespaces[0].DirectorySeparator, Is.EqualTo ('\\'), "Shared DirectorySeparator");
 
@@ -1545,7 +2254,7 @@ namespace UnitTests.Net.Imap {
 				inbox.Open (FolderAccess.ReadWrite);
 
 				var messages = inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope | MessageSummaryItems.BodyStructure);
-				Assert.That (messages.Count, Is.EqualTo (29), "Count");
+				Assert.That (messages, Has.Count.EqualTo (29), "Count");
 
 				for (int i = 0; i < 29; i++) {
 					Assert.That (messages[i].Index, Is.EqualTo (i), "MessageSummaryItems are out of order!");
@@ -1576,15 +2285,15 @@ namespace UnitTests.Net.Imap {
 					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
 				}
 
-				Assert.That (client.PersonalNamespaces.Count, Is.EqualTo (1), "Personal Count");
+				Assert.That (client.PersonalNamespaces, Has.Count.EqualTo (1), "Personal Count");
 				Assert.That (client.PersonalNamespaces[0].Path, Is.EqualTo (""), "Personal Path");
 				Assert.That (client.PersonalNamespaces[0].DirectorySeparator, Is.EqualTo ('\\'), "Personal DirectorySeparator");
 
-				Assert.That (client.OtherNamespaces.Count, Is.EqualTo (1), "Other Count");
+				Assert.That (client.OtherNamespaces, Has.Count.EqualTo (1), "Other Count");
 				Assert.That (client.OtherNamespaces[0].Path, Is.EqualTo ("Other"), "Other Path");
 				Assert.That (client.OtherNamespaces[0].DirectorySeparator, Is.EqualTo ('\\'), "Other DirectorySeparator");
 
-				Assert.That (client.SharedNamespaces.Count, Is.EqualTo (1), "Shared Count");
+				Assert.That (client.SharedNamespaces, Has.Count.EqualTo (1), "Shared Count");
 				Assert.That (client.SharedNamespaces[0].Path, Is.EqualTo ("Shared"), "Shared Path");
 				Assert.That (client.SharedNamespaces[0].DirectorySeparator, Is.EqualTo ('\\'), "Shared DirectorySeparator");
 
@@ -1592,7 +2301,7 @@ namespace UnitTests.Net.Imap {
 				await inbox.OpenAsync (FolderAccess.ReadWrite);
 
 				var messages = await inbox.FetchAsync (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope | MessageSummaryItems.BodyStructure);
-				Assert.That (messages.Count, Is.EqualTo (29), "Count");
+				Assert.That (messages, Has.Count.EqualTo (29), "Count");
 
 				for (int i = 0; i < 29; i++) {
 					Assert.That (messages[i].Index, Is.EqualTo (i), "MessageSummaryItems are out of order!");
@@ -1675,10 +2384,10 @@ namespace UnitTests.Net.Imap {
 
 				Assert.That (inbox.HighestModSeq, Is.EqualTo (29233), "HIGHESTMODSEQ #2");
 
-				Assert.That (annotationsChanged.Count, Is.EqualTo (3), "AnnotationsChanged");
-				Assert.That (flagsChanged.Count, Is.EqualTo (3), "FlagsChanged");
-				Assert.That (labelsChanged.Count, Is.EqualTo (3), "LabelsChanged");
-				Assert.That (modSeqChanged.Count, Is.EqualTo (3), "ModSeqChanged");
+				Assert.That (annotationsChanged, Has.Count.EqualTo (3), "AnnotationsChanged");
+				Assert.That (flagsChanged, Has.Count.EqualTo (3), "FlagsChanged");
+				Assert.That (labelsChanged, Has.Count.EqualTo (3), "LabelsChanged");
+				Assert.That (modSeqChanged, Has.Count.EqualTo (3), "ModSeqChanged");
 
 				client.Disconnect (false);
 			}
@@ -1741,12 +2450,245 @@ namespace UnitTests.Net.Imap {
 
 				Assert.That (inbox.HighestModSeq, Is.EqualTo (29233), "HIGHESTMODSEQ #2");
 
-				Assert.That (annotationsChanged.Count, Is.EqualTo (3), "AnnotationsChanged");
-				Assert.That (flagsChanged.Count, Is.EqualTo (3), "FlagsChanged");
-				Assert.That (labelsChanged.Count, Is.EqualTo (3), "LabelsChanged");
-				Assert.That (modSeqChanged.Count, Is.EqualTo (3), "ModSeqChanged");
+				Assert.That (annotationsChanged, Has.Count.EqualTo (3), "AnnotationsChanged");
+				Assert.That (flagsChanged, Has.Count.EqualTo (3), "FlagsChanged");
+				Assert.That (labelsChanged, Has.Count.EqualTo (3), "LabelsChanged");
+				Assert.That (modSeqChanged, Has.Count.EqualTo (3), "ModSeqChanged");
 
 				client.Disconnect (false);
+			}
+		}
+
+		static IList<ImapReplayCommand> CreateFetchNegativeModSeqResponseValuesCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "zoho.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "zoho.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "zoho.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "zoho.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\" RETURN (SUBSCRIBED CHILDREN)\r\n", "zoho.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "zoho.xlist.txt"),
+				new ImapReplayCommand ("A00000005 EXAMINE Gesendet (CONDSTORE)\r\n", "zoho.examine-gesendet.txt"),
+				new ImapReplayCommand ("A00000006 FETCH 1:74 (UID FLAGS MODSEQ)\r\n", "zoho.fetch-negative-modseq-values.txt")
+			};
+		}
+
+		[Test]
+		public void TestFetchNegativeModSeqResponseValues ()
+		{
+			var commands = CreateFetchNegativeModSeqResponseValuesCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				var gesendet = client.GetFolder (SpecialFolder.Sent);
+				gesendet.Open (FolderAccess.ReadOnly);
+
+				var messages = gesendet.Fetch (0, 73, MessageSummaryItems.UniqueId | MessageSummaryItems.Flags | MessageSummaryItems.ModSeq);
+				Assert.That (messages, Has.Count.EqualTo (74), "Count");
+
+				for (int i = 0; i < 15; i++) {
+					Assert.That (messages[i].ModSeq, Is.EqualTo ((ulong) 0), $"MODSEQ {i}");
+					Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen), $"FLAGS {i}");
+				}
+
+				for (int i = 15; i < 39; i++) {
+					Assert.That (messages[i].ModSeq, Is.EqualTo ((ulong) 0), $"MODSEQ {i}");
+					Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen | MessageFlags.Recent), $"FLAGS {i}");
+
+					if (i == 35) {
+						Assert.That (messages[i].Keywords, Has.Count.EqualTo (1), $"KEYWORDS {i}");
+						Assert.That (messages[i].Keywords.Contains ("$FORWARDED"), Is.True, $"KEYWORDS {i}");
+					}
+				}
+
+				for (int i = 39; i < 70; i++) {
+					if (i == 53) {
+						Assert.That (messages[i].ModSeq, Is.EqualTo (1538484935027010002), $"MODSEQ {i}");
+						Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen | MessageFlags.Recent | MessageFlags.Answered), $"FLAGS {i}");
+					} else {
+						Assert.That (messages[i].ModSeq, Is.Null, $"MODSEQ {i}");
+						Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen | MessageFlags.Recent), $"FLAGS {i}");
+					}
+				}
+			}
+		}
+
+		[Test]
+		public async Task TestFetchNegativeModSeqResponseValuesAsync ()
+		{
+			var commands = CreateFetchNegativeModSeqResponseValuesCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				var gesendet = client.GetFolder (SpecialFolder.Sent);
+				await gesendet.OpenAsync (FolderAccess.ReadOnly);
+
+				var messages = await gesendet.FetchAsync (0, 73, MessageSummaryItems.UniqueId | MessageSummaryItems.Flags | MessageSummaryItems.ModSeq);
+				Assert.That (messages, Has.Count.EqualTo (74), "Count");
+
+				for (int i = 0; i < 15; i++) {
+					Assert.That (messages[i].ModSeq, Is.EqualTo ((ulong) 0), $"MODSEQ {i}");
+					Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen), $"FLAGS {i}");
+				}
+
+				for (int i = 15; i < 39; i++) {
+					Assert.That (messages[i].ModSeq, Is.EqualTo ((ulong) 0), $"MODSEQ {i}");
+					Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen | MessageFlags.Recent), $"FLAGS {i}");
+
+					if (i == 35) {
+						Assert.That (messages[i].Keywords, Has.Count.EqualTo (1), $"KEYWORDS {i}");
+						Assert.That (messages[i].Keywords.Contains ("$FORWARDED"), Is.True, $"KEYWORDS {i}");
+					}
+				}
+
+				for (int i = 39; i < 70; i++) {
+					if (i == 53) {
+						Assert.That (messages[i].ModSeq, Is.EqualTo (1538484935027010002), $"MODSEQ {i}");
+						Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen | MessageFlags.Recent | MessageFlags.Answered), $"FLAGS {i}");
+					} else {
+						Assert.That (messages[i].ModSeq, Is.Null, $"MODSEQ {i}");
+						Assert.That (messages[i].Flags, Is.EqualTo (MessageFlags.Seen | MessageFlags.Recent), $"FLAGS {i}");
+					}
+				}
+			}
+		}
+
+		static IList<ImapReplayCommand> CreateYandexGetBodyPartMissingContentCommands ()
+		{
+			return new List<ImapReplayCommand> {
+				new ImapReplayCommand ("", "yandex.greeting.txt"),
+				new ImapReplayCommand ("A00000000 CAPABILITY\r\n", "yandex.capability.txt"),
+				new ImapReplayCommand ("A00000001 AUTHENTICATE PLAIN\r\n", ImapReplayCommandResponse.Plus),
+				new ImapReplayCommand ("A00000001", "AHVzZXJuYW1lAHBhc3N3b3Jk\r\n", "yandex.authenticate.txt"),
+				new ImapReplayCommand ("A00000002 NAMESPACE\r\n", "yandex.namespace.txt"),
+				new ImapReplayCommand ("A00000003 LIST \"\" \"INBOX\"\r\n", "yandex.list-inbox.txt"),
+				new ImapReplayCommand ("A00000004 XLIST \"\" \"*\"\r\n", "yandex.xlist.txt"),
+				new ImapReplayCommand ("A00000005 SELECT INBOX\r\n", "yandex.select-inbox.txt"),
+				new ImapReplayCommand ("A00000006 UID FETCH 3016 (BODY.PEEK[2.MIME] BODY.PEEK[2])\r\n", "yandex.getbodypart-missing-content.txt")
+			};
+		}
+
+		[Test]
+		public void TestYandexGetBodyPartMissingContent ()
+		{
+			// IMAP4rev1 CHILDREN UNSELECT LITERAL+ NAMESPACE XLIST UIDPLUS ENABLE ID AUTH=PLAIN AUTH=XOAUTH2 IDLE MOVE
+			const ImapCapabilities YandexGreetingCapabilities = ImapCapabilities.IMAP4rev1 | ImapCapabilities.Children | ImapCapabilities.Unselect |
+				ImapCapabilities.LiteralPlus | ImapCapabilities.Namespace | ImapCapabilities.XList | ImapCapabilities.UidPlus | ImapCapabilities.Enable |
+				ImapCapabilities.Id | ImapCapabilities.Idle | ImapCapabilities.Move | ImapCapabilities.Status;
+			var commands = CreateYandexGetBodyPartMissingContentCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					client.Connect (new ImapReplayStream (commands, false), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				Assert.That (client.Capabilities, Is.EqualTo (YandexGreetingCapabilities), "Greeting Capabilities");
+				Assert.That (client.AuthenticationMechanisms, Has.Count.EqualTo (2));
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("PLAIN"), "Expected SASL PLAIN auth mechanism");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("XOAUTH2"), "Expected SASL XOAUTH2 auth mechanism");
+
+				try {
+					client.Authenticate ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				Assert.That (client.Capabilities, Is.EqualTo (YandexGreetingCapabilities), "Greeting Capabilities");
+
+				client.Inbox.Open (FolderAccess.ReadWrite);
+
+				//var messages = client.Inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Flags | MessageSummaryItems.ModSeq);
+				//Assert.That (messages, Has.Count.EqualTo (74), "Count");
+
+				var bodyPart = new BodyPartBasic {
+					PartSpecifier = "2",
+				};
+
+				var body = client.Inbox.GetBodyPart (new UniqueId (3016), bodyPart);
+				Assert.That (body, Is.Not.Null);
+				Assert.That (body, Is.InstanceOf<MimePart> ());
+				var part = (MimePart) body;
+				Assert.That (part.ContentType.MimeType, Is.EqualTo ("application/pdf"), "Content-Type");
+				Assert.That (part.ContentType.Name, Is.EqualTo ("empty.pdf"), "name");
+				Assert.That (part.ContentDisposition.Disposition, Is.EqualTo (ContentDisposition.Attachment), "Content-Disposition");
+				Assert.That (part.ContentDisposition.FileName, Is.EqualTo ("empty.pdf"), "filename");
+				Assert.That (part.ContentTransferEncoding, Is.EqualTo (ContentEncoding.Base64), "Content-Transfer-Encoding");
+				Assert.That (part.Content, Is.Null);
+			}
+		}
+
+		[Test]
+		public async Task TestYandexGetBodyPartMissingContentAsync ()
+		{
+			// IMAP4rev1 CHILDREN UNSELECT LITERAL+ NAMESPACE XLIST UIDPLUS ENABLE ID AUTH=PLAIN AUTH=XOAUTH2 IDLE MOVE
+			const ImapCapabilities YandexGreetingCapabilities = ImapCapabilities.IMAP4rev1 | ImapCapabilities.Children | ImapCapabilities.Unselect |
+				ImapCapabilities.LiteralPlus | ImapCapabilities.Namespace | ImapCapabilities.XList | ImapCapabilities.UidPlus | ImapCapabilities.Enable |
+				ImapCapabilities.Id | ImapCapabilities.Idle | ImapCapabilities.Move | ImapCapabilities.Status;
+			var commands = CreateYandexGetBodyPartMissingContentCommands ();
+
+			using (var client = new ImapClient () { TagPrefix = 'A' }) {
+				try {
+					await client.ConnectAsync (new ImapReplayStream (commands, true), "localhost", 143, SecureSocketOptions.None);
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Connect: {ex}");
+				}
+
+				Assert.That (client.Capabilities, Is.EqualTo (YandexGreetingCapabilities), "Greeting Capabilities");
+				Assert.That (client.AuthenticationMechanisms, Has.Count.EqualTo (2));
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("PLAIN"), "Expected SASL PLAIN auth mechanism");
+				Assert.That (client.AuthenticationMechanisms, Does.Contain ("XOAUTH2"), "Expected SASL XOAUTH2 auth mechanism");
+
+				try {
+					await client.AuthenticateAsync ("username", "password");
+				} catch (Exception ex) {
+					Assert.Fail ($"Did not expect an exception in Authenticate: {ex}");
+				}
+
+				Assert.That (client.Capabilities, Is.EqualTo (YandexGreetingCapabilities), "Greeting Capabilities");
+
+				await client.Inbox.OpenAsync (FolderAccess.ReadWrite);
+
+				//var messages = client.Inbox.Fetch (0, -1, MessageSummaryItems.UniqueId | MessageSummaryItems.Flags | MessageSummaryItems.ModSeq);
+				//Assert.That (messages, Has.Count.EqualTo (74), "Count");
+
+				var bodyPart = new BodyPartBasic {
+					PartSpecifier = "2",
+				};
+
+				var body = await client.Inbox.GetBodyPartAsync (new UniqueId (3016), bodyPart);
+				Assert.That (body, Is.Not.Null);
+				Assert.That (body, Is.InstanceOf<MimePart> ());
+				var part = (MimePart) body;
+				Assert.That (part.ContentType.MimeType, Is.EqualTo ("application/pdf"), "Content-Type");
+				Assert.That (part.ContentType.Name, Is.EqualTo ("empty.pdf"), "name");
+				Assert.That (part.ContentDisposition.Disposition, Is.EqualTo (ContentDisposition.Attachment), "Content-Disposition");
+				Assert.That (part.ContentDisposition.FileName, Is.EqualTo ("empty.pdf"), "filename");
+				Assert.That (part.ContentTransferEncoding, Is.EqualTo (ContentEncoding.Base64), "Content-Transfer-Encoding");
+				Assert.That (part.Content, Is.Null);
 			}
 		}
 
@@ -1757,7 +2699,7 @@ namespace UnitTests.Net.Imap {
 		{
 			using (var engine = new ImapEngine (null)) {
 				var request = new FetchRequest (items);
-				var command = ImapFolder.FormatSummaryItems (engine, request, out var previewText);
+				var command = ImapFolder.FormatSummaryItems (engine, request, out _);
 
 				Assert.That (command, Is.EqualTo (expected));
 			}
@@ -1772,10 +2714,9 @@ namespace UnitTests.Net.Imap {
 						Exclude = true
 					}
 				};
-				bool previewText;
 				string command;
 
-				command = ImapFolder.FormatSummaryItems (engine, request, out previewText);
+				command = ImapFolder.FormatSummaryItems (engine, request, out _);
 				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER]"));
 
 				request = new FetchRequest () {
@@ -1784,7 +2725,7 @@ namespace UnitTests.Net.Imap {
 					}
 				};
 
-				command = ImapFolder.FormatSummaryItems (engine, request, out previewText);
+				command = ImapFolder.FormatSummaryItems (engine, request, out _);
 				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS.NOT (FROM SUBJECT DATE)]"));
 			}
 		}
@@ -1794,24 +2735,23 @@ namespace UnitTests.Net.Imap {
 		{
 			using (var engine = new ImapEngine (null)) {
 				var request = new FetchRequest (MessageSummaryItems.References);
-				bool previewText;
 				string command;
 
-				command = ImapFolder.FormatSummaryItems (engine, request, out previewText);
+				command = ImapFolder.FormatSummaryItems (engine, request, out _);
 				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS (REFERENCES)]"));
 
 				request = new FetchRequest () {
 					Headers = new HeaderSet (new[] { "REFERENCES" })
 				};
 
-				command = ImapFolder.FormatSummaryItems (engine, request, out previewText);
+				command = ImapFolder.FormatSummaryItems (engine, request, out _);
 				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS (REFERENCES)]"));
 
 				request = new FetchRequest (MessageSummaryItems.References) {
 					Headers = new HeaderSet (new[] { "REFERENCES" })
 				};
 
-				command = ImapFolder.FormatSummaryItems (engine, request, out previewText);
+				command = ImapFolder.FormatSummaryItems (engine, request, out _);
 				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS (REFERENCES)]"));
 			}
 		}
@@ -1822,8 +2762,66 @@ namespace UnitTests.Net.Imap {
 			using (var engine = new ImapEngine (null)) {
 				var request = new FetchRequest (MessageSummaryItems.Headers);
 
-				var command = ImapFolder.FormatSummaryItems (engine, request, out var previewText);
+				var command = ImapFolder.FormatSummaryItems (engine, request, out _);
 				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER]"));
+			}
+		}
+
+		[Test]
+		public void TestFormatFetchSummaryItemsHeaderFieldsAndReferences ()
+		{
+			using (var engine = new ImapEngine (null)) {
+				var request = new FetchRequest (MessageSummaryItems.References) {
+					Headers = new HeaderSet (new[] { HeaderId.InReplyTo })
+				};
+
+				var command = ImapFolder.FormatSummaryItems (engine, request, out _);
+				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS (IN-REPLY-TO REFERENCES)]"));
+			}
+		}
+
+		[Test]
+		public void TestFormatFetchSummaryItemsExcludeHeaderFieldsReferencesAndReferences ()
+		{
+			using (var engine = new ImapEngine (null)) {
+				var request = new FetchRequest (MessageSummaryItems.References) {
+					Headers = new HeaderSet (new[] { HeaderId.References }) {
+						Exclude = true
+					}
+				};
+
+				var command = ImapFolder.FormatSummaryItems (engine, request, out _);
+				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER]"));
+			}
+		}
+
+		[Test]
+		public void TestFormatFetchSummaryItemsExcludeHeaderFieldsInReplyToAndReferences ()
+		{
+			using (var engine = new ImapEngine (null)) {
+				var request = new FetchRequest (MessageSummaryItems.References) {
+					Headers = new HeaderSet (new[] { HeaderId.InReplyTo }) {
+						Exclude = true
+					}
+				};
+
+				var command = ImapFolder.FormatSummaryItems (engine, request, out _);
+				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS.NOT (IN-REPLY-TO)]"));
+			}
+		}
+
+		[Test]
+		public void TestFormatFetchSummaryItemsExcludeHeaderFieldsInReplyToReferencesAndReferences ()
+		{
+			using (var engine = new ImapEngine (null)) {
+				var request = new FetchRequest (MessageSummaryItems.References) {
+					Headers = new HeaderSet (new[] { HeaderId.InReplyTo, HeaderId.References }) {
+						Exclude = true
+					}
+				};
+
+				var command = ImapFolder.FormatSummaryItems (engine, request, out _);
+				Assert.That (command, Is.EqualTo ("BODY.PEEK[HEADER.FIELDS.NOT (IN-REPLY-TO)]"));
 			}
 		}
 	}

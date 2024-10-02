@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -87,6 +87,10 @@ namespace MailKit.Security.Ntlm {
 				throw new ArgumentOutOfRangeException (nameof (length));
 
 			if (!CheckSignature (message, startIndex))
+				throw new ArgumentException (string.Format (CultureInfo.InvariantCulture, "Invalid Type{0} message.", Type), nameof (message));
+
+			var messageType = BitConverterLE.ToUInt32 (message, 8);
+			if (messageType != Type)
 				throw new ArgumentException (string.Format (CultureInfo.InvariantCulture, "Invalid Type{0} message.", Type), nameof (message));
 		}
 

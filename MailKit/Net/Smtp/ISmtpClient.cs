@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -79,6 +79,20 @@ namespace MailKit.Net.Smtp {
 		/// </example>
 		/// <value>The maximum message size supported by the server.</value>
 		uint MaxSize { get; }
+
+		/// <summary>
+		/// Get or set whether the client should use the REQUIRETLS extension if it is available.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets or sets whether the client should use the REQUIRETLS extension if it is available.</para>
+		/// <para>The REQUIRETLS extension (as defined in rfc8689) is a way to ensure that every SMTP server
+		/// that a message passes through on its way to the recipient is required to use a TLS connection in
+		/// order to transfer the message to the next SMTP server.</para>
+		/// <note type="note">This feature is only available if <see cref="Capabilities"/> contains the
+		/// <see cref="SmtpCapabilities.RequireTLS"/> flag when sending the message.</note>
+		/// </remarks>
+		/// <value><c>true</c> if the REQUIRETLS extension should be used; otherwise, <c>false</c>.</value>
+		bool RequireTLS { get; set; }
 
 		/// <summary>
 		/// Get or set how much of the message to include in any failed delivery status notifications.

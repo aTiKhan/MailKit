@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -95,7 +95,7 @@ namespace UnitTests.Net.Proxy {
 
 		static Socks5ParseResult Parse (byte[] request, int requestLength, out Socks5AuthMethod[] methods)
 		{
-			methods = new Socks5AuthMethod[0];
+			methods = Array.Empty<Socks5AuthMethod> ();
 
 			// +-----+----------+----------+
 			// | VER | NMETHODS | METHODS  |
@@ -125,10 +125,9 @@ namespace UnitTests.Net.Proxy {
 
 		byte[] NegotiateAuthMethod ()
 		{
-			Socks5AuthMethod[] methods;
 			Socks5AuthMethod method;
 
-			var result = Parse (request, requestLength, out methods);
+			var result = Parse (request, requestLength, out var methods);
 			if (result == Socks5ParseResult.NotEnoughData)
 				return null;
 
@@ -211,9 +210,7 @@ namespace UnitTests.Net.Proxy {
 
 		byte[] Authenticate ()
 		{
-			string user, passwd;
-
-			var result = Parse (request, requestLength, out user, out passwd);
+			var result = Parse (request, requestLength, out var user, out var passwd);
 			if (result == Socks5ParseResult.NotEnoughData)
 				return null;
 

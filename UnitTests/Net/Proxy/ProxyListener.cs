@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2023 .NET Foundation and Contributors
+// Copyright (c) 2013-2024 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -142,13 +142,15 @@ namespace UnitTests.Net.Proxy {
 								}
 							}
 
-							var checkRead = new ArrayList ();
-							checkRead.Add (socket);
-							checkRead.Add (remote);
+							var checkRead = new ArrayList {
+								socket,
+								remote
+							};
 
-							var checkError = new ArrayList ();
-							checkError.Add (socket);
-							checkError.Add (remote);
+							var checkError = new ArrayList {
+								socket,
+								remote
+							};
 
 							Socket.Select (checkRead, null, checkError, 250000);
 
@@ -167,7 +169,7 @@ namespace UnitTests.Net.Proxy {
 		{
 			while (!cancellationToken.IsCancellationRequested) {
 				try {
-					using (var socket = await listener.AcceptSocketAsync ().ConfigureAwait (false))
+					using (var socket = await listener.AcceptSocketAsync (cancellationToken).ConfigureAwait (false))
 						await AcceptProxyConnection (socket, cancellationToken).ConfigureAwait (false);
 				} catch (ObjectDisposedException) {
 				}
