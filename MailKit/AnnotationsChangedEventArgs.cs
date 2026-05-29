@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,17 +39,6 @@ namespace MailKit {
 	public class AnnotationsChangedEventArgs : MessageEventArgs
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.AnnotationsChangedEventArgs"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new <see cref="AnnotationsChangedEventArgs"/>.
-		/// </remarks>
-		/// <param name="index">The message index.</param>
-		internal AnnotationsChangedEventArgs (int index) : base (index)
-		{
-		}
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="T:MailKit.AnnotationsChangedEventArgs"/> class.
 		/// </summary>
 		/// <remarks>
@@ -58,7 +47,7 @@ namespace MailKit {
 		/// <param name="index">The message index.</param>
 		/// <param name="annotations">The annotations that changed.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="annotations"/> is <c>null</c>.
+		/// <paramref name="annotations"/> is <see langword="null" />.
 		/// </exception>
 		public AnnotationsChangedEventArgs (int index, IEnumerable<Annotation> annotations) : base (index)
 		{

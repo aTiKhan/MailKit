@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,14 +46,14 @@ namespace MailKit {
 		/// </remarks>
 		/// <param name="entry">The annotation entry.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="entry"/> is <c>null</c>.
+		/// <paramref name="entry"/> is <see langword="null" />.
 		/// </exception>
 		public Annotation (AnnotationEntry entry)
 		{
-			if (entry == null)
+			if (entry is null)
 				throw new ArgumentNullException (nameof (entry));
 
-			Properties = new Dictionary<AnnotationAttribute, string> ();
+			Properties = new Dictionary<AnnotationAttribute, string?> ();
 			Entry = entry;
 		}
 
@@ -75,7 +75,7 @@ namespace MailKit {
 		/// Gets the annotation properties.
 		/// </remarks>
 		/// <value>The annotation properties.</value>
-		public Dictionary<AnnotationAttribute, string> Properties {
+		public Dictionary<AnnotationAttribute, string?> Properties {
 			get; private set;
 		}
 	}

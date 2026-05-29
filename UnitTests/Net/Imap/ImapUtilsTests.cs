@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -716,7 +716,7 @@ namespace UnitTests.Net.Imap {
 		[Test]
 		public void TestParseEnvelopeWithMissingInReplyTo ()
 		{
-			const string text = "(\"Tue, 24 Sep 2019 09:48:05 +0800\" \"=?GBK?B?sbG+qdW9x/jI1bGose0=?=\" ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unkonwn-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unkonwn-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unkonwn-name\" \"unknown-domain\")) NIL NIL NIL)\r\n";
+			const string text = "(\"Tue, 24 Sep 2019 09:48:05 +0800\" \"=?GBK?B?sbG+qdW9x/jI1bGose0=?=\" ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unknown-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unknown-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unknown-name\" \"unknown-domain\")) NIL NIL NIL)\r\n";
 
 			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
 				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
@@ -740,13 +740,13 @@ namespace UnitTests.Net.Imap {
 						Assert.That (envelope.Subject, Is.EqualTo ("北京战区日报表"), "Subject does not match.");
 
 						Assert.That (envelope.From, Has.Count.EqualTo (1), "From counts do not match.");
-						Assert.That (envelope.From.ToString (), Is.EqualTo ("\"数据分析小组\" <unkonwn-name@unknown-domain>"), "From does not match.");
+						Assert.That (envelope.From.ToString (), Is.EqualTo ("\"数据分析小组\" <unknown-name@unknown-domain>"), "From does not match.");
 
 						Assert.That (envelope.Sender, Has.Count.EqualTo (1), "Sender counts do not match.");
-						Assert.That (envelope.Sender.ToString (), Is.EqualTo ("\"数据分析小组\" <unkonwn-name@unknown-domain>"), "Sender does not match.");
+						Assert.That (envelope.Sender.ToString (), Is.EqualTo ("\"数据分析小组\" <unknown-name@unknown-domain>"), "Sender does not match.");
 
 						Assert.That (envelope.ReplyTo, Has.Count.EqualTo (1), "Reply-To counts do not match.");
-						Assert.That (envelope.ReplyTo.ToString (), Is.EqualTo ("\"数据分析小组\" <unkonwn-name@unknown-domain>"), "Reply-To does not match.");
+						Assert.That (envelope.ReplyTo.ToString (), Is.EqualTo ("\"数据分析小组\" <unknown-name@unknown-domain>"), "Reply-To does not match.");
 
 						Assert.That (envelope.To, Is.Empty, "To counts do not match.");
 						Assert.That (envelope.Cc, Is.Empty, "Cc counts do not match.");
@@ -763,7 +763,7 @@ namespace UnitTests.Net.Imap {
 		[Test]
 		public async Task TestParseEnvelopeWithMissingInReplyToAsync ()
 		{
-			const string text = "(\"Tue, 24 Sep 2019 09:48:05 +0800\" \"=?GBK?B?sbG+qdW9x/jI1bGose0=?=\" ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unkonwn-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unkonwn-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unkonwn-name\" \"unknown-domain\")) NIL NIL NIL)\r\n";
+			const string text = "(\"Tue, 24 Sep 2019 09:48:05 +0800\" \"=?GBK?B?sbG+qdW9x/jI1bGose0=?=\" ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unknown-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unknown-name\" \"unknown-domain\")) ((\"=?GBK?B?yv2+3bfWzvbQodfp?=\" NIL \"unknown-name\" \"unknown-domain\")) NIL NIL NIL)\r\n";
 
 			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
 				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
@@ -787,13 +787,13 @@ namespace UnitTests.Net.Imap {
 						Assert.That (envelope.Subject, Is.EqualTo ("北京战区日报表"), "Subject does not match.");
 
 						Assert.That (envelope.From, Has.Count.EqualTo (1), "From counts do not match.");
-						Assert.That (envelope.From.ToString (), Is.EqualTo ("\"数据分析小组\" <unkonwn-name@unknown-domain>"), "From does not match.");
+						Assert.That (envelope.From.ToString (), Is.EqualTo ("\"数据分析小组\" <unknown-name@unknown-domain>"), "From does not match.");
 
 						Assert.That (envelope.Sender, Has.Count.EqualTo (1), "Sender counts do not match.");
-						Assert.That (envelope.Sender.ToString (), Is.EqualTo ("\"数据分析小组\" <unkonwn-name@unknown-domain>"), "Sender does not match.");
+						Assert.That (envelope.Sender.ToString (), Is.EqualTo ("\"数据分析小组\" <unknown-name@unknown-domain>"), "Sender does not match.");
 
 						Assert.That (envelope.ReplyTo, Has.Count.EqualTo (1), "Reply-To counts do not match.");
-						Assert.That (envelope.ReplyTo.ToString (), Is.EqualTo ("\"数据分析小组\" <unkonwn-name@unknown-domain>"), "Reply-To does not match.");
+						Assert.That (envelope.ReplyTo.ToString (), Is.EqualTo ("\"数据分析小组\" <unknown-name@unknown-domain>"), "Reply-To does not match.");
 
 						Assert.That (envelope.To, Is.Empty, "To counts do not match.");
 						Assert.That (envelope.Cc, Is.Empty, "Cc counts do not match.");
@@ -1433,16 +1433,16 @@ namespace UnitTests.Net.Imap {
 						Assert.That (rfc822.ContentType.IsMimeType ("message", "rfc822"), Is.True, "message/rfc822 Content-Type did not match.");
 						Assert.That (rfc822.ContentId, Is.Null, "message/rfc822 Content-Id should be NIL.");
 						Assert.That (rfc822.ContentDescription, Is.Null, "message/rfc822 Content-Description should be NIL.");
-						Assert.That (rfc822.Envelope.Sender, Is.Empty, "message/rfc822 Envlope.Sender should be null.");
-						Assert.That (rfc822.Envelope.From, Is.Empty, "message/rfc822 Envlope.From should be null.");
-						Assert.That (rfc822.Envelope.ReplyTo, Is.Empty, "message/rfc822 Envlope.ReplyTo should be null.");
-						Assert.That (rfc822.Envelope.To, Is.Empty, "message/rfc822 Envlope.To should be null.");
-						Assert.That (rfc822.Envelope.Cc, Is.Empty, "message/rfc822 Envlope.Cc should be null.");
-						Assert.That (rfc822.Envelope.Bcc, Is.Empty, "message/rfc822 Envlope.Bcc should be null.");
-						Assert.That (rfc822.Envelope.Subject, Is.Null, "message/rfc822 Envlope.Subject should be null.");
-						Assert.That (rfc822.Envelope.MessageId, Is.Null, "message/rfc822 Envlope.MessageId should be null.");
-						Assert.That (rfc822.Envelope.InReplyTo, Is.Null, "message/rfc822 Envlope.InReplyTo should be null.");
-						Assert.That (rfc822.Envelope.Date, Is.Null, "message/rfc822 Envlope.Date should be null.");
+						Assert.That (rfc822.Envelope.Sender, Is.Empty, "message/rfc822 Envelope.Sender should be null.");
+						Assert.That (rfc822.Envelope.From, Is.Empty, "message/rfc822 Envelope.From should be null.");
+						Assert.That (rfc822.Envelope.ReplyTo, Is.Empty, "message/rfc822 Envelope.ReplyTo should be null.");
+						Assert.That (rfc822.Envelope.To, Is.Empty, "message/rfc822 Envelope.To should be null.");
+						Assert.That (rfc822.Envelope.Cc, Is.Empty, "message/rfc822 Envelope.Cc should be null.");
+						Assert.That (rfc822.Envelope.Bcc, Is.Empty, "message/rfc822 Envelope.Bcc should be null.");
+						Assert.That (rfc822.Envelope.Subject, Is.Null, "message/rfc822 Envelope.Subject should be null.");
+						Assert.That (rfc822.Envelope.MessageId, Is.Null, "message/rfc822 Envelope.MessageId should be null.");
+						Assert.That (rfc822.Envelope.InReplyTo, Is.Null, "message/rfc822 Envelope.InReplyTo should be null.");
+						Assert.That (rfc822.Envelope.Date, Is.Null, "message/rfc822 Envelope.Date should be null.");
 						Assert.That (rfc822.ContentTransferEncoding, Is.EqualTo ("7BIT"), "message/rfc822 encoding did not match.");
 						Assert.That (rfc822.Octets, Is.EqualTo (787), "message/rfc822 octets did not match.");
 						Assert.That (rfc822.Body, Is.Null, "message/rfc822 body should be null.");
@@ -1502,16 +1502,16 @@ namespace UnitTests.Net.Imap {
 						Assert.That (rfc822.ContentType.IsMimeType ("message", "rfc822"), Is.True, "message/rfc822 Content-Type did not match.");
 						Assert.That (rfc822.ContentId, Is.Null, "message/rfc822 Content-Id should be NIL.");
 						Assert.That (rfc822.ContentDescription, Is.Null, "message/rfc822 Content-Description should be NIL.");
-						Assert.That (rfc822.Envelope.Sender, Is.Empty, "message/rfc822 Envlope.Sender should be null.");
-						Assert.That (rfc822.Envelope.From, Is.Empty, "message/rfc822 Envlope.From should be null.");
-						Assert.That (rfc822.Envelope.ReplyTo, Is.Empty, "message/rfc822 Envlope.ReplyTo should be null.");
-						Assert.That (rfc822.Envelope.To, Is.Empty, "message/rfc822 Envlope.To should be null.");
-						Assert.That (rfc822.Envelope.Cc, Is.Empty, "message/rfc822 Envlope.Cc should be null.");
-						Assert.That (rfc822.Envelope.Bcc, Is.Empty, "message/rfc822 Envlope.Bcc should be null.");
-						Assert.That (rfc822.Envelope.Subject, Is.Null, "message/rfc822 Envlope.Subject should be null.");
-						Assert.That (rfc822.Envelope.MessageId, Is.Null, "message/rfc822 Envlope.MessageId should be null.");
-						Assert.That (rfc822.Envelope.InReplyTo, Is.Null, "message/rfc822 Envlope.InReplyTo should be null.");
-						Assert.That (rfc822.Envelope.Date, Is.Null, "message/rfc822 Envlope.Date should be null.");
+						Assert.That (rfc822.Envelope.Sender, Is.Empty, "message/rfc822 Envelope.Sender should be null.");
+						Assert.That (rfc822.Envelope.From, Is.Empty, "message/rfc822 Envelope.From should be null.");
+						Assert.That (rfc822.Envelope.ReplyTo, Is.Empty, "message/rfc822 Envelope.ReplyTo should be null.");
+						Assert.That (rfc822.Envelope.To, Is.Empty, "message/rfc822 Envelope.To should be null.");
+						Assert.That (rfc822.Envelope.Cc, Is.Empty, "message/rfc822 Envelope.Cc should be null.");
+						Assert.That (rfc822.Envelope.Bcc, Is.Empty, "message/rfc822 Envelope.Bcc should be null.");
+						Assert.That (rfc822.Envelope.Subject, Is.Null, "message/rfc822 Envelope.Subject should be null.");
+						Assert.That (rfc822.Envelope.MessageId, Is.Null, "message/rfc822 Envelope.MessageId should be null.");
+						Assert.That (rfc822.Envelope.InReplyTo, Is.Null, "message/rfc822 Envelope.InReplyTo should be null.");
+						Assert.That (rfc822.Envelope.Date, Is.Null, "message/rfc822 Envelope.Date should be null.");
 						Assert.That (rfc822.ContentTransferEncoding, Is.EqualTo ("7BIT"), "message/rfc822 encoding did not match.");
 						Assert.That (rfc822.Octets, Is.EqualTo (787), "message/rfc822 octets did not match.");
 						Assert.That (rfc822.Body, Is.Null, "message/rfc822 body should be null.");
@@ -3732,6 +3732,126 @@ namespace UnitTests.Net.Imap {
 			}
 		}
 
+		static void AssertParseBadlyFormedGMailMultipartBodyResponseWithNoChildren (BodyPart body)
+		{
+			Assert.That (body, Is.InstanceOf<BodyPartMultipart> (), "Body types did not match.");
+			var multipart = (BodyPartMultipart) body;
+
+			Assert.That (multipart.ContentType.IsMimeType ("multipart", "report"), Is.True, "Content-Type did not match.");
+			Assert.That (multipart.ContentType.Boundary, Is.Null, "boundary should be null");
+			Assert.That (multipart.ContentDisposition, Is.Null, "Content-Disposition should be null");
+			Assert.That (multipart.ContentLanguage, Is.Null, "Content-Language should be null");
+			Assert.That (multipart.ContentLocation, Is.Null, "Content-Location should be null");
+			Assert.That (multipart.BodyParts, Has.Count.EqualTo (3), "multipart children did not match");
+
+			Assert.That (multipart.BodyParts[0], Is.InstanceOf<BodyPartText> (), "First multipart/report subpart types did not match.");
+			var text = (BodyPartText) multipart.BodyParts[0];
+			Assert.That (text.ContentType.IsMimeType ("text", "plain"), Is.True, "Content-Type did not match.");
+			Assert.That (text.ContentType.Charset, Is.EqualTo ("windows-1252"), "Charset param did not match");
+			Assert.That (text.ContentDescription, Is.Null, "Content-Description should be null");
+			Assert.That (text.ContentDisposition, Is.Null, "Content-Disposition should be null");
+			Assert.That (text.ContentId, Is.Null, "Content-Id should be null");
+			Assert.That (text.ContentLanguage, Is.Null, "Content-Language should be null");
+			Assert.That (text.ContentLocation, Is.Null, "Content-Location should be null");
+			Assert.That (text.ContentMd5, Is.Null, "Content-Md5 should be null");
+			Assert.That (text.ContentTransferEncoding, Is.EqualTo ("QUOTED-PRINTABLE"), "Content-Transfer-Encodings did not match");
+			Assert.That (text.Octets, Is.EqualTo (211), "Octets did not match");
+			Assert.That (text.Lines, Is.EqualTo (5), "Lines did not match");
+
+			Assert.That (multipart.BodyParts[1], Is.InstanceOf<BodyPartBasic> (), "Second multipart/report subpart types did not match.");
+			var deliveryStatus = (BodyPartBasic) multipart.BodyParts[1];
+			Assert.That (deliveryStatus.ContentType.IsMimeType ("message", "delivery-status"), Is.True, "Content-Type did not match.");
+			Assert.That (deliveryStatus.ContentDescription, Is.Null, "Content-Description should be null");
+			Assert.That (deliveryStatus.ContentDisposition, Is.Null, "Content-Disposition should be null");
+			Assert.That (deliveryStatus.ContentId, Is.Null, "Content-Id should be null");
+			Assert.That (deliveryStatus.ContentLanguage, Is.Null, "Content-Language should be null");
+			Assert.That (deliveryStatus.ContentLocation, Is.Null, "Content-Location should be null");
+			Assert.That (deliveryStatus.ContentMd5, Is.Null, "Content-Md5 should be null");
+			Assert.That (deliveryStatus.ContentTransferEncoding, Is.EqualTo ("7BIT"), "Content-Transfer-Encodings did not match");
+			Assert.That (deliveryStatus.Octets, Is.EqualTo (344), "Octets did not match");
+
+			Assert.That (multipart.BodyParts[2], Is.InstanceOf<BodyPartMessage> (), "Third multipart/report subpart types did not match.");
+			var rfc822 = (BodyPartMessage) multipart.BodyParts[2];
+			Assert.That (rfc822.ContentType.IsMimeType ("message", "rfc822"), Is.True, "Content-Type did not match.");
+			Assert.That (rfc822.ContentDescription, Is.Null, "Content-Description should be null");
+			Assert.That (rfc822.ContentDisposition, Is.Null, "Content-Disposition should be null");
+			Assert.That (rfc822.ContentId, Is.Null, "Content-Id should be null");
+			Assert.That (rfc822.ContentLanguage, Is.Null, "Content-Language should be null");
+			Assert.That (rfc822.ContentLocation, Is.Null, "Content-Location should be null");
+			Assert.That (rfc822.ContentMd5, Is.Null, "Content-Md5 should be null");
+			Assert.That (rfc822.ContentTransferEncoding, Is.EqualTo ("7BIT"), "Content-Transfer-Encodings did not match");
+			Assert.That (rfc822.Octets, Is.EqualTo (2942), "Octets did not match");
+
+			Assert.That (rfc822.Body, Is.InstanceOf<BodyPartMultipart> (), "Body of message/rfc822 did not match.");
+			var alternative = (BodyPartMultipart) rfc822.Body;
+			Assert.That (alternative.ContentType.IsMimeType ("multipart", "alternative"), Is.True, "Content-Type did not match.");
+			Assert.That (alternative.ContentType.Boundary, Is.Null, "boundary should be null");
+			Assert.That (alternative.ContentDisposition, Is.Null, "Content-Disposition should be null");
+			Assert.That (alternative.ContentLanguage, Is.Null, "Content-Language should be null");
+			Assert.That (alternative.ContentLocation, Is.Null, "Content-Location should be null");
+			Assert.That (alternative.BodyParts, Has.Count.EqualTo (0), "multipart children did not match");
+		}
+
+		// issue 1841
+		[Test]
+		public void TestParseBadlyFormedGMailMultipartBodyResponseWithNoChildren ()
+		{
+			const string text = "((\"TEXT\" \"PLAIN\" (\"CHARSET\" \"windows-1252\") NIL NIL \"QUOTED-PRINTABLE\" 211 5)(\"MESSAGE\" \"DELIVERY-STATUS\" NIL NIL NIL \"7BIT\" 344)(\"MESSAGE\" \"RFC822\" NIL NIL NIL \"7BIT\" 2942 (\"Sat, 3 Jan 2015 19:26:15 +0100\" \"Re: MPG\" ((\"c p\" NIL \"---.---87\" \"gmail.com\")) ((\"c p\" NIL \"---.---87\" \"gmail.com\")) ((\"c p\" NIL \"---.---87\" \"gmail.com\")) ((\"am sa[cft]\" NIL \"sm\" \"cft.ce.fr\")) NIL NIL \"<D3CAD328B4CFD24E83DD07E8923DFEE902FA8F1B@PRDGCE8P4523.sigce.ce.fr>\" \"<D4A-8A32-4DC3-AC6C-98429154@gmail.com>\") (\"ALTERNATIVE\") 51) \"REPORT\")\r\n";
+
+			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
+				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						BodyPart body;
+
+						engine.QuirksMode = ImapQuirksMode.GMail;
+						engine.SetStream (tokenizer);
+
+						try {
+							body = ImapUtils.ParseBody (engine, "Syntax error in BODY: {0}", string.Empty, CancellationToken.None);
+						} catch (Exception ex) {
+							Assert.Fail ($"Parsing BODY failed: {ex}");
+							return;
+						}
+
+						var token = engine.ReadToken (CancellationToken.None);
+						Assert.That (token.Type, Is.EqualTo (ImapTokenType.Eoln), $"Expected new-line, but got: {token}");
+
+						AssertParseBadlyFormedGMailMultipartBodyResponseWithNoChildren (body);
+					}
+				}
+			}
+		}
+
+		// issue 1841
+		[Test]
+		public async Task TestParseBadlyFormedGMailMultipartBodyResponseWithNoChildrenAsync ()
+		{
+			const string text = "((\"TEXT\" \"PLAIN\" (\"CHARSET\" \"windows-1252\") NIL NIL \"QUOTED-PRINTABLE\" 211 5)(\"MESSAGE\" \"DELIVERY-STATUS\" NIL NIL NIL \"7BIT\" 344)(\"MESSAGE\" \"RFC822\" NIL NIL NIL \"7BIT\" 2942 (\"Sat, 3 Jan 2015 19:26:15 +0100\" \"Re: MPG\" ((\"c p\" NIL \"---.---87\" \"gmail.com\")) ((\"c p\" NIL \"---.---87\" \"gmail.com\")) ((\"c p\" NIL \"---.---87\" \"gmail.com\")) ((\"am sa[cft]\" NIL \"sm\" \"cft.ce.fr\")) NIL NIL \"<D3CAD328B4CFD24E83DD07E8923DFEE902FA8F1B@PRDGCE8P4523.sigce.ce.fr>\" \"<D4A-8A32-4DC3-AC6C-98429154@gmail.com>\") (\"ALTERNATIVE\") 51) \"REPORT\")\r\n";
+
+			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
+				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						BodyPart body;
+
+						engine.QuirksMode = ImapQuirksMode.GMail;
+						engine.SetStream (tokenizer);
+
+						try {
+							body = await ImapUtils.ParseBodyAsync (engine, "Syntax error in BODY: {0}", string.Empty, CancellationToken.None);
+						} catch (Exception ex) {
+							Assert.Fail ($"Parsing BODY failed: {ex}");
+							return;
+						}
+
+						var token = await engine.ReadTokenAsync (CancellationToken.None);
+						Assert.That (token.Type, Is.EqualTo (ImapTokenType.Eoln), $"Expected new-line, but got: {token}");
+
+						AssertParseBadlyFormedGMailMultipartBodyResponseWithNoChildren (body);
+					}
+				}
+			}
+		}
+
 		[Test]
 		public void TestParseExampleThreads ()
 		{
@@ -4212,6 +4332,80 @@ namespace UnitTests.Net.Imap {
 						Assert.That (annotations[0].Properties[AnnotationAttribute.SharedValue], Is.EqualTo (null), "annotations[0] value.shared");
 						Assert.That (annotations[0].Properties[AnnotationAttribute.PrivateSize], Is.EqualTo ("10"), "annotations[0] size.priv");
 						Assert.That (annotations[0].Properties[AnnotationAttribute.SharedSize], Is.EqualTo ("0"), "annotations[0] size.shared");
+					}
+				}
+			}
+		}
+
+		[Test]
+		public void TestParseFlagsList ()
+		{
+			const string text = "(\\Answered \\Flagged \\Deleted \\Seen \\Draft + TAG TAG2 a b c d e f g h i j k l m n o p q r s t u v w x y z)\r\n";
+
+			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
+				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						var keywords = new HashSet<string> ();
+						MessageFlags flags;
+
+						engine.SetStream (tokenizer);
+
+						try {
+							flags = ImapUtils.ParseFlagsList (engine, "INBOX", keywords, CancellationToken.None);
+						} catch (Exception ex) {
+							Assert.Fail ($"Parsing FLAGS response failed: {ex}");
+							return;
+						}
+
+						var token = engine.ReadToken (CancellationToken.None);
+						Assert.That (token.Type, Is.EqualTo (ImapTokenType.Eoln), $"Expected new-line, but got: {token}");
+
+						Assert.That (flags, Is.EqualTo (MessageFlags.Answered | MessageFlags.Flagged | MessageFlags.Deleted | MessageFlags.Seen | MessageFlags.Draft), "message flags");
+
+						Assert.That (keywords, Has.Count.EqualTo (29), "keywords.Count");
+						Assert.That (keywords.Contains ("+"), Is.True, "Contains +");
+						Assert.That (keywords.Contains ("TAG"), Is.True, "Contains TAG");
+						Assert.That (keywords.Contains ("TAG2"), Is.True, "Contains TAG2");
+
+						for (char c = 'a'; c <= 'z'; c++)
+							Assert.That (keywords.Contains (c.ToString ()), Is.True, $"Contains {c}");
+					}
+				}
+			}
+		}
+
+		[Test]
+		public async Task TestParseFlagsListAsync ()
+		{
+			const string text = "(\\Answered \\Flagged \\Deleted \\Seen \\Draft + TAG TAG2 a b c d e f g h i j k l m n o p q r s t u v w x y z)\r\n";
+
+			using (var memory = new MemoryStream (Encoding.ASCII.GetBytes (text), false)) {
+				using (var tokenizer = new ImapStream (memory, new NullProtocolLogger ())) {
+					using (var engine = new ImapEngine (null)) {
+						var keywords = new HashSet<string> ();
+						MessageFlags flags;
+
+						engine.SetStream (tokenizer);
+
+						try {
+							flags = await ImapUtils.ParseFlagsListAsync (engine, "INBOX", keywords, CancellationToken.None);
+						} catch (Exception ex) {
+							Assert.Fail ($"Parsing FLAGS response failed: {ex}");
+							return;
+						}
+
+						var token = await engine.ReadTokenAsync (CancellationToken.None);
+						Assert.That (token.Type, Is.EqualTo (ImapTokenType.Eoln), $"Expected new-line, but got: {token}");
+
+						Assert.That (flags, Is.EqualTo (MessageFlags.Answered | MessageFlags.Flagged | MessageFlags.Deleted | MessageFlags.Seen | MessageFlags.Draft), "message flags");
+
+						Assert.That (keywords, Has.Count.EqualTo (29), "keywords.Count");
+						Assert.That (keywords.Contains ("+"), Is.True, "Contains +");
+						Assert.That (keywords.Contains ("TAG"), Is.True, "Contains TAG");
+						Assert.That (keywords.Contains ("TAG2"), Is.True, "Contains TAG2");
+
+						for (char c = 'a'; c <= 'z'; c++)
+							Assert.That (keywords.Contains (c.ToString ()), Is.True, $"Contains {c}");
 					}
 				}
 			}

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ namespace MailKit {
 		None,
 
 		/// <summary>
-		/// The preview text should only be fetched if the server has it intstantly available (cached).
+		/// The preview text should only be fetched if the server has it instantly available (cached).
 		/// </summary>
 		Lazy
 	}

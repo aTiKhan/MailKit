@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -106,7 +106,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <param name="specifier">The annotation attribute specifier.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="specifier"/> is <c>null</c>.
+		/// <paramref name="specifier"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="specifier"/> contains illegal characters.
@@ -179,9 +179,9 @@ namespace MailKit {
 		/// Determines whether the specified <see cref="MailKit.AnnotationAttribute"/> is equal to the current <see cref="MailKit.AnnotationAttribute"/>.
 		/// </remarks>
 		/// <param name="other">The <see cref="MailKit.AnnotationAttribute"/> to compare with the current <see cref="MailKit.AnnotationAttribute"/>.</param>
-		/// <returns><c>true</c> if the specified <see cref="MailKit.AnnotationAttribute"/> is equal to the current
-		/// <see cref="MailKit.AnnotationAttribute"/>; otherwise, <c>false</c>.</returns>
-		public bool Equals (AnnotationAttribute other)
+		/// <returns><see langword="true" /> if the specified <see cref="MailKit.AnnotationAttribute"/> is equal to the current
+		/// <see cref="MailKit.AnnotationAttribute"/>; otherwise, <see langword="false" />.</returns>
+		public bool Equals (AnnotationAttribute? other)
 		{
 			return other?.Specifier == Specifier;
 		}
@@ -194,7 +194,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Determines whether two annotation attributes are equal.
 		/// </remarks>
-		/// <returns><c>true</c> if <paramref name="attr1"/> and <paramref name="attr2"/> are equal; otherwise, <c>false</c>.</returns>
+		/// <returns><see langword="true" /> if <paramref name="attr1"/> and <paramref name="attr2"/> are equal; otherwise, <see langword="false" />.</returns>
 		/// <param name="attr1">The first annotation attribute to compare.</param>
 		/// <param name="attr2">The second annotation attribute to compare.</param>
 		public static bool operator == (AnnotationAttribute attr1, AnnotationAttribute attr2)
@@ -208,7 +208,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Determines whether two annotation attributes are not equal.
 		/// </remarks>
-		/// <returns><c>true</c> if <paramref name="attr1"/> and <paramref name="attr2"/> are not equal; otherwise, <c>false</c>.</returns>
+		/// <returns><see langword="true" /> if <paramref name="attr1"/> and <paramref name="attr2"/> are not equal; otherwise, <see langword="false" />.</returns>
 		/// <param name="attr1">The first annotation attribute to compare.</param>
 		/// <param name="attr2">The second annotation attribute to compare.</param>
 		public static bool operator != (AnnotationAttribute attr1, AnnotationAttribute attr2)
@@ -223,9 +223,9 @@ namespace MailKit {
 		/// Determines whether the specified <see cref="System.Object"/> is equal to the current <see cref="MailKit.AnnotationAttribute"/>.
 		/// </remarks>
 		/// <param name="obj">The <see cref="System.Object"/> to compare with the current <see cref="MailKit.AnnotationAttribute"/>.</param>
-		/// <returns><c>true</c> if the specified <see cref="System.Object"/> is equal to the current
-		/// <see cref="MailKit.AnnotationAttribute"/>; otherwise, <c>false</c>.</returns>
-		public override bool Equals (object obj)
+		/// <returns><see langword="true" /> if the specified <see cref="System.Object"/> is equal to the current
+		/// <see cref="MailKit.AnnotationAttribute"/>; otherwise, <see langword="false" />.</returns>
+		public override bool Equals (object? obj)
 		{
 			return obj is AnnotationAttribute attribute && attribute.Specifier == Specifier;
 		}

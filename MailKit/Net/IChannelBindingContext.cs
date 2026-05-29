@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@
 // THE SOFTWARE.
 //
 
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Authentication.ExtendedProtection;
 
 namespace MailKit.Net {
@@ -36,14 +37,25 @@ namespace MailKit.Net {
 	interface IChannelBindingContext
 	{
 		/// <summary>
-		/// Try to get a channel-binding token.
+		/// Try to get a channel-binding.
 		/// </summary>
 		/// <remarks>
 		/// Tries to get the specified channel-binding.
 		/// </remarks>
 		/// <param name="kind">The kind of channel-binding desired.</param>
+		/// <param name="channelBinding">The channel-binding.</param>
+		/// <returns><see langword="true" /> if the channel-binding token was acquired; otherwise, <see langword="false" />.</returns>
+		bool TryGetChannelBinding (ChannelBindingKind kind, [NotNullWhen (true)] out ChannelBinding? channelBinding);
+
+		/// <summary>
+		/// Try to get a channel-binding token.
+		/// </summary>
+		/// <remarks>
+		/// Tries to get the specified channel-binding token.
+		/// </remarks>
+		/// <param name="kind">The kind of channel-binding desired.</param>
 		/// <param name="token">The channel-binding token.</param>
-		/// <returns><c>true</c> if the channel-binding token was acquired; otherwise, <c>false</c>.</returns>
-		bool TryGetChannelBindingToken (ChannelBindingKind kind, out byte[] token);
+		/// <returns><see langword="true" /> if the channel-binding token was acquired; otherwise, <see langword="false" />.</returns>
+		bool TryGetChannelBindingToken (ChannelBindingKind kind, [NotNullWhen (true)] out byte[]? token);
 	}
 }

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,12 @@ namespace UnitTests.Net.Proxy {
 
 				certificate = new X509Certificate2 (cert.Export (X509ContentType.Pfx, "password"), "password", X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
 			}
+		}
+
+		[OneTimeTearDown]
+		public void TearDown ()
+		{
+			certificate?.Dispose ();
 		}
 
 		[Test]

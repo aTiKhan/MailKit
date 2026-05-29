@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,6 @@ using System.Collections.Generic;
 using MimeKit.IO;
 
 using Buffer = System.Buffer;
-using SslStream = MailKit.Net.SslStream;
-using NetworkStream = MailKit.Net.NetworkStream;
 
 namespace MailKit.Net.Imap {
 	/// <summary>
@@ -61,7 +59,7 @@ namespace MailKit.Net.Imap {
 
 	class ImapStream : Stream, ICancellableStream
 	{
-		public const string AtomSpecials    = "(){%*\\\"\n";
+		public const string AtomSpecials    = "(){%*\\\"";
 		public const string DefaultSpecials = "[]" + AtomSpecials;
 		const int ReadAheadSize = 128;
 		const int BlockSize = 4096;
@@ -98,14 +96,23 @@ namespace MailKit.Net.Imap {
 		}
 
 		/// <summary>
-		/// Get or sets the underlying network stream.
+		/// Get the underlying network stream.
 		/// </summary>
 		/// <remarks>
-		/// Gets or sets the underlying network stream.
+		/// Gets the underlying network stream.
 		/// </remarks>
 		/// <value>The underlying network stream.</value>
 		public Stream Stream {
-			get; internal set;
+			get; private set;
+		}
+
+		internal void SetStream (Stream stream)
+		{
+			Stream = stream;
+
+			// reset internal buffering
+			inputIndex = ReadAheadSize;
+			inputEnd = ReadAheadSize;
 		}
 
 		/// <summary>
@@ -137,7 +144,7 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets whether or not the stream is connected.
 		/// </remarks>
-		/// <value><c>true</c> if the stream is connected; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream is connected; otherwise, <see langword="false" />.</value>
 		public bool IsConnected {
 			get; private set;
 		}
@@ -148,7 +155,7 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets whether the stream supports reading.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports reading; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports reading; otherwise, <see langword="false" />.</value>
 		public override bool CanRead {
 			get { return Stream.CanRead; }
 		}
@@ -159,7 +166,7 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets whether the stream supports writing.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports writing; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports writing; otherwise, <see langword="false" />.</value>
 		public override bool CanWrite {
 			get { return Stream.CanWrite; }
 		}
@@ -170,7 +177,7 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets whether the stream supports seeking.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports seeking; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports seeking; otherwise, <see langword="false" />.</value>
 		public override bool CanSeek {
 			get { return false; }
 		}
@@ -181,7 +188,7 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets whether the stream supports I/O timeouts.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports I/O timeouts; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports I/O timeouts; otherwise, <see langword="false" />.</value>
 		public override bool CanTimeout {
 			get { return Stream.CanTimeout; }
 		}
@@ -378,12 +385,12 @@ namespace MailKit.Net.Imap {
 		/// <param name="count">The number of bytes to read.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -438,12 +445,12 @@ namespace MailKit.Net.Imap {
 		/// <param name="offset">The buffer offset.</param>
 		/// <param name="count">The number of bytes to read.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -475,12 +482,12 @@ namespace MailKit.Net.Imap {
 		/// <param name="count">The number of bytes to read.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -524,7 +531,7 @@ namespace MailKit.Net.Imap {
 
 		static bool IsAtom (byte c, string specials)
 		{
-			return !IsCtrl (c) && !IsWhiteSpace (c) && specials.IndexOf ((char) c) == -1;
+			return !IsCtrl (c) && c != (byte) ' ' && specials.IndexOf ((char) c) == -1;
 		}
 
 		static bool IsCtrl (byte c)
@@ -534,7 +541,7 @@ namespace MailKit.Net.Imap {
 
 		static bool IsWhiteSpace (byte c)
 		{
-			return c == (byte) ' ' || c == (byte) '\t' || c == (byte) '\r';
+			return c == (byte) ' ' || c == (byte) '\r';
 		}
 
 		bool TryReadQuotedString (ByteArrayBuilder builder, ref bool escaped)
@@ -836,12 +843,6 @@ namespace MailKit.Net.Imap {
 			if (c == '\\')
 				return ReadFlagToken (specials, cancellationToken);
 
-			if (c == '+') {
-				inputIndex++;
-
-				return ImapToken.Plus;
-			}
-
 			if (IsAtom (input[inputIndex], specials))
 				return ReadAtomToken (specials, cancellationToken);
 
@@ -887,12 +888,6 @@ namespace MailKit.Net.Imap {
 
 			if (c == '\\')
 				return await ReadFlagTokenAsync (specials, cancellationToken).ConfigureAwait (false);
-
-			if (c == '+') {
-				inputIndex++;
-
-				return ImapToken.Plus;
-			}
 
 			if (IsAtom (input[inputIndex], specials))
 				return await ReadAtomTokenAsync (specials, cancellationToken).ConfigureAwait (false);
@@ -942,8 +937,11 @@ namespace MailKit.Net.Imap {
 		}
 
 		/// <summary>
-		/// Ungets a token.
+		/// Unget a token.
 		/// </summary>
+		/// <remarks>
+		/// Ungets a token.
+		/// </remarks>
 		/// <param name="token">The token.</param>
 		public void UngetToken (ImapToken token)
 		{
@@ -991,9 +989,9 @@ namespace MailKit.Net.Imap {
 		/// Reads a single line of input from the stream.
 		/// </summary>
 		/// <remarks>
-		/// This method should be called in a loop until it returns <c>true</c>.
+		/// This method should be called in a loop until it returns <see langword="true" />.
 		/// </remarks>
-		/// <returns><c>true</c>, if reading the line is complete, <c>false</c> otherwise.</returns>
+		/// <returns><see langword="true" />, if reading the line is complete, <see langword="false" /> otherwise.</returns>
 		/// <param name="builder">The output buffer write the line data into.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ObjectDisposedException">
@@ -1019,9 +1017,9 @@ namespace MailKit.Net.Imap {
 		/// Asynchronously reads a single line of input from the stream.
 		/// </summary>
 		/// <remarks>
-		/// This method should be called in a loop until it returns <c>true</c>.
+		/// This method should be called in a loop until it returns <see langword="true" />.
 		/// </remarks>
-		/// <returns><c>true</c>, if reading the line is complete, <c>false</c> otherwise.</returns>
+		/// <returns><see langword="true" />, if reading the line is complete, <see langword="false" /> otherwise.</returns>
 		/// <param name="builder">The output buffer write the line data into.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ObjectDisposedException">
@@ -1069,12 +1067,12 @@ namespace MailKit.Net.Imap {
 		/// <param name='count'>The number of bytes to write.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -1144,12 +1142,12 @@ namespace MailKit.Net.Imap {
 		/// <param name='offset'>The offset of the first byte to write.</param>
 		/// <param name='count'>The number of bytes to write.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -1180,12 +1178,12 @@ namespace MailKit.Net.Imap {
 		/// <param name='count'>The number of bytes to write.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -1388,8 +1386,8 @@ namespace MailKit.Net.Imap {
 		/// Releases the unmanaged resources used by the <see cref="ImapStream"/> and
 		/// optionally releases the managed resources.
 		/// </remarks>
-		/// <param name="disposing"><c>true</c> to release both managed and unmanaged resources;
-		/// <c>false</c> to release only the unmanaged resources.</param>
+		/// <param name="disposing"><see langword="true" /> to release both managed and unmanaged resources;
+		/// <see langword="false" /> to release only the unmanaged resources.</param>
 		protected override void Dispose (bool disposing)
 		{
 			if (disposing && !disposed) {

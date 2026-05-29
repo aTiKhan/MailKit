@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -93,7 +93,7 @@ namespace UnitTests {
 
 		static BodyPartMessage CreateMessage (string type, string subtype, string partSpecifier, BodyPart body, bool attachment)
 		{
-			var message = new BodyPartMessage { ContentType = CreateContentType (type, subtype, partSpecifier) };
+			var message = new BodyPartMessage (CreateContentType (type, subtype, partSpecifier), partSpecifier);
 			if (attachment)
 				message.ContentDisposition = new ContentDisposition (ContentDisposition.Attachment);
 			message.Body = body;
@@ -102,7 +102,7 @@ namespace UnitTests {
 
 		static BodyPartMultipart CreateMultipart (string type, string subtype, string partSpecifier, params BodyPart [] bodyParts)
 		{
-			var multipart = new BodyPartMultipart { ContentType = CreateContentType (type, subtype, partSpecifier) };
+			var multipart = new BodyPartMultipart (CreateContentType (type, subtype, partSpecifier), partSpecifier);
 			foreach (var bodyPart in bodyParts)
 				multipart.BodyParts.Add (bodyPart);
 			return multipart;
@@ -110,14 +110,14 @@ namespace UnitTests {
 
 		static BodyPartBasic CreateBasic (string type, string subtype, string partSpecifier, bool attachment)
 		{
-			var basic = new BodyPartBasic { ContentType = CreateContentType (type, subtype, partSpecifier) };
+			var basic = new BodyPartBasic (CreateContentType (type, subtype, partSpecifier), partSpecifier);
 			basic.ContentDisposition = new ContentDisposition (attachment ? ContentDisposition.Attachment : ContentDisposition.Inline);
 			return basic;
 		}
 
 		static BodyPartText CreateText (string type, string subtype, string partSpecifier, bool attachment)
 		{
-			var text = new BodyPartText { ContentType = CreateContentType (type, subtype, partSpecifier) };
+			var text = new BodyPartText (CreateContentType (type, subtype, partSpecifier), partSpecifier);
 			if (attachment)
 				text.ContentDisposition = new ContentDisposition (ContentDisposition.Attachment);
 			return text;

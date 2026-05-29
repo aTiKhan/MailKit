@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,20 @@ namespace MailKit.Security {
 	/// The NTLM SASL mechanism.
 	/// </summary>
 	/// <remarks>
-	/// A SASL mechanism based on NTLM.
+	/// <para>A SASL mechanism based on NTLM.</para>
+	/// <note type="warning">
+	/// <para>NTLM is a legacy challenge-response authentication mechanism introduced by Microsoft
+	/// in the 1990's and suffers from the following weaknesses:</para>
+	/// <list type="bullet">
+	/// <item>Pass-the-Hash Attacks: Stolen NTLM hashes can be reused without knowing the password.</item>
+	/// <item>Relay Attacks: NTLM does not protect against credential forwarding.</item>
+	/// <item>Cryptography: NTLMv1 relies on DES and MD4 which are both very weak. NTLMv2 relies on HMAC-MD5
+	/// which is better but still considered very weak by modern standards.</item>
+	/// </list>
+	/// <para>Microsoft recommends disabling NTLM and migrating to Kerberos
+	/// (<a href="T_MailKit_Security_SaslMechanismGssapi.htm">GSSAPI</a>)
+	/// or modern alternatives.</para>
+	/// </note>
 	/// </remarks>
 	public class SaslMechanismNtlm : SaslMechanism
 	{
@@ -49,7 +62,7 @@ namespace MailKit.Security {
 			Challenge
 		}
 
-		NtlmNegotiateMessage negotiate;
+		NtlmNegotiateMessage? negotiate;
 		bool negotiatedChannelBinding;
 		LoginState state;
 
@@ -66,7 +79,7 @@ namespace MailKit.Security {
 		/// Initializes a new instance of the <see cref="MailKit.Security.SaslMechanismNtlm"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new SASL context using the default network credentials.
+		/// Creates a new NTLM SASL context using the default network credentials.
 		/// </remarks>
 		public SaslMechanismNtlm () : this (CredentialCache.DefaultNetworkCredentials)
 		{
@@ -81,7 +94,7 @@ namespace MailKit.Security {
 		/// </remarks>
 		/// <param name="credentials">The user's credentials.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="credentials"/> is <c>null</c>.
+		/// <paramref name="credentials"/> is <see langword="null" />.
 		/// </exception>
 		public SaslMechanismNtlm (NetworkCredential credentials) : base (credentials)
 		{
@@ -98,9 +111,9 @@ namespace MailKit.Security {
 		/// <param name="userName">The user name.</param>
 		/// <param name="password">The password.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
+		/// <para><paramref name="userName"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
+		/// <para><paramref name="password"/> is <see langword="null" />.</para>
 		/// </exception>
 		public SaslMechanismNtlm (string userName, string password) : base (userName, password)
 		{
@@ -111,7 +124,7 @@ namespace MailKit.Security {
 		/// <summary>
 		/// This is only used for unit testing purposes.
 		/// </summary>
-		internal byte[] Nonce {
+		internal byte[]? Nonce {
 			get; set;
 		}
 
@@ -139,7 +152,7 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// Gets whether or not the SASL mechanism supports channel binding.
 		/// </remarks>
-		/// <value><c>true</c> if the SASL mechanism supports channel binding; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the SASL mechanism supports channel binding; otherwise, <see langword="false" />.</value>
 		public override bool SupportsChannelBinding {
 			get { return true; }
 		}
@@ -152,7 +165,7 @@ namespace MailKit.Security {
 		/// <note type="note">Some SASL mechanisms, such as SCRAM-SHA1-PLUS and NTLM, are able to negotiate
 		/// channel-bindings.</note>
 		/// </remarks>
-		/// <value><c>true</c> if channel-binding was negotiated; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if channel-binding was negotiated; otherwise, <see langword="false" />.</value>
 		public override bool NegotiatedChannelBinding {
 			get { return negotiatedChannelBinding; }
 		}
@@ -163,9 +176,9 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// <para>Gets whether or not the mechanism supports an initial response (SASL-IR).</para>
 		/// <para>SASL mechanisms that support sending an initial client response to the server
-		/// should return <value>true</value>.</para>
+		/// should return <see langword="true" />.</para>
 		/// </remarks>
-		/// <value><c>true</c> if the mechanism supports an initial response; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the mechanism supports an initial response; otherwise, <see langword="false" />.</value>
 		public override bool SupportsInitialResponse {
 			get { return true; }
 		}
@@ -178,7 +191,7 @@ namespace MailKit.Security {
 		/// <note type="note">In the future, this option will disappear as channel-binding will become the default. For now,
 		/// it is only an option because this feature has not been thoroughly tested.</note>
 		/// </remarks>
-		/// <value><c>true</c> if the NTLM SASL mechanism should allow channel-binding; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the NTLM SASL mechanism should allow channel-binding; otherwise, <see langword="false" />.</value>
 		public bool AllowChannelBinding {
 			get; set;
 		}
@@ -213,7 +226,7 @@ namespace MailKit.Security {
 		/// <note type="note">This value is optional.</note>
 		/// </remarks>
 		/// <value>The service principal name (SPN) of the service that the client wishes to authenticate with.</value>
-		public string ServicePrincipalName {
+		public string? ServicePrincipalName {
 			get; set;
 		}
 
@@ -223,7 +236,7 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// Gets or sets a value indicating that the caller generated the target's SPN from an untrusted source.
 		/// </remarks>
-		/// <value><c>true</c> if the <see cref="ServicePrincipalName"/> is unverified; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the <see cref="ServicePrincipalName"/> is unverified; otherwise, <see langword="false" />.</value>
 		public bool IsUnverifiedServicePrincipalName {
 			get; set;
 		}
@@ -248,14 +261,14 @@ namespace MailKit.Security {
 		/// <exception cref="SaslException">
 		/// An error has occurred while parsing the server's challenge token.
 		/// </exception>
-		protected override byte[] Challenge (byte[] token, int startIndex, int length, CancellationToken cancellationToken)
+		protected override byte[]? Challenge (byte[]? token, int startIndex, int length, CancellationToken cancellationToken)
 		{
 			if (IsAuthenticated)
 				return null;
 
 			string userName = Credentials.UserName;
 			string domain = Credentials.Domain;
-			NtlmMessageBase message = null;
+			NtlmMessageBase? message = null;
 
 			if (string.IsNullOrEmpty (domain)) {
 				int index;
@@ -280,6 +293,9 @@ namespace MailKit.Security {
 				state = LoginState.Challenge;
 				break;
 			case LoginState.Challenge:
+				if (token == null)
+					throw new SaslException (MechanismName, SaslErrorCode.MissingChallenge, "Server response did not contain any authentication data.");
+
 				var password = Credentials.Password;
 				message = GetChallengeResponse (domain, userName, password, token, startIndex, length);
 				IsAuthenticated = true;
@@ -292,11 +308,11 @@ namespace MailKit.Security {
 		NtlmAuthenticateMessage GetChallengeResponse (string domain, string userName, string password, byte[] token, int startIndex, int length)
 		{
 			var challenge = new NtlmChallengeMessage (token, startIndex, length);
-			var authenticate = new NtlmAuthenticateMessage (negotiate, challenge, userName, password, domain, Workstation) {
+			var authenticate = new NtlmAuthenticateMessage (negotiate!, challenge, userName, password, domain, Workstation) {
 				ClientChallenge = Nonce,
 				Timestamp = Timestamp
 			};
-			byte[] channelBindingToken = null;
+			byte[]? channelBindingToken = null;
 
 			if (AllowChannelBinding && challenge.TargetInfo != null) {
 				// Only bother with attempting to channel-bind if the CHALLENGE_MESSAGE's TargetInfo is not NULL.

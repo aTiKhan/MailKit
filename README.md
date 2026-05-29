@@ -2,13 +2,16 @@
 
 |  Package  |Latest Release|Latest Build|
 |:----------|:------------:|:----------:|
-|**MimeKit**|[![NuGet Badge MimeKit](https://buildstats.info/nuget/MimeKit)](https://www.nuget.org/packages/MimeKit)|[![MyGet Badge MimeKit](https://buildstats.info/myget/mimekit/MimeKit)](https://www.myget.org/feed/mimekit/package/nuget/MimeKit)|
-|**MailKit**|[![NuGet Badge MailKit](https://buildstats.info/nuget/MailKit)](https://www.nuget.org/packages/MailKit)|[![MyGet Badge MailKit](https://buildstats.info/myget/mimekit/MailKit)](https://www.myget.org/feed/mimekit/package/nuget/MailKit)|
+|**MimeKit**|[![MimeKit NuGet](https://img.shields.io/nuget/v/MimeKit.svg?logo=nuget&style=flat-square)](https://www.nuget.org/packages/MimeKit)![MimeKit NuGet Downloads](https://img.shields.io/nuget/dt/MimeKit.svg?style=flat-square)|[![MimeKit MyGet](https://img.shields.io/myget/mimekit/v/MimeKit.svg?logo=nuget&style=flat-square&label=myget)](https://www.myget.org/feed/mimekit/package/nuget/MimeKit)|
+|**MimeKitLite**|[![MimeKitLite NuGet](https://img.shields.io/nuget/v/MimeKitLite.svg?logo=nuget&style=flat-square)](https://www.nuget.org/packages/MimeKitLite)![MimeKitLite NuGet Downloads](https://img.shields.io/nuget/dt/MimeKitLite.svg?style=flat-square)||
+|**MailKit**|[![MailKit NuGet](https://img.shields.io/nuget/v/MailKit.svg?logo=nuget&style=flat-square)](https://www.nuget.org/packages/MailKit)![MailKit NuGet Downloads](https://img.shields.io/nuget/dt/MailKit.svg?style=flat-square)|[![MailKit MyGet](https://img.shields.io/myget/mimekit/v/MailKit.svg?logo=nuget&style=flat-square&label=myget)](https://www.myget.org/feed/mimekit/package/nuget/MailKit)|
+|**MailKitLite**|[![MailKitLite NuGet](https://img.shields.io/nuget/v/MailKitLite.svg?logo=nuget&style=flat-square)](https://www.nuget.org/packages/MailKitLite)![MailKitLite NuGet Downloads](https://img.shields.io/nuget/dt/MailKitLite.svg?style=flat-square)||
+
 
 |  Platform   |Build Status|Code Coverage|Static Analysis|
 |:------------|:----------:|:-----------:|:-------------:|
-|**Linux/Mac**|[![Build Status](https://github.com/jstedfast/MailKit/actions/workflows/main.yml/badge.svg?event=push)](https://github.com/jstedfast/MailKit/actions/workflows/main.yml)|[![Code Coverage](https://coveralls.io/repos/jstedfast/MailKit/badge.svg?branch=master)](https://coveralls.io/r/jstedfast/MailKit?branch=master)|[![Static Analysis](https://scan.coverity.com/projects/3202/badge.svg)](https://scan.coverity.com/projects/3202)|
-|**Windows**  |[![Build Status](https://github.com/jstedfast/MailKit/actions/workflows/main.yml/badge.svg?event=push)](https://github.com/jstedfast/MailKit/actions/workflows/main.yml)|[![Code Coverage](https://coveralls.io/repos/jstedfast/MailKit/badge.svg?branch=master)](https://coveralls.io/r/jstedfast/MailKit?branch=master)|[![Static Analysis](https://scan.coverity.com/projects/3202/badge.svg)](https://scan.coverity.com/projects/3202)|
+|**Linux/Mac**|[![Build Status](https://github.com/jstedfast/MailKit/actions/workflows/main.yml/badge.svg?event=push)](https://github.com/jstedfast/MailKit/actions/workflows/main.yml)|[![Code Coverage](https://img.shields.io/coverallsCoverage/github/jstedfast/MailKit?branch=master)](https://coveralls.io/r/jstedfast/MailKit?branch=master)|[![Static Analysis](https://img.shields.io/coverity/scan/3202)](https://scan.coverity.com/projects/3202)|
+|**Windows**  |[![Build Status](https://github.com/jstedfast/MailKit/actions/workflows/main.yml/badge.svg?event=push)](https://github.com/jstedfast/MailKit/actions/workflows/main.yml)|[![Code Coverage](https://img.shields.io/coverallsCoverage/github/jstedfast/MailKit?branch=master)](https://coveralls.io/r/jstedfast/MailKit?branch=master)|[![Static Analysis](https://img.shields.io/coverity/scan/3202)](https://scan.coverity.com/projects/3202)|
 
 ## What is MailKit?
 
@@ -28,34 +31,22 @@ motivate me to continue working on the project.
 ## Features
 
 * SASL Authentication
-  * [CRAM-MD5](https://tools.ietf.org/html/rfc2195)
-  * [DIGEST-MD5](https://tools.ietf.org/html/rfc2831)
-  * [LOGIN](https://tools.ietf.org/html/draft-murchison-sasl-login-00)
-  * [NTLM](https://davenport.sourceforge.net/ntlm.html)
-  * [PLAIN](https://tools.ietf.org/html/rfc2595)
-  * [SCRAM-SHA-1[-PLUS]](https://tools.ietf.org/html/rfc5802)
-  * [SCRAM-SHA-256[-PLUS]](https://tools.ietf.org/html/rfc5802)
-  * [SCRAM-SHA-512[-PLUS]](https://tools.ietf.org/html/draft-melnikov-scram-sha-512-01)
-  * [OAUTHBEARER](https://tools.ietf.org/html/rfc7628) (partial support - you need to fetch the auth tokens yourself)
-  * XOAUTH2 (partial support - you need to fetch the auth tokens yourself)
+  * Supports the following mechanisms: [CRAM-MD5](https://tools.ietf.org/html/rfc2195), [DIGEST-MD5](https://tools.ietf.org/html/rfc2831),
+  [LOGIN](https://tools.ietf.org/html/draft-murchison-sasl-login-00), [NTLM](https://davenport.sourceforge.net/ntlm.html),
+  [PLAIN](https://tools.ietf.org/html/rfc2595), [SCRAM-SHA-1[-PLUS]](https://tools.ietf.org/html/rfc5802),
+  [SCRAM-SHA-256[-PLUS]](https://tools.ietf.org/html/rfc5802), [SCRAM-SHA-512[-PLUS]](https://tools.ietf.org/html/draft-melnikov-scram-sha-512-04),
+  [OAUTHBEARER](https://tools.ietf.org/html/rfc7628) and XOAUTH2
 * Proxy Support
-  * [SOCKS4/4a](https://www.openssh.com/txt/socks4.protocol)
-  * [SOCKS5](https://tools.ietf.org/html/rfc1928)
-  * [HTTP/S](https://tools.ietf.org/html/rfc2616)
+  * Supports the following types of proxies: [SOCKS4/4a](https://www.openssh.com/txt/socks4.protocol), [SOCKS5](https://tools.ietf.org/html/rfc1928),
+  and [HTTP/S](https://tools.ietf.org/html/rfc2616)
 * SMTP Client
   * Supports all of the SASL mechanisms listed above.
   * Supports SSL-wrapped connections via the "smtps" protocol.
   * Supports client SSL/TLS certificates.
-  * Supports the following extensions:
-    * [SIZE](https://tools.ietf.org/html/rfc1870)
-    * [DSN](https://tools.ietf.org/html/rfc1891)
-    * [AUTH](https://tools.ietf.org/html/rfc2554)
-    * [8BITMIME](https://tools.ietf.org/html/rfc2821)
-    * [PIPELINING](https://tools.ietf.org/html/rfc2920)
-    * [BINARYMIME](https://tools.ietf.org/html/rfc3030)
-    * [CHUNKING](https://tools.ietf.org/html/rfc3030)
-    * [STARTTLS](https://tools.ietf.org/html/rfc3207)
-    * [SMTPUTF8](https://tools.ietf.org/html/rfc6531)
+  * Supports the following extensions: [SIZE](https://tools.ietf.org/html/rfc1870), [DSN](https://tools.ietf.org/html/rfc1891),
+  [AUTH](https://tools.ietf.org/html/rfc2554), [8BITMIME](https://tools.ietf.org/html/rfc2821), [PIPELINING](https://tools.ietf.org/html/rfc2920),
+  [BINARYMIME](https://tools.ietf.org/html/rfc3030), [CHUNKING](https://tools.ietf.org/html/rfc3030), [STARTTLS](https://tools.ietf.org/html/rfc3207),
+  and [SMTPUTF8](https://tools.ietf.org/html/rfc6531)
   * All APIs are cancellable.
   * Async APIs are available.
 * POP3 Client
@@ -63,65 +54,31 @@ motivate me to continue working on the project.
   * Also supports authentication via [APOP](https://tools.ietf.org/html/rfc1939#page-15) and `USER`/`PASS`.
   * Supports SSL-wrapped connections via the "pops" protocol.
   * Supports client SSL/TLS certificates.
-  * Supports the following extensions:
-    * [TOP](https://tools.ietf.org/html/rfc1939#page-11)
-    * [UIDL](https://tools.ietf.org/html/rfc1939#page-12)
-    * [EXPIRE](https://tools.ietf.org/html/rfc2449)
-    * [LOGIN-DELAY](https://tools.ietf.org/html/rfc2449)
-    * [PIPELINING](https://tools.ietf.org/html/rfc2449)
-    * [SASL](https://tools.ietf.org/html/rfc2449)
-    * [STLS](https://tools.ietf.org/html/rfc2595)
-    * [UTF8](https://tools.ietf.org/html/rfc6856)
-    * [UTF8=USER](https://tools.ietf.org/html/rfc6856)
-    * [LANG](https://tools.ietf.org/html/rfc6856)
+  * Supports the following extensions: [TOP](https://tools.ietf.org/html/rfc1939#page-11), [UIDL](https://tools.ietf.org/html/rfc1939#page-12),
+  [EXPIRE](https://tools.ietf.org/html/rfc2449), [LOGIN-DELAY](https://tools.ietf.org/html/rfc2449), [PIPELINING](https://tools.ietf.org/html/rfc2449),
+  [SASL](https://tools.ietf.org/html/rfc2449), [STLS](https://tools.ietf.org/html/rfc2595), [UTF8](https://tools.ietf.org/html/rfc6856),
+  [UTF8=USER](https://tools.ietf.org/html/rfc6856), and [LANG](https://tools.ietf.org/html/rfc6856)
   * All APIs are cancellable.
   * Async APIs are available.
 * IMAP4 Client
   * Supports all of the SASL mechanisms listed above.
   * Supports SSL-wrapped connections via the "imaps" protocol.
   * Supports client SSL/TLS certificates.
-  * Supports the following extensions:
-    * [ACL](https://tools.ietf.org/html/rfc4314)
-    * [QUOTA](https://tools.ietf.org/html/rfc2087)
-    * [LITERAL+](https://tools.ietf.org/html/rfc2088)
-    * [IDLE](https://tools.ietf.org/html/rfc2177)
-    * [NAMESPACE](https://tools.ietf.org/html/rfc2342)
-    * [ID](https://tools.ietf.org/html/rfc2971)
-    * [CHILDREN](https://tools.ietf.org/html/rfc3348)
-    * [LOGINDISABLED](https://tools.ietf.org/html/rfc3501)
-    * [STARTTLS](https://tools.ietf.org/html/rfc3501)
-    * [MULTIAPPEND](https://tools.ietf.org/html/rfc3502)
-    * [UNSELECT](https://tools.ietf.org/html/rfc3691)
-    * [UIDPLUS](https://tools.ietf.org/html/rfc4315)
-    * [CONDSTORE](https://tools.ietf.org/html/rfc4551)
-    * [ESEARCH](https://tools.ietf.org/html/rfc4731)
-    * [SASL-IR](https://tools.ietf.org/html/rfc4959)
-    * [COMPRESS](https://tools.ietf.org/html/rfc4978)
-    * [WITHIN](https://tools.ietf.org/html/rfc5032)
-    * [ENABLE](https://tools.ietf.org/html/rfc5161)
-    * [QRESYNC](https://tools.ietf.org/html/rfc5162)
-    * [SORT](https://tools.ietf.org/html/rfc5256)
-    * [THREAD](https://tools.ietf.org/html/rfc5256)
-    * [ANNOTATE](https://tools.ietf.org/html/rfc5257)
-    * [LIST-EXTENDED](https://tools.ietf.org/html/rfc5258)
-    * [ESORT](https://tools.ietf.org/html/rfc5267)
-    * [METADATA / METADATA-SERVER](https://tools.ietf.org/html/rfc5464)
-    * [NOTIFY](https://tools.ietf.org/html/rfc5465)
-    * [FILTERS](https://tools.ietf.org/html/rfc5466)
-    * [LIST-STATUS](https://tools.ietf.org/html/rfc5819)
-    * [SORT=DISPLAY](https://tools.ietf.org/html/rfc5957)
-    * [SPECIAL-USE / CREATE-SPECIAL-USE](https://tools.ietf.org/html/rfc6154)
-    * [SEARCH=FUZZY](https://tools.ietf.org/html/rfc6203)
-    * [MOVE](https://tools.ietf.org/html/rfc6851)
-    * [UTF8=ACCEPT / UTF8=ONLY](https://tools.ietf.org/html/rfc6855)
-    * [LITERAL-](https://tools.ietf.org/html/rfc7888)
-    * [APPENDLIMIT](https://tools.ietf.org/html/rfc7889)
-    * [STATUS=SIZE](https://tools.ietf.org/html/rfc8438)
-    * [OBJECTID](https://tools.ietf.org/html/rfc8474)
-    * [REPLACE](https://tools.ietf.org/html/rfc8508)
-    * [SAVEDATE](https://tools.ietf.org/html/rfc8514)
-    * [XLIST](https://developers.google.com/gmail/imap_extensions)
-    * [X-GM-EXT1](https://developers.google.com/gmail/imap_extensions) (X-GM-MSGID, X-GM-THRID, X-GM-RAW and X-GM-LABELS)
+  * Supports the following extensions: [ACL](https://tools.ietf.org/html/rfc4314), [QUOTA](https://tools.ietf.org/html/rfc2087),
+  [LITERAL+](https://tools.ietf.org/html/rfc2088), [IDLE](https://tools.ietf.org/html/rfc2177), [NAMESPACE](https://tools.ietf.org/html/rfc2342),
+  [ID](https://tools.ietf.org/html/rfc2971), [CHILDREN](https://tools.ietf.org/html/rfc3348), [LOGINDISABLED](https://tools.ietf.org/html/rfc3501),
+  [STARTTLS](https://tools.ietf.org/html/rfc3501), [MULTIAPPEND](https://tools.ietf.org/html/rfc3502), [UNSELECT](https://tools.ietf.org/html/rfc3691),
+  [UIDPLUS](https://tools.ietf.org/html/rfc4315), [CONDSTORE](https://tools.ietf.org/html/rfc4551), [ESEARCH](https://tools.ietf.org/html/rfc4731),
+  [SASL-IR](https://tools.ietf.org/html/rfc4959), [COMPRESS](https://tools.ietf.org/html/rfc4978), [WITHIN](https://tools.ietf.org/html/rfc5032),
+  [ENABLE](https://tools.ietf.org/html/rfc5161), [QRESYNC](https://tools.ietf.org/html/rfc5162), [SORT](https://tools.ietf.org/html/rfc5256),
+  [THREAD](https://tools.ietf.org/html/rfc5256), [ANNOTATE](https://tools.ietf.org/html/rfc5257), [LIST-EXTENDED](https://tools.ietf.org/html/rfc5258),
+  [ESORT](https://tools.ietf.org/html/rfc5267), [METADATA / METADATA-SERVER](https://tools.ietf.org/html/rfc5464), [NOTIFY](https://tools.ietf.org/html/rfc5465),
+  [FILTERS](https://tools.ietf.org/html/rfc5466), [LIST-STATUS](https://tools.ietf.org/html/rfc5819), [SORT=DISPLAY](https://tools.ietf.org/html/rfc5957),
+  [SPECIAL-USE / CREATE-SPECIAL-USE](https://tools.ietf.org/html/rfc6154), [SEARCH=FUZZY](https://tools.ietf.org/html/rfc6203),
+  [MOVE](https://tools.ietf.org/html/rfc6851), [UTF8=ACCEPT / UTF8=ONLY](https://tools.ietf.org/html/rfc6855), [LITERAL-](https://tools.ietf.org/html/rfc7888),
+  [APPENDLIMIT](https://tools.ietf.org/html/rfc7889), [STATUS=SIZE](https://tools.ietf.org/html/rfc8438), [OBJECTID](https://tools.ietf.org/html/rfc8474),
+  [REPLACE](https://tools.ietf.org/html/rfc8508), [SAVEDATE](https://tools.ietf.org/html/rfc8514), [XLIST](https://developers.google.com/gmail/imap_extensions),
+  and [X-GM-EXT1](https://developers.google.com/gmail/imap_extensions) (X-GM-MSGID, X-GM-THRID, X-GM-RAW and X-GM-LABELS)
   * All APIs are cancellable.
   * Async APIs are available.
 * Client-side sorting and threading of messages.
@@ -165,7 +122,7 @@ which should improve performance of sending messages (although might not be very
 ```text
 MIT License
 
-Copyright (C) 2013-2024 .NET Foundation and Contributors
+Copyright (C) 2013-2026 .NET Foundation and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -488,7 +445,7 @@ foreach (var folder in personal.GetSubfolders (false))
     Console.WriteLine ("[folder] {0}", folder.Name);
 ```
 
-If the IMAP server supports the SPECIAL-USE or the XLIST (GMail) extension, you can get ahold of
+If the IMAP server supports the SPECIAL-USE or the XLIST (GMail) extension, you can get a hold of
 the pre-defined All, Drafts, Flagged (aka Important), Junk, Sent, Trash, etc folders like this:
 
 ```csharp

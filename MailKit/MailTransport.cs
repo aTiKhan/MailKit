@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <param name="protocolLogger">The protocol logger.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="protocolLogger"/> is <c>null</c>.
+		/// <paramref name="protocolLogger"/> is <see langword="null" />.
 		/// </exception>
 		protected MailTransport (IProtocolLogger protocolLogger) : base (protocolLogger)
 		{
@@ -87,7 +87,7 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="message"/> is <c>null</c>.
+		/// <paramref name="message"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -115,7 +115,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public virtual string Send (MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress progress = null)
+		public virtual string Send (MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress? progress = null)
 		{
 			return Send (DefaultOptions, message, cancellationToken, progress);
 		}
@@ -137,7 +137,7 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="message"/> is <c>null</c>.
+		/// <paramref name="message"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -165,7 +165,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public virtual Task<string> SendAsync (MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress progress = null)
+		public virtual Task<string> SendAsync (MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress? progress = null)
 		{
 			return SendAsync (DefaultOptions, message, cancellationToken, progress);
 		}
@@ -183,11 +183,11 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="sender"/> is <c>null</c>.</para>
+		/// <para><paramref name="sender"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="recipients"/> is <c>null</c>.</para>
+		/// <para><paramref name="recipients"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -215,7 +215,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public virtual string Send (MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress progress = null)
+		public virtual string Send (MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress? progress = null)
 		{
 			return Send (DefaultOptions, message, sender, recipients, cancellationToken, progress);
 		}
@@ -233,11 +233,11 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="sender"/> is <c>null</c>.</para>
+		/// <para><paramref name="sender"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="recipients"/> is <c>null</c>.</para>
+		/// <para><paramref name="recipients"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -265,7 +265,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public virtual Task<string> SendAsync (MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress progress = null)
+		public virtual Task<string> SendAsync (MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress? progress = null)
 		{
 			return SendAsync (DefaultOptions, message, sender, recipients, cancellationToken, progress);
 		}
@@ -291,9 +291,9 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -324,7 +324,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public abstract string Send (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress progress = null);
+		public abstract string Send (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress? progress = null);
 
 		/// <summary>
 		/// Asynchronously send the specified message.
@@ -344,9 +344,9 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -377,7 +377,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public abstract Task<string> SendAsync (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress progress = null);
+		public abstract Task<string> SendAsync (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress? progress = null);
 
 		/// <summary>
 		/// Send the specified message using the supplied sender and recipients.
@@ -393,13 +393,13 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="sender"/> is <c>null</c>.</para>
+		/// <para><paramref name="sender"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="recipients"/> is <c>null</c>.</para>
+		/// <para><paramref name="recipients"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -430,7 +430,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public abstract string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress progress = null);
+		public abstract string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress? progress = null);
 
 		/// <summary>
 		/// Asynchronously send the specified message using the supplied sender and recipients.
@@ -446,13 +446,13 @@ namespace MailKit {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="sender"/> is <c>null</c>.</para>
+		/// <para><paramref name="sender"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="recipients"/> is <c>null</c>.</para>
+		/// <para><paramref name="recipients"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="MailTransport"/> has been disposed.
@@ -483,7 +483,7 @@ namespace MailKit {
 		/// <exception cref="ProtocolException">
 		/// A protocol exception occurred.
 		/// </exception>
-		public abstract Task<string> SendAsync (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress progress = null);
+		public abstract Task<string> SendAsync (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress? progress = null);
 
 		/// <summary>
 		/// Occurs when a message is successfully sent via the transport.
@@ -491,7 +491,7 @@ namespace MailKit {
 		/// <remarks>
 		/// The <see cref="MessageSent"/> event will be emitted each time a message is successfully sent.
 		/// </remarks>
-		public event EventHandler<MessageSentEventArgs> MessageSent;
+		public event EventHandler<MessageSentEventArgs>? MessageSent;
 
 		/// <summary>
 		/// Raise the message sent event.

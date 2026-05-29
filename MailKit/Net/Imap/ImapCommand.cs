@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@
 //
 
 using System;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Globalization;
@@ -33,11 +32,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 
 using MimeKit;
-using MimeKit.IO;
 using MimeKit.Utils;
-
-using SslStream = MailKit.Net.SslStream;
-using NetworkStream = MailKit.Net.NetworkStream;
 
 namespace MailKit.Net.Imap {
 	/// <summary>
@@ -60,321 +55,11 @@ namespace MailKit.Net.Imap {
 
 	delegate void ImapCommandResetHandler (ImapCommand ic);
 
-	/// <summary>
-	/// IMAP command status.
-	/// </summary>
-	enum ImapCommandStatus {
-		Created,
-		Queued,
-		Active,
-		Complete,
-		Error
-	}
-
-	enum ImapLiteralType {
-		String,
-		//Stream,
-		MimeMessage
-	}
-
 	enum ImapStringType {
 		Atom,
 		QString,
 		Literal,
 		Nil
-	}
-
-	/// <summary>
-	/// An IMAP IDLE context.
-	/// </summary>
-	/// <remarks>
-	/// <para>An IMAP IDLE command does not work like normal commands. Unlike most commands,
-	/// the IDLE command does not end until the client sends a separate "DONE" command.</para>
-	/// <para>In order to facilitate this, the way this works is that the consumer of MailKit's
-	/// IMAP APIs provides a 'doneToken' which signals to the command-processing loop to
-	/// send the "DONE" command. Since, like every other IMAP command, it is also necessary to
-	/// provide a means of cancelling the IDLE command, it becomes necessary to link the
-	/// 'doneToken' and the 'cancellationToken' together.</para>
-	/// </remarks>
-	sealed class ImapIdleContext : IDisposable
-	{
-		static readonly byte[] DoneCommand = Encoding.ASCII.GetBytes ("DONE\r\n");
-		CancellationTokenRegistration registration;
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Net.Imap.ImapIdleContext"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new <see cref="MailKit.Net.Imap.ImapIdleContext"/>.
-		/// </remarks>
-		/// <param name="engine">The IMAP engine.</param>
-		/// <param name="doneToken">The done token.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		public ImapIdleContext (ImapEngine engine, CancellationToken doneToken, CancellationToken cancellationToken)
-		{
-			CancellationToken = cancellationToken;
-			DoneToken = doneToken;
-			Engine = engine;
-		}
-
-		/// <summary>
-		/// Get the engine.
-		/// </summary>
-		/// <remarks>
-		/// Gets the engine.
-		/// </remarks>
-		/// <value>The engine.</value>
-		public ImapEngine Engine {
-			get; private set;
-		}
-
-		/// <summary>
-		/// Get the cancellation token.
-		/// </summary>
-		/// <remarks>
-		/// Get the cancellation token.
-		/// </remarks>
-		/// <value>The cancellation token.</value>
-		public CancellationToken CancellationToken {
-			get; private set;
-		}
-
-		/// <summary>
-		/// Get the done token.
-		/// </summary>
-		/// <remarks>
-		/// Gets the done token.
-		/// </remarks>
-		/// <value>The done token.</value>
-		public CancellationToken DoneToken {
-			get; private set;
-		}
-
-#if false
-		/// <summary>
-		/// Get whether or not cancellation has been requested.
-		/// </summary>
-		/// <remarks>
-		/// Gets whether or not cancellation has been requested.
-		/// </remarks>
-		/// <value><c>true</c> if cancellation has been requested; otherwise, <c>false</c>.</value>
-		public bool IsCancellationRequested {
-			get { return CancellationToken.IsCancellationRequested; }
-		}
-
-		/// <summary>
-		/// Get whether or not the IDLE command should be ended.
-		/// </summary>
-		/// <remarks>
-		/// Gets whether or not the IDLE command should be ended.
-		/// </remarks>
-		/// <value><c>true</c> if the IDLE command should end; otherwise, <c>false</c>.</value>
-		public bool IsDoneRequested {
-			get { return DoneToken.IsCancellationRequested; }
-		}
-#endif
-
-		void IdleComplete ()
-		{
-			if (Engine.State == ImapEngineState.Idle) {
-				try {
-					Engine.Stream.Write (DoneCommand, 0, DoneCommand.Length, CancellationToken);
-					Engine.Stream.Flush (CancellationToken);
-				} catch {
-					return;
-				}
-
-				Engine.State = ImapEngineState.Selected;
-			}
-		}
-
-		/// <summary>
-		/// Callback method to be used as the ImapCommand's ContinuationHandler.
-		/// </summary>
-		/// <remarks>
-		/// Callback method to be used as the ImapCommand's ContinuationHandler.
-		/// </remarks>
-		/// <param name="engine">The ImapEngine.</param>
-		/// <param name="ic">The ImapCommand.</param>
-		/// <param name="text">The text.</param>
-		/// <param name="doAsync"><c>true</c> if the command is being run asynchronously; otherwise, <c>false</c>.</param>
-		/// <returns></returns>
-		public Task ContinuationHandler (ImapEngine engine, ImapCommand ic, string text, bool doAsync)
-		{
-			Engine.State = ImapEngineState.Idle;
-
-			registration = DoneToken.Register (IdleComplete);
-
-			return Task.CompletedTask;
-		}
-
-		/// <summary>
-		/// Releases all resource used by the <see cref="MailKit.Net.Imap.ImapIdleContext"/> object.
-		/// </summary>
-		/// <remarks>Call <see cref="Dispose"/> when you are finished using the <see cref="MailKit.Net.Imap.ImapIdleContext"/>. The
-		/// <see cref="Dispose"/> method leaves the <see cref="MailKit.Net.Imap.ImapIdleContext"/> in an unusable state. After
-		/// calling <see cref="Dispose"/>, you must release all references to the
-		/// <see cref="MailKit.Net.Imap.ImapIdleContext"/> so the garbage collector can reclaim the memory that the
-		/// <see cref="MailKit.Net.Imap.ImapIdleContext"/> was occupying.</remarks>
-		public void Dispose ()
-		{
-			registration.Dispose ();
-		}
-	}
-
-	/// <summary>
-	/// An IMAP literal object.
-	/// </summary>
-	/// <remarks>
-	/// The literal can be a string, byte[], Stream, or a MimeMessage.
-	/// </remarks>
-	class ImapLiteral
-	{
-		public readonly ImapLiteralType Type;
-		public readonly object Literal;
-		readonly FormatOptions format;
-		readonly Action<int> update;
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Net.Imap.ImapLiteral"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new <see cref="MailKit.Net.Imap.ImapLiteral"/>.
-		/// </remarks>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="message">The message.</param>
-		/// <param name="action">The progress update action.</param>
-		public ImapLiteral (FormatOptions options, MimeMessage message, Action<int> action = null)
-		{
-			format = options.Clone ();
-			format.NewLineFormat = NewLineFormat.Dos;
-
-			update = action;
-
-			Type = ImapLiteralType.MimeMessage;
-			Literal = message;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MailKit.Net.Imap.ImapLiteral"/> class.
-		/// </summary>
-		/// <remarks>
-		/// Creates a new <see cref="MailKit.Net.Imap.ImapLiteral"/>.
-		/// </remarks>
-		/// <param name="options">The formatting options.</param>
-		/// <param name="literal">The literal.</param>
-		public ImapLiteral (FormatOptions options, byte[] literal)
-		{
-			format = options.Clone ();
-			format.NewLineFormat = NewLineFormat.Dos;
-
-			Type = ImapLiteralType.String;
-			Literal = literal;
-		}
-
-		/// <summary>
-		/// Get the length of the literal, in bytes.
-		/// </summary>
-		/// <remarks>
-		/// Gets the length of the literal, in bytes.
-		/// </remarks>
-		/// <value>The length.</value>
-		public long Length {
-			get {
-				if (Type == ImapLiteralType.String)
-					return ((byte[]) Literal).Length;
-
-				using (var measure = new MeasuringStream ()) {
-					//if (Type == ImapLiteralType.Stream) {
-					//	var stream = (Stream) Literal;
-					//	stream.CopyTo (measure, 4096);
-					//	stream.Position = 0;
-
-					//	return measure.Length;
-					//}
-
-					((MimeMessage) Literal).WriteTo (format, measure);
-
-					return measure.Length;
-				}
-			}
-		}
-
-		/// <summary>
-		/// Write the literal to the specified stream.
-		/// </summary>
-		/// <remarks>
-		/// Writes the literal to the specified stream.
-		/// </remarks>
-		/// <param name="stream">The stream.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		public void WriteTo (ImapStream stream, CancellationToken cancellationToken)
-		{
-			if (Type == ImapLiteralType.String) {
-				var bytes = (byte[]) Literal;
-
-				stream.Write (bytes, 0, bytes.Length, cancellationToken);
-				stream.Flush (cancellationToken);
-				return;
-			}
-
-			//if (Type == ImapLiteralType.Stream) {
-			//	var literal = (Stream) Literal;
-			//	var buf = new byte[4096];
-			//	int nread;
-
-			//	while ((nread = literal.Read (buf, 0, buf.Length)) > 0)
-			//		stream.Write (buf, 0, nread, cancellationToken);
-
-			//	stream.Flush (cancellationToken);
-			//	return;
-			//}
-
-			var message = (MimeMessage) Literal;
-
-			using (var s = new ProgressStream (stream, update)) {
-				message.WriteTo (format, s, cancellationToken);
-				s.Flush (cancellationToken);
-			}
-		}
-
-		/// <summary>
-		/// Asynchronously write the literal to the specified stream.
-		/// </summary>
-		/// <remarks>
-		/// Asynchronously writes the literal to the specified stream.
-		/// </remarks>
-		/// <param name="stream">The stream.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		public async Task WriteToAsync (ImapStream stream, CancellationToken cancellationToken)
-		{
-			if (Type == ImapLiteralType.String) {
-				var bytes = (byte[]) Literal;
-
-				await stream.WriteAsync (bytes, 0, bytes.Length, cancellationToken).ConfigureAwait (false);
-				await stream.FlushAsync (cancellationToken).ConfigureAwait (false);
-				return;
-			}
-
-			//if (Type == ImapLiteralType.Stream) {
-			//	var literal = (Stream) Literal;
-			//	var buf = new byte[4096];
-			//	int nread;
-
-			//	while ((nread = await literal.ReadAsync (buf, 0, buf.Length, cancellationToken).ConfigureAwait (false)) > 0)
-			//		await stream.WriteAsync (buf, 0, nread, cancellationToken).ConfigureAwait (false);
-
-			//	await stream.FlushAsync (cancellationToken).ConfigureAwait (false);
-			//	return;
-			//}
-
-			var message = (MimeMessage) Literal;
-
-			using (var s = new ProgressStream (stream, update)) {
-				await message.WriteToAsync (format, s, cancellationToken).ConfigureAwait (false);
-				await s.FlushAsync (cancellationToken).ConfigureAwait (false);
-			}
-		}
 	}
 
 	/// <summary>
@@ -388,10 +73,10 @@ namespace MailKit.Net.Imap {
 	class ImapCommandPart
 	{
 		public readonly byte[] Command;
-		public readonly ImapLiteral Literal;
+		public readonly ImapLiteral? Literal;
 		public readonly bool WaitForContinuation;
 
-		public ImapCommandPart (byte[] command, ImapLiteral literal, bool wait = true)
+		public ImapCommandPart (byte[] command, ImapLiteral? literal, bool wait = true)
 		{
 			WaitForContinuation = wait;
 			Command = command;
@@ -411,20 +96,20 @@ namespace MailKit.Net.Imap {
 		static readonly byte[] LiteralTokenPrefix = { (byte) '{' };
 
 		public Dictionary<string, ImapUntaggedHandler> UntaggedHandlers { get; private set; }
-		public ImapContinuationHandler ContinuationHandler { get; set; }
+		public ImapContinuationHandler? ContinuationHandler { get; set; }
 		public CancellationToken CancellationToken { get; private set; }
 		public ImapCommandStatus Status { get; internal set; }
 		public ImapCommandResponse Response { get; internal set; }
-		public ITransferProgress Progress { get; internal set; }
-		public Exception Exception { get; internal set; }
+		public ITransferProgress? Progress { get; internal set; }
+		public Exception? Exception { get; internal set; }
 		public readonly List<ImapResponseCode> RespCodes;
-		public string ResponseText { get; internal set; }
-		public ImapFolder Folder { get; private set; }
-		public object UserData { get; internal set; }
+		public string? ResponseText { get; internal set; }
+		public ImapFolder? Folder { get; private set; }
+		public object? UserData { get; internal set; }
 		public bool ListReturnsSubscribed { get; internal set; }
 		public bool Logout { get; private set; }
 		public bool Lsub { get; internal set; }
-		public string Tag { get; private set; }
+		public string? Tag { get; private set; }
 		public bool Bye { get; internal set; }
 
 		readonly List<ImapCommandPart> parts = new List<ImapCommandPart> ();
@@ -446,13 +131,13 @@ namespace MailKit.Net.Imap {
 		/// <param name="format">The command format.</param>
 		/// <param name="args">The command arguments.</param>
 		/// <exception cref="ArgumentNullException">
-		/// <para><paramref name="engine"/> is <c>null</c>.</para>
+		/// <para><paramref name="engine"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="format"/> is <c>null</c>.</para>
+		/// <para><paramref name="format"/> is <see langword="null" />.</para>
 		/// </exception>
-		public ImapCommand (ImapEngine engine, CancellationToken cancellationToken, ImapFolder folder, FormatOptions options, string format, params object[] args)
+		public ImapCommand (ImapEngine engine, CancellationToken cancellationToken, ImapFolder? folder, FormatOptions options, string format, params object[] args)
 		{
 			if (engine == null)
 				throw new ArgumentNullException (nameof (engine));
@@ -572,11 +257,11 @@ namespace MailKit.Net.Imap {
 		/// <param name="format">The command format.</param>
 		/// <param name="args">The command arguments.</param>
 		/// <exception cref="ArgumentNullException">
-		/// <para><paramref name="engine"/> is <c>null</c>.</para>
+		/// <para><paramref name="engine"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="format"/> is <c>null</c>.</para>
+		/// <para><paramref name="format"/> is <see langword="null" />.</para>
 		/// </exception>
-		public ImapCommand (ImapEngine engine, CancellationToken cancellationToken, ImapFolder folder, string format, params object[] args)
+		public ImapCommand (ImapEngine engine, CancellationToken cancellationToken, ImapFolder? folder, string format, params object[] args)
 			: this (engine, cancellationToken, folder, FormatOptions.Default, format, args)
 		{
 		}
@@ -680,9 +365,9 @@ namespace MailKit.Net.Imap {
 			Progress?.Report (nwritten, totalSize);
 		}
 
-		static bool IsAtom (char c)
+		internal static bool IsAtom (char c)
 		{
-			return c < 128 && !char.IsControl (c) && "(){ \t%*\\\"]".IndexOf (c) == -1;
+			return c < 128 && !char.IsControl (c) && "(){ %*\\\"]".IndexOf (c) == -1;
 		}
 
 		static bool IsQuotedSafe (ImapEngine engine, char c)
@@ -734,7 +419,7 @@ namespace MailKit.Net.Imap {
 
 				eoln = true;
 
-				return length++;
+				return length;
 			case ImapStringType.QString:
 				return Encoding.UTF8.GetByteCount (MimeUtils.Quote (value));
 			case ImapStringType.Nil:
@@ -790,9 +475,9 @@ namespace MailKit.Net.Imap {
 		/// <param name="atom">The atom token.</param>
 		/// <param name="handler">The handler.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="atom"/> is <c>null</c>.</para>
+		/// <para><paramref name="atom"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="handler"/> is <c>null</c>.</para>
+		/// <para><paramref name="handler"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.InvalidOperationException">
 		/// Untagged handlers must be registered before the command has been queued.
@@ -836,7 +521,7 @@ namespace MailKit.Net.Imap {
 		/// <summary>
 		/// Sends the next part of the command to the server.
 		/// </summary>
-		/// <returns><c>true</c> if there are more command parts to send; otherwise, <c>false</c>.</returns>
+		/// <returns><see langword="true" /> if there are more command parts to send; otherwise, <see langword="false" />.</returns>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -850,7 +535,6 @@ namespace MailKit.Net.Imap {
 		{
 			var supportsLiteralPlus = (Engine.Capabilities & ImapCapabilities.LiteralPlus) != 0;
 			var response = ImapCommandResponse.None;
-			var idle = UserData as ImapIdleContext;
 			ImapToken token;
 
 			// construct and write the command tag if this is the initial state
@@ -859,21 +543,22 @@ namespace MailKit.Net.Imap {
 
 				var buf = Encoding.ASCII.GetBytes (Tag + " ");
 
-				Engine.Stream.Write (buf, 0, buf.Length, CancellationToken);
+				Engine.Stream!.Write (buf, 0, buf.Length, CancellationToken);
 			}
 
 			do {
-				var command = parts[current].Command;
+				var part = parts[current];
+				var command = part.Command;
 
-				Engine.Stream.Write (command, 0, command.Length, CancellationToken);
+				Engine.Stream!.Write (command, 0, command.Length, CancellationToken);
 
 				// if the server doesn't support LITERAL+ (or LITERAL-), we'll need to wait
 				// for a "+" response before writing out the any literals...
-				if (parts[current].WaitForContinuation)
+				if (part.WaitForContinuation || part.Literal == null)
 					break;
 
 				// otherwise, we can write out any and all literal tokens we have...
-				parts[current].Literal.WriteTo (Engine.Stream, CancellationToken);
+				part.Literal.WriteTo (Engine.Stream, CancellationToken);
 
 				if (current + 1 >= parts.Count)
 					break;
@@ -903,13 +588,14 @@ namespace MailKit.Net.Imap {
 					token = Engine.ReadToken (CancellationToken);
 				}
 
-				if (token.Type == ImapTokenType.Plus) {
+				if (token == ImapToken.Plus) {
 					// we've gotten a continuation response from the server
 					var text = Engine.ReadLine (CancellationToken).Trim ();
 
 					// if we've got a Literal pending, the '+' means we can send it now...
-					if (!supportsLiteralPlus && parts[current].Literal != null) {
-						parts[current].Literal.WriteTo (Engine.Stream, CancellationToken);
+					var literal = parts[current].Literal;
+					if (!supportsLiteralPlus && literal != null) {
+						literal.WriteTo (Engine.Stream, CancellationToken);
 						break;
 					}
 
@@ -921,7 +607,7 @@ namespace MailKit.Net.Imap {
 					}
 				} else if (token.Type == ImapTokenType.Asterisk) {
 					// we got an untagged response, let the engine handle this...
-					Engine.ProcessUntaggedResponse (CancellationToken);
+					Engine.ProcessUntaggedResponse (this, CancellationToken);
 				} else if (token.Type == ImapTokenType.Atom && (string) token.Value == Tag) {
 					// the next token should be "OK", "NO", or "BAD"
 					token = Engine.ReadToken (CancellationToken);
@@ -977,7 +663,7 @@ namespace MailKit.Net.Imap {
 		/// <summary>
 		/// Sends the next part of the command to the server.
 		/// </summary>
-		/// <returns><c>true</c> if there are more command parts to send; otherwise, <c>false</c>.</returns>
+		/// <returns><see langword="true" /> if there are more command parts to send; otherwise, <see langword="false" />.</returns>
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
@@ -991,7 +677,6 @@ namespace MailKit.Net.Imap {
 		{
 			var supportsLiteralPlus = (Engine.Capabilities & ImapCapabilities.LiteralPlus) != 0;
 			var response = ImapCommandResponse.None;
-			var idle = UserData as ImapIdleContext;
 			ImapToken token;
 
 			// construct and write the command tag if this is the initial state
@@ -1000,21 +685,22 @@ namespace MailKit.Net.Imap {
 
 				var buf = Encoding.ASCII.GetBytes (Tag + " ");
 
-				await Engine.Stream.WriteAsync (buf, 0, buf.Length, CancellationToken).ConfigureAwait (false);
+				await Engine.Stream!.WriteAsync (buf, 0, buf.Length, CancellationToken).ConfigureAwait (false);
 			}
 
 			do {
-				var command = parts[current].Command;
+				var part = parts[current];
+				var command = part.Command;
 
-				await Engine.Stream.WriteAsync (command, 0, command.Length, CancellationToken).ConfigureAwait (false);
+				await Engine.Stream!.WriteAsync (command, 0, command.Length, CancellationToken).ConfigureAwait (false);
 
 				// if the server doesn't support LITERAL+ (or LITERAL-), we'll need to wait
 				// for a "+" response before writing out the any literals...
-				if (parts[current].WaitForContinuation)
+				if (part.WaitForContinuation || part.Literal == null)
 					break;
 
 				// otherwise, we can write out any and all literal tokens we have...
-				await parts[current].Literal.WriteToAsync (Engine.Stream, CancellationToken).ConfigureAwait (false);
+				await part.Literal.WriteToAsync (Engine.Stream, CancellationToken).ConfigureAwait (false);
 
 				if (current + 1 >= parts.Count)
 					break;
@@ -1044,13 +730,14 @@ namespace MailKit.Net.Imap {
 					token = await Engine.ReadTokenAsync (CancellationToken).ConfigureAwait (false);
 				}
 
-				if (token.Type == ImapTokenType.Plus) {
+				if (token == ImapToken.Plus) {
 					// we've gotten a continuation response from the server
 					var text = (await Engine.ReadLineAsync (CancellationToken).ConfigureAwait (false)).Trim ();
 
 					// if we've got a Literal pending, the '+' means we can send it now...
-					if (!supportsLiteralPlus && parts[current].Literal != null) {
-						await parts[current].Literal.WriteToAsync (Engine.Stream, CancellationToken).ConfigureAwait (false);
+					var literal = parts[current].Literal;
+					if (!supportsLiteralPlus && literal != null) {
+						await literal.WriteToAsync (Engine.Stream, CancellationToken).ConfigureAwait (false);
 						break;
 					}
 
@@ -1062,7 +749,7 @@ namespace MailKit.Net.Imap {
 					}
 				} else if (token.Type == ImapTokenType.Asterisk) {
 					// we got an untagged response, let the engine handle this...
-					await Engine.ProcessUntaggedResponseAsync (CancellationToken).ConfigureAwait (false);
+					await Engine.ProcessUntaggedResponseAsync (this, CancellationToken).ConfigureAwait (false);
 				} else if (token.Type == ImapTokenType.Atom && (string) token.Value == Tag) {
 					// the next token should be "OK", "NO", or "BAD"
 					token = await Engine.ReadTokenAsync (CancellationToken).ConfigureAwait (false);
@@ -1122,8 +809,8 @@ namespace MailKit.Net.Imap {
 		/// Gets the first response-code of the specified type.
 		/// </remarks>
 		/// <param name="type">The type of response-code.</param>
-		/// <returns>The response-code if it exists; otherwise, <c>null</c>.</returns>
-		public ImapResponseCode GetResponseCode (ImapResponseCodeType type)
+		/// <returns>The response-code if it exists; otherwise, <see langword="null" />.</returns>
+		public ImapResponseCode? GetResponseCode (ImapResponseCodeType type)
 		{
 			for (int i = 0; i < RespCodes.Count; i++) {
 				if (RespCodes[i].Type == type)

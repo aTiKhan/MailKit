@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,6 @@ using System.Threading.Tasks;
 
 using MailKit.Security;
 
-using NetworkStream = MailKit.Net.NetworkStream;
-
 namespace MailKit.Net.Proxy
 {
 	/// <summary>
@@ -62,7 +60,7 @@ namespace MailKit.Net.Proxy
 		/// <param name="host">The host name of the proxy server.</param>
 		/// <param name="port">The proxy server port.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>1</c> and <c>65535</c>.
@@ -89,9 +87,9 @@ namespace MailKit.Net.Proxy
 		/// <param name="port">The proxy server port.</param>
 		/// <param name="credentials">The credentials to use to authenticate with the proxy server.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/>is <c>null</c>.</para>
+		/// <para><paramref name="credentials"/>is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>1</c> and <c>65535</c>.
@@ -156,7 +154,7 @@ namespace MailKit.Net.Proxy
 			}
 		}
 
-		internal static Socks5AddressType GetAddressType (string host, out IPAddress ip)
+		internal static Socks5AddressType GetAddressType (string host, out IPAddress? ip)
 		{
 			if (!IPAddress.TryParse (host, out ip))
 				return Socks5AddressType.Domain;
@@ -238,7 +236,7 @@ namespace MailKit.Net.Proxy
 
 		byte[] GetAuthenticateCommand ()
 		{
-			var user = Encoding.UTF8.GetBytes (ProxyCredentials.UserName);
+			var user = Encoding.UTF8.GetBytes (ProxyCredentials!.UserName);
 
 			if (user.Length > 255)
 				throw new AuthenticationException ("User name too long.");
@@ -299,7 +297,7 @@ namespace MailKit.Net.Proxy
 				throw new AuthenticationException ("Failed to authenticate with SOCKS5 proxy server.");
 		}
 
-		byte[] GetConnectCommand (Socks5AddressType addrType, byte[] domain, IPAddress ip, int port, out int n)
+		byte[] GetConnectCommand (Socks5AddressType addrType, byte[]? domain, IPAddress? ip, int port, out int n)
 		{
 			// +----+-----+-------+------+----------+----------+
 			// |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
@@ -317,17 +315,17 @@ namespace MailKit.Net.Proxy
 			buffer[n++] = (byte) addrType;
 			switch (addrType) {
 			case Socks5AddressType.Domain:
-				buffer[n++] = (byte) domain.Length;
+				buffer[n++] = (byte) domain!.Length;
 				Buffer.BlockCopy (domain, 0, buffer, n, domain.Length);
 				n += domain.Length;
 				break;
 			case Socks5AddressType.IPv6:
-				addr = ip.GetAddressBytes ();
+				addr = ip!.GetAddressBytes ();
 				Buffer.BlockCopy (addr, 0, buffer, n, addr.Length);
 				n += 16;
 				break;
 			case Socks5AddressType.IPv4:
-				addr = ip.GetAddressBytes ();
+				addr = ip!.GetAddressBytes ();
 				Buffer.BlockCopy (addr, 0, buffer, n, addr.Length);
 				n += 4;
 				break;
@@ -353,7 +351,7 @@ namespace MailKit.Net.Proxy
 			var addrType = (Socks5AddressType) buffer[3];
 
 			switch (addrType) {
-			case Socks5AddressType.Domain: return 4 + buffer[4] + 2;
+			case Socks5AddressType.Domain: return 4 + 1 + buffer[4] + 2;
 			case Socks5AddressType.IPv6: return 4 + 16 + 2;
 			case Socks5AddressType.IPv4: return 4 + 4 + 2;
 			default: throw new ProxyProtocolException ("Proxy server returned unknown address type.");
@@ -371,7 +369,7 @@ namespace MailKit.Net.Proxy
 		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -396,7 +394,7 @@ namespace MailKit.Net.Proxy
 
 			var socket = SocketUtils.Connect (ProxyHost, ProxyPort, LocalEndPoint, cancellationToken);
 			var addrType = GetAddressType (host, out var ip);
-			byte[] domain = null;
+			byte[]? domain = null;
 
 			if (addrType == Socks5AddressType.Domain)
 				domain = Encoding.UTF8.GetBytes (host);
@@ -469,7 +467,7 @@ namespace MailKit.Net.Proxy
 		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -494,7 +492,7 @@ namespace MailKit.Net.Proxy
 
 			var socket = await SocketUtils.ConnectAsync (ProxyHost, ProxyPort, LocalEndPoint, cancellationToken).ConfigureAwait (false);
 			var addrType = GetAddressType (host, out var ip);
-			byte[] domain = null;
+			byte[]? domain = null;
 
 			if (addrType == Socks5AddressType.Domain)
 				domain = Encoding.UTF8.GetBytes (host);

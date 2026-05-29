@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +42,7 @@ using System.Diagnostics.Metrics;
 using System.Net.NetworkInformation;
 using System.Security.Authentication;
 using System.Runtime.CompilerServices;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography.X509Certificates;
 
 using MimeKit;
@@ -50,7 +51,6 @@ using MimeKit.Cryptography;
 
 using MailKit.Security;
 
-using SslStream = MailKit.Net.SslStream;
 using AuthenticationException = MailKit.Security.AuthenticationException;
 
 namespace MailKit.Net.Smtp {
@@ -75,7 +75,7 @@ namespace MailKit.Net.Smtp {
 	{
 		static readonly byte[] EndData = Encoding.ASCII.GetBytes (".\r\n");
 		static readonly char[] NewLineCharacters = { '\r', '\n' };
-		internal static string DefaultLocalDomain;
+		internal static readonly string DefaultLocalDomain;
 		const int MaxLineLength = 998;
 
 		enum SmtpCommand {
@@ -86,9 +86,9 @@ namespace MailKit.Net.Smtp {
 		readonly HashSet<string> authenticationMechanisms = new HashSet<string> (StringComparer.Ordinal);
 		readonly SmtpAuthenticationSecretDetector detector = new SmtpAuthenticationSecretDetector ();
 		readonly List<SmtpCommand> queued = new List<SmtpCommand> ();
-		SslCertificateValidationInfo sslValidationInfo;
+		SslCertificateValidationInfo? sslValidationInfo;
 #if NET6_0_OR_GREATER
-		readonly ClientMetrics metrics;
+		readonly ClientMetrics? metrics;
 #endif
 		long clientConnectedTimestamp;
 		SmtpCapabilities capabilities;
@@ -97,14 +97,14 @@ namespace MailKit.Net.Smtp {
 		bool connected;
 		bool disposed;
 		bool secure;
-		Uri uri;
+		Uri? uri;
 
-		internal static string GetSafeHostName (string hostName)
+		internal static string? GetSafeHostName (string? hostName)
 		{
 			var idn = new IdnMapping ();
 
 			if (!string.IsNullOrEmpty (hostName)) {
-				hostName = hostName.Replace ('_', '-');
+				hostName = hostName!.Replace ('_', '-');
 
 				try {
 					return idn.GetAscii (hostName);
@@ -159,7 +159,7 @@ namespace MailKit.Net.Smtp {
 		/// </remarks>
 		/// <param name="protocolLogger">The protocol logger.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="protocolLogger"/> is <c>null</c>.
+		/// <paramref name="protocolLogger"/> is <see langword="null" />.
 		/// </exception>
 		/// <example>
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="ProtocolLogger"/>
@@ -188,9 +188,9 @@ namespace MailKit.Net.Smtp {
 		/// <param name="protocolLogger">The protocol logger.</param>
 		/// <param name="meterFactory">The meter factory.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="protocolLogger"/> is <c>null</c>.</para>
+		/// <para><paramref name="protocolLogger"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="meterFactory"/> is <c>null</c>.</para>
+		/// <para><paramref name="meterFactory"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <example>
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="ProtocolLogger"/>
@@ -214,7 +214,7 @@ namespace MailKit.Net.Smtp {
 		/// Gets the underlying SMTP stream.
 		/// </remarks>
 		/// <value>The SMTP stream.</value>
-		SmtpStream Stream {
+		SmtpStream? Stream {
 			get; set;
 		}
 
@@ -275,7 +275,7 @@ namespace MailKit.Net.Smtp {
 		/// used instead.
 		/// </remarks>
 		/// <value>The local domain.</value>
-		public string LocalDomain {
+		public string? LocalDomain {
 			get; set;
 		}
 
@@ -286,12 +286,12 @@ namespace MailKit.Net.Smtp {
 		/// <para>Gets whether or not the <c>BDAT</c> command is preferred over the standard <c>DATA</c>
 		/// command.</para>
 		/// <para>The <c>BDAT</c> command is normally only used when the message being sent contains binary data
-		/// (e.g. one mor more MIME parts contains a <c>Content-Transfer-Encoding: binary</c> header). This
+		/// (e.g. one or more MIME parts contains a <c>Content-Transfer-Encoding: binary</c> header). This
 		/// option provides a way to override this behavior, forcing the <see cref="SmtpClient"/> to send
 		/// messages using the <c>BDAT</c> command instead of the <c>DATA</c> command even when it is not
 		/// necessary to do so.</para>
 		/// </remarks>
-		/// <value><c>true</c> if the <c>BDAT</c> command is preferred over the <c>DATA</c> command; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the <c>BDAT</c> command is preferred over the <c>DATA</c> command; otherwise, <see langword="false" />.</value>
 		protected virtual bool PreferSendAsBinaryData {
 			get { return false; }
 		}
@@ -324,7 +324,7 @@ namespace MailKit.Net.Smtp {
 		/// <note type="note">This feature is only available if <see cref="Capabilities"/> contains the
 		/// <see cref="SmtpCapabilities.RequireTLS"/> flag when sending the message.</note>
 		/// </remarks>
-		/// <value><c>true</c> if the REQUIRETLS extension should be used; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the REQUIRETLS extension should be used; otherwise, <see langword="false" />.</value>
 		public bool RequireTLS {
 			get; set;
 		}
@@ -379,9 +379,9 @@ namespace MailKit.Net.Smtp {
 		/// Get whether or not the client is currently connected to an SMTP server.
 		/// </summary>
 		/// <remarks>
-		/// <para>The <see cref="IsConnected"/> state is set to <c>true</c> immediately after
+		/// <para>The <see cref="IsConnected"/> state is set to <see langword="true" /> immediately after
 		/// one of the <a href="Overload_MailKit_Net_Smtp_SmtpClient_Connect.htm">Connect</a>
-		/// methods succeeds and is not set back to <c>false</c> until either the client
+		/// methods succeeds and is not set back to <see langword="false" /> until either the client
 		/// is disconnected via <see cref="Disconnect(bool,CancellationToken)"/> or until an
 		/// <see cref="SmtpProtocolException"/> is thrown while attempting to read or write to
 		/// the underlying network socket.</para>
@@ -391,7 +391,8 @@ namespace MailKit.Net.Smtp {
 		/// <example>
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="ExceptionHandling"/>
 		/// </example>
-		/// <value><c>true</c> if the client is connected; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the client is connected; otherwise, <see langword="false" />.</value>
+		[MemberNotNullWhen (true, new[] { nameof (Stream), nameof (uri) })]
 		public override bool IsConnected {
 			get { return connected; }
 		}
@@ -402,7 +403,8 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether or not the connection is secure (typically via SSL or TLS).
 		/// </remarks>
-		/// <value><c>true</c> if the connection is secure; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the connection is secure; otherwise, <see langword="false" />.</value>
+		[MemberNotNullWhen (true, new[] { nameof (Stream), nameof (uri) })]
 		public override bool IsSecure {
 			get { return IsConnected && secure; }
 		}
@@ -413,7 +415,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether or not the connection is encrypted (typically via SSL or TLS).
 		/// </remarks>
-		/// <value><c>true</c> if the connection is encrypted; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the connection is encrypted; otherwise, <see langword="false" />.</value>
 		public override bool IsEncrypted {
 			get { return IsSecure && (Stream.Stream is SslStream sslStream) && sslStream.IsEncrypted; }
 		}
@@ -424,7 +426,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether or not the connection is signed (typically via SSL or TLS).
 		/// </remarks>
-		/// <value><c>true</c> if the connection is signed; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the connection is signed; otherwise, <see langword="false" />.</value>
 		public override bool IsSigned {
 			get { return IsSecure && (Stream.Stream is SslStream sslStream) && sslStream.IsSigned; }
 		}
@@ -458,6 +460,9 @@ namespace MailKit.Net.Smtp {
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SslConnectionInformation"/>
 		/// </example>
 		/// <value>The negotiated SSL or TLS cipher algorithm.</value>
+#if NET10_0_OR_GREATER
+		[Obsolete ("Use SslCipherSuite instead.")]
+#endif
 		public override CipherAlgorithmType? SslCipherAlgorithm {
 			get {
 				if (IsSecure && (Stream.Stream is SslStream sslStream))
@@ -477,6 +482,9 @@ namespace MailKit.Net.Smtp {
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SslConnectionInformation"/>
 		/// </example>
 		/// <value>The negotiated SSL or TLS cipher algorithm strength.</value>
+#if NET10_0_OR_GREATER
+		[Obsolete ("Use SslCipherSuite instead.")]
+#endif
 		public override int? SslCipherStrength {
 			get {
 				if (IsSecure && (Stream.Stream is SslStream sslStream))
@@ -514,6 +522,9 @@ namespace MailKit.Net.Smtp {
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SslConnectionInformation"/>
 		/// </example>
 		/// <value>The negotiated SSL or TLS hash algorithm.</value>
+#if NET10_0_OR_GREATER
+		[Obsolete ("Use SslCipherSuite instead.")]
+#endif
 		public override HashAlgorithmType? SslHashAlgorithm {
 			get {
 				if (IsSecure && (Stream.Stream is SslStream sslStream))
@@ -533,6 +544,9 @@ namespace MailKit.Net.Smtp {
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SslConnectionInformation"/>
 		/// </example>
 		/// <value>The negotiated SSL or TLS hash algorithm strength.</value>
+#if NET10_0_OR_GREATER
+		[Obsolete ("Use SslCipherSuite instead.")]
+#endif
 		public override int? SslHashStrength {
 			get {
 				if (IsSecure && (Stream.Stream is SslStream sslStream))
@@ -552,6 +566,9 @@ namespace MailKit.Net.Smtp {
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SslConnectionInformation"/>
 		/// </example>
 		/// <value>The negotiated SSL or TLS key exchange algorithm.</value>
+#if NET10_0_OR_GREATER
+		[Obsolete ("Use SslCipherSuite instead.")]
+#endif
 		public override ExchangeAlgorithmType? SslKeyExchangeAlgorithm {
 			get {
 				if (IsSecure && (Stream.Stream is SslStream sslStream))
@@ -571,6 +588,9 @@ namespace MailKit.Net.Smtp {
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SslConnectionInformation"/>
 		/// </example>
 		/// <value>The negotiated SSL or TLS key exchange algorithm strength.</value>
+#if NET10_0_OR_GREATER
+		[Obsolete ("Use SslCipherSuite instead.")]
+#endif
 		public override int? SslKeyExchangeStrength {
 			get {
 				if (IsSecure && (Stream.Stream is SslStream sslStream))
@@ -589,7 +609,7 @@ namespace MailKit.Net.Smtp {
 		/// <a href="Overload_MailKit_Net_Smtp_SmtpClient_Authenticate.htm">Authenticate</a>
 		/// methods.</para>
 		/// </remarks>
-		/// <value><c>true</c> if the client is connected; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the client is authenticated; otherwise, <see langword="false" />.</value>
 		public override bool IsAuthenticated {
 			get { return authenticated; }
 		}
@@ -597,30 +617,33 @@ namespace MailKit.Net.Smtp {
 		NetworkOperation StartNetworkOperation (NetworkOperationKind kind)
 		{
 #if NET6_0_OR_GREATER
-			return NetworkOperation.Start (kind, uri, Telemetry.SmtpClient.ActivitySource, metrics);
+			return NetworkOperation.Start (kind, uri!, Telemetry.SmtpClient.ActivitySource, metrics);
 #else
-			return NetworkOperation.Start (kind, uri);
+			return NetworkOperation.Start (kind, uri!);
 #endif
 		}
 
-		bool ValidateRemoteCertificate (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		bool ValidateRemoteCertificate (object? sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
 		{
+			var host = uri!.Host;
 			bool valid;
 
 			sslValidationInfo?.Dispose ();
 			sslValidationInfo = null;
 
 			if (ServerCertificateValidationCallback != null) {
-				valid = ServerCertificateValidationCallback (uri.Host, certificate, chain, sslPolicyErrors);
+				valid = ServerCertificateValidationCallback (host, certificate, chain, sslPolicyErrors);
+#if NETFRAMEWORK
 			} else if (ServicePointManager.ServerCertificateValidationCallback != null) {
-				valid = ServicePointManager.ServerCertificateValidationCallback (uri.Host, certificate, chain, sslPolicyErrors);
+				valid = ServicePointManager.ServerCertificateValidationCallback (host, certificate, chain, sslPolicyErrors);
+#endif
 			} else {
-				valid = DefaultServerCertificateValidationCallback (uri.Host, certificate, chain, sslPolicyErrors);
+				valid = DefaultServerCertificateValidationCallback (host, certificate, chain, sslPolicyErrors);
 			}
 
 			if (!valid) {
 				// Note: The SslHandshakeException.Create() method will nullify this once it's done using it.
-				sslValidationInfo = new SslCertificateValidationInfo (sender, certificate, chain, sslPolicyErrors);
+				sslValidationInfo = new SslCertificateValidationInfo (host, certificate, chain, sslPolicyErrors);
 			}
 
 			return valid;
@@ -641,25 +664,25 @@ namespace MailKit.Net.Smtp {
 
 		void QueueCommand (SmtpCommand type, string command, CancellationToken cancellationToken)
 		{
-			Stream.QueueCommand (command, cancellationToken);
+			Stream!.QueueCommand (command, cancellationToken);
 			queued.Add (type);
 		}
 
 		struct QueueResults
 		{
 			public readonly int RecipientsAccepted;
-			public Exception FirstException;
+			public readonly Exception? FirstException;
 
-			public QueueResults (int recipientsAccepted, Exception firstException)
+			public QueueResults (int recipientsAccepted, Exception? firstException)
 			{
 				RecipientsAccepted = recipientsAccepted;
 				FirstException = firstException;
 			}
 		}
 
-		QueueResults ParseCommandQueueResponses (MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, List<SmtpResponse> responses, Exception readResponseException)
+		QueueResults ParseCommandQueueResponses (MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, List<SmtpResponse> responses, Exception? readResponseException)
 		{
-			Exception firstException = null;
+			Exception? firstException = null;
 			int recipientsAccepted = 0;
 			int rcpt = 0;
 
@@ -695,14 +718,14 @@ namespace MailKit.Net.Smtp {
 		{
 			try {
 				// Note: Queued commands are buffered by the stream
-				Stream.Flush (cancellationToken);
+				Stream!.Flush (cancellationToken);
 			} catch {
 				queued.Clear ();
 				throw;
 			}
 
 			var responses = new List<SmtpResponse> (queued.Count);
-			Exception rex = null;
+			Exception? rex = null;
 
 			// Note: We need to read all responses from the server before we can process
 			// them in case any of them have any errors so that we can RSET the state.
@@ -726,9 +749,9 @@ namespace MailKit.Net.Smtp {
 		SmtpResponse SendCommandInternal (string command, CancellationToken cancellationToken)
 		{
 			try {
-				return Stream.SendCommand (command, cancellationToken);
+				return Stream!.SendCommand (command, cancellationToken);
 			} catch {
-				Disconnect (uri.Host, uri.Port, GetSecureSocketOptions (uri), false);
+				Disconnect (uri!.Host, uri.Port, GetSecureSocketOptions (uri), false);
 				throw;
 			}
 		}
@@ -744,7 +767,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="command">The command.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="command"/> is <c>null</c>.
+		/// <paramref name="command"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="SmtpClient"/> has been disposed.
@@ -931,7 +954,7 @@ namespace MailKit.Net.Smtp {
 
 					return string.Format ("{0} [{1}]\r\n", helo, ip);
 				} else {
-					domain = LocalDomain;
+					domain = LocalDomain!;
 				}
 			} else {
 				domain = DefaultLocalDomain;
@@ -945,7 +968,7 @@ namespace MailKit.Net.Smtp {
 			var command = CreateEhloCommand (helo);
 
 			if (connecting)
-				return Stream.SendCommand (command, cancellationToken);
+				return Stream!.SendCommand (command, cancellationToken);
 
 			return SendCommandInternal (command, cancellationToken);
 		}
@@ -997,7 +1020,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="mechanism">The SASL mechanism.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="mechanism"/> is <c>null</c>.
+		/// <paramref name="mechanism"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="ServiceNotConnectedException">
 		/// The <see cref="SmtpClient"/> is not connected.
@@ -1035,7 +1058,7 @@ namespace MailKit.Net.Smtp {
 			using var operation = StartNetworkOperation (NetworkOperationKind.Authenticate);
 
 			try {
-				SaslException saslException = null;
+				SaslException? saslException = null;
 				SmtpResponse response;
 				string challenge;
 				string command;
@@ -1092,6 +1115,7 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
+		[MemberNotNull (nameof (Stream), nameof (uri))]
 		void ValidateArguments (Encoding encoding, ICredentials credentials)
 		{
 			if (encoding == null)
@@ -1135,9 +1159,9 @@ namespace MailKit.Net.Smtp {
 		/// <param name="credentials">The user's credentials.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="encoding"/> is <c>null</c>.</para>
+		/// <para><paramref name="encoding"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/> is <c>null</c>.</para>
+		/// <para><paramref name="credentials"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="ServiceNotConnectedException">
 		/// The <see cref="SmtpClient"/> is not connected.
@@ -1174,10 +1198,10 @@ namespace MailKit.Net.Smtp {
 
 			try {
 				var saslUri = new Uri ($"smtp://{uri.Host}");
-				AuthenticationException authException = null;
-				SaslException saslException;
+				AuthenticationException? authException = null;
+				SaslException? saslException;
 				SmtpResponse response;
-				SaslMechanism sasl;
+				SaslMechanism? sasl;
 				bool tried = false;
 				string challenge;
 				string command;
@@ -1185,7 +1209,7 @@ namespace MailKit.Net.Smtp {
 				foreach (var authmech in SaslMechanism.Rank (AuthenticationMechanisms)) {
 					var cred = credentials.GetCredential (uri, authmech);
 
-					if ((sasl = SaslMechanism.Create (authmech, encoding, cred)) == null)
+					if (cred == null || (sasl = SaslMechanism.Create (authmech, encoding, cred)) == null)
 						continue;
 
 					sasl.ChannelBindingContext = Stream.Stream as IChannelBindingContext;
@@ -1213,10 +1237,7 @@ namespace MailKit.Net.Smtp {
 							continue;
 
 						try {
-							while (!sasl.IsAuthenticated) {
-								if (response.StatusCode != SmtpStatusCode.AuthenticationChallenge)
-									break;
-
+							while (response.StatusCode == SmtpStatusCode.AuthenticationChallenge) {
 								challenge = sasl.Challenge (response.Response, cancellationToken);
 								response = SendCommandInternal (challenge + "\r\n", cancellationToken);
 							}
@@ -1312,10 +1333,10 @@ namespace MailKit.Net.Smtp {
 #endif
 		}
 
-		void RecordClientDisconnected (Exception ex)
+		void RecordClientDisconnected (Exception? ex)
 		{
 #if NET6_0_OR_GREATER
-			metrics?.RecordClientDisconnected (clientConnectedTimestamp, uri, ex);
+			metrics?.RecordClientDisconnected (clientConnectedTimestamp, uri!, ex);
 #endif
 			clientConnectedTimestamp = 0;
 		}
@@ -1325,7 +1346,7 @@ namespace MailKit.Net.Smtp {
 			clientConnectedTimestamp = Stopwatch.GetTimestamp ();
 
 			try {
-				ProtocolLogger.LogConnect (uri);
+				ProtocolLogger.LogConnect (uri!);
 			} catch {
 				stream.Dispose ();
 				secure = false;
@@ -1353,8 +1374,8 @@ namespace MailKit.Net.Smtp {
 						throw new SmtpCommandException (SmtpErrorCode.UnexpectedStatusCode, response.StatusCode, response.Response);
 
 					try {
-						var tls = new SslStream (stream, false, ValidateRemoteCertificate);
-						Stream.Stream = tls;
+						var tls = new ExtendedSslStream (stream, false, ValidateRemoteCertificate);
+						Stream.SetStream (tls);
 
 						SslHandshake (tls, host, cancellationToken);
 					} catch (Exception ex) {
@@ -1430,7 +1451,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="options">The secure socket options to when connecting.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -1485,7 +1506,7 @@ namespace MailKit.Net.Smtp {
 				stream.ReadTimeout = timeout;
 
 				if (options == SecureSocketOptions.SslOnConnect) {
-					var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
+					var ssl = new ExtendedSslStream (stream, false, ValidateRemoteCertificate);
 
 					try {
 						SslHandshake (ssl, host, cancellationToken);
@@ -1544,9 +1565,9 @@ namespace MailKit.Net.Smtp {
 		/// <param name="options">The secure socket options to when connecting.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="socket"/> is <c>null</c>.</para>
+		/// <para><paramref name="socket"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -1622,9 +1643,9 @@ namespace MailKit.Net.Smtp {
 		/// <param name="options">The secure socket options to when connecting.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="stream"/> is <c>null</c>.</para>
+		/// <para><paramref name="stream"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -1674,7 +1695,7 @@ namespace MailKit.Net.Smtp {
 				Stream network;
 
 				if (options == SecureSocketOptions.SslOnConnect) {
-					var ssl = new SslStream (stream, false, ValidateRemoteCertificate);
+					var ssl = new ExtendedSslStream (stream, false, ValidateRemoteCertificate);
 
 					try {
 						SslHandshake (ssl, host, cancellationToken);
@@ -1707,12 +1728,12 @@ namespace MailKit.Net.Smtp {
 		/// Disconnect the service.
 		/// </summary>
 		/// <remarks>
-		/// If <paramref name="quit"/> is <c>true</c>, a <c>QUIT</c> command will be issued in order to disconnect cleanly.
+		/// If <paramref name="quit"/> is <see langword="true" />, a <c>QUIT</c> command will be issued in order to disconnect cleanly.
 		/// </remarks>
 		/// <example>
 		/// <code language="c#" source="Examples\SmtpExamples.cs" region="SendMessage"/>
 		/// </example>
-		/// <param name="quit">If set to <c>true</c>, a <c>QUIT</c> command will be issued in order to disconnect cleanly.</param>
+		/// <param name="quit">If set to <see langword="true" />, a <c>QUIT</c> command will be issued in order to disconnect cleanly.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="SmtpClient"/> has been disposed.
@@ -1773,7 +1794,7 @@ namespace MailKit.Net.Smtp {
 				throw new SmtpCommandException (SmtpErrorCode.UnexpectedStatusCode, response.StatusCode, response.Response);
 		}
 
-		void Disconnect (string host, int port, SecureSocketOptions options, bool requested)
+		void Disconnect (string? host, int port, SecureSocketOptions options, bool requested)
 		{
 			// Note: if the uri is null, then the user manually disconnected already.
 			if (uri != null)
@@ -1799,7 +1820,7 @@ namespace MailKit.Net.Smtp {
 
 		#region IMailTransport implementation
 
-		static MailboxAddress GetMessageSender (MimeMessage message)
+		static MailboxAddress? GetMessageSender (MimeMessage message)
 		{
 			if (message.ResentSender != null)
 				return message.ResentSender;
@@ -1839,42 +1860,6 @@ namespace MailKit.Net.Smtp {
 			return recipients;
 		}
 
-		[Flags]
-		enum SmtpExtensions {
-			None         = 0,
-			EightBitMime = 1 << 0,
-			BinaryMime   = 1 << 1,
-			UTF8         = 1 << 2,
-		}
-
-		class ContentTransferEncodingVisitor : MimeVisitor
-		{
-			readonly SmtpCapabilities capabilities;
-
-			public ContentTransferEncodingVisitor (SmtpCapabilities capabilities)
-			{
-				this.capabilities = capabilities;
-			}
-
-			public SmtpExtensions SmtpExtensions {
-				get; private set;
-			}
-
-			protected override void VisitMimePart (MimePart entity)
-			{
-				switch (entity.ContentTransferEncoding) {
-				case ContentEncoding.EightBit:
-					if ((capabilities & SmtpCapabilities.EightBitMime) != 0)
-						SmtpExtensions |= SmtpExtensions.EightBitMime;
-					break;
-				case ContentEncoding.Binary:
-					if ((capabilities & SmtpCapabilities.BinaryMime) != 0)
-						SmtpExtensions |= SmtpExtensions.BinaryMime;
-					break;
-				}
-			}
-		}
-
 		/// <summary>
 		/// Invoked when the sender is accepted by the SMTP server.
 		/// </summary>
@@ -1889,7 +1874,7 @@ namespace MailKit.Net.Smtp {
 		}
 
 		/// <summary>
-		/// Invoked when a recipient is not accepted by the SMTP server.
+		/// Invoked when the sender is not accepted by the SMTP server.
 		/// </summary>
 		/// <remarks>
 		/// The default implementation throws an appropriate <see cref="SmtpCommandException"/>.
@@ -1918,7 +1903,7 @@ namespace MailKit.Net.Smtp {
 		/// </example>
 		/// <returns>The envelope identifier.</returns>
 		/// <param name="message">The message.</param>
-		protected virtual string GetEnvelopeId (MimeMessage message)
+		protected virtual string? GetEnvelopeId (MimeMessage message)
 		{
 			return null;
 		}
@@ -1978,6 +1963,15 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
+		[Flags]
+		enum SmtpExtensions
+		{
+			None = 0,
+			EightBitMime = 1 << 0,
+			BinaryMime = 1 << 1,
+			UTF8 = 1 << 2,
+		}
+
 		string CreateMailFromCommand (FormatOptions options, MimeMessage message, MailboxAddress mailbox, SmtpExtensions extensions, long size)
 		{
 			var idnEncode = (extensions & SmtpExtensions.UTF8) == 0;
@@ -2005,7 +1999,7 @@ namespace MailKit.Net.Smtp {
 
 				if (!string.IsNullOrEmpty (envid)) {
 					builder.Append (" ENVID=");
-					AppendHexEncoded (builder, envid);
+					AppendHexEncoded (builder, envid!);
 				}
 
 				switch (DeliveryStatusNotificationType) {
@@ -2053,7 +2047,7 @@ namespace MailKit.Net.Smtp {
 				return;
 			}
 
-			var response = Stream.SendCommand (command, cancellationToken);
+			var response = Stream!.SendCommand (command, cancellationToken);
 
 			ParseMailFromResponse (message, mailbox, response);
 		}
@@ -2102,18 +2096,6 @@ namespace MailKit.Net.Smtp {
 			return null;
 		}
 
-		class OriginalRecipient
-		{
-			public readonly string AddrType;
-			public readonly string Address;
-
-			public OriginalRecipient (string addrType, string address)
-			{
-				AddrType = addrType;
-				Address = address;
-			}
-		}
-
 		/// <summary>
 		/// Get the original intended recipient address and address type.
 		/// </summary>
@@ -2125,12 +2107,14 @@ namespace MailKit.Net.Smtp {
 		/// </remarks>
 		/// <param name="message">The message being sent.</param>
 		/// <param name="mailbox">The recipient mailbox.</param>
-		/// <returns>The original recipient address and the address type.</returns>
-		OriginalRecipient GetOriginalRecipientAddress (MimeMessage message, MailboxAddress mailbox)
+		/// <param name="addrType">The original recipient address type.</param>
+		/// <param name="address">The original recipient address.</param>
+		void GetOriginalRecipientAddress (MimeMessage message, MailboxAddress mailbox, out string addrType, out string address)
 		{
 			var idnEncode = (Capabilities & SmtpCapabilities.UTF8) == 0;
 
-			return new OriginalRecipient ("rfc822", mailbox.GetAddress (idnEncode));
+			addrType = "rfc822";
+			address = mailbox.GetAddress (idnEncode);
 		}
 
 		static string GetNotifyString (DeliveryStatusNotification notify)
@@ -2167,11 +2151,11 @@ namespace MailKit.Net.Smtp {
 					command.Append (" NOTIFY=");
 					command.Append (GetNotifyString (notify.Value));
 
-					var orcpt = GetOriginalRecipientAddress (message, mailbox);
+					GetOriginalRecipientAddress (message, mailbox, out var addrType, out var address);
 					command.Append (" ORCPT=");
-					command.Append (orcpt.AddrType);
+					command.Append (addrType);
 					command.Append (';');
-					AppendHexEncoded (command, orcpt.Address);
+					AppendHexEncoded (command, address);
 				}
 			}
 
@@ -2204,7 +2188,7 @@ namespace MailKit.Net.Smtp {
 				return false;
 			}
 
-			var response = Stream.SendCommand (command, cancellationToken);
+			var response = Stream!.SendCommand (command, cancellationToken);
 
 			return ParseRcptToResponse (message, mailbox, response);
 		}
@@ -2245,11 +2229,11 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
-		string Bdat (FormatOptions options, MimeMessage message, long size, CancellationToken cancellationToken, ITransferProgress progress)
+		string Bdat (FormatOptions options, MimeMessage message, long size, CancellationToken cancellationToken, ITransferProgress? progress)
 		{
 			var command = string.Format (CultureInfo.InvariantCulture, "BDAT {0} LAST\r\n", size);
 
-			Stream.QueueCommand (command, cancellationToken);
+			Stream!.QueueCommand (command, cancellationToken);
 
 			if (progress != null) {
 				var ctx = new SendContext (progress, size);
@@ -2287,12 +2271,12 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
-		string MessageData (FormatOptions options, MimeMessage message, long size, CancellationToken cancellationToken, ITransferProgress progress)
+		string MessageData (FormatOptions options, MimeMessage message, long size, CancellationToken cancellationToken, ITransferProgress? progress)
 		{
 			if (progress != null) {
 				var ctx = new SendContext (progress, size);
 
-				using (var stream = new ProgressStream (Stream, ctx.Update)) {
+				using (var stream = new ProgressStream (Stream!, ctx.Update)) {
 					using (var filtered = new FilteredStream (stream)) {
 						filtered.Add (new SmtpDataFilter ());
 
@@ -2301,7 +2285,7 @@ namespace MailKit.Net.Smtp {
 					}
 				}
 			} else {
-				using (var filtered = new FilteredStream (Stream)) {
+				using (var filtered = new FilteredStream (Stream!)) {
 					filtered.Add (new SmtpDataFilter ());
 
 					message.WriteTo (options, filtered, cancellationToken);
@@ -2309,7 +2293,7 @@ namespace MailKit.Net.Smtp {
 				}
 			}
 
-			Stream.Write (EndData, 0, EndData.Length, cancellationToken);
+			Stream!.Write (EndData, 0, EndData.Length, cancellationToken);
 			Stream.Flush (cancellationToken);
 
 			var response = Stream.ReadResponse (cancellationToken);
@@ -2329,7 +2313,7 @@ namespace MailKit.Net.Smtp {
 			}
 
 			if (response.StatusCode != SmtpStatusCode.Ok)
-				Disconnect (uri.Host, uri.Port, GetSecureSocketOptions (uri), false);
+				Disconnect (uri!.Host, uri.Port, GetSecureSocketOptions (uri), false);
 		}
 
 		/// <summary>
@@ -2384,6 +2368,7 @@ namespace MailKit.Net.Smtp {
 			}
 		}
 
+		[MemberNotNull (nameof (Stream), nameof (uri))]
 		FormatOptions Prepare (FormatOptions options, MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, out SmtpExtensions extensions)
 		{
 			CheckDisposed ();
@@ -2413,10 +2398,30 @@ namespace MailKit.Net.Smtp {
 			Prepare (format, message, constraint, MaxLineLength);
 
 			// figure out which SMTP extensions we need to use
-			var visitor = new ContentTransferEncodingVisitor (capabilities);
-			visitor.Visit (message);
+			extensions = SmtpExtensions.None;
 
-			extensions = visitor.SmtpExtensions;
+			using (var iter = new MimeIterator (message)) {
+				while (iter.MoveNext ()) {
+					if (iter.Current is MimePart part) {
+						if (part.ContentTransferEncoding == ContentEncoding.EightBit) {
+							if ((capabilities & SmtpCapabilities.EightBitMime) != 0) {
+								extensions |= SmtpExtensions.EightBitMime;
+
+								if ((capabilities & SmtpCapabilities.BinaryMime) == 0) {
+									// BINARYMIME is not supported, so there's no sense in continuing to scan more MimeParts.
+									break;
+								}
+							}
+						} else if (part.ContentTransferEncoding == ContentEncoding.Binary) {
+							if ((capabilities & SmtpCapabilities.BinaryMime) != 0) {
+								// Once we've decided we require BINARYMIME, no sense continuing to check for 8BITMIME.
+								extensions |= SmtpExtensions.BinaryMime;
+								break;
+							}
+						}
+					}
+				}
+			}
 
 			if ((Capabilities & SmtpCapabilities.UTF8) != 0 && (format.International || sender.IsInternational || recipients.Any (x => x.IsInternational)))
 				extensions |= SmtpExtensions.UTF8;
@@ -2430,7 +2435,7 @@ namespace MailKit.Net.Smtp {
 			return (extensions & SmtpExtensions.BinaryMime) != 0 || (PreferSendAsBinaryData && (Capabilities & (SmtpCapabilities.BinaryMime | SmtpCapabilities.Chunking)) != 0);
 		}
 
-		string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, CancellationToken cancellationToken, ITransferProgress progress)
+		string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IList<MailboxAddress> recipients, CancellationToken cancellationToken, ITransferProgress? progress)
 		{
 			var format = Prepare (options, message, sender, recipients, out var extensions);
 			var pipeline = (capabilities & SmtpCapabilities.Pipelining) != 0;
@@ -2509,11 +2514,13 @@ namespace MailKit.Net.Smtp {
 			if (message == null)
 				throw new ArgumentNullException (nameof (message));
 
-			recipients = GetMessageRecipients (message);
-			sender = GetMessageSender (message);
+			var mailbox = GetMessageSender (message);
 
-			if (sender == null)
+			if (mailbox == null)
 				throw new InvalidOperationException ("No sender has been specified.");
+
+			sender = mailbox;
+			recipients = GetMessageRecipients (message);
 
 			if (recipients.Count == 0)
 				throw new InvalidOperationException ("No recipients have been specified.");
@@ -2540,9 +2547,9 @@ namespace MailKit.Net.Smtp {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="SmtpClient"/> has been disposed.
@@ -2573,7 +2580,7 @@ namespace MailKit.Net.Smtp {
 		/// <exception cref="SmtpProtocolException">
 		/// An SMTP protocol exception occurred.
 		/// </exception>
-		public override string Send (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress progress = null)
+		public override string Send (FormatOptions options, MimeMessage message, CancellationToken cancellationToken = default, ITransferProgress? progress = null)
 		{
 			ValidateArguments (options, message, out var sender, out var recipients);
 
@@ -2619,13 +2626,13 @@ namespace MailKit.Net.Smtp {
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <param name="progress">The progress reporting mechanism.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para><paramref name="options"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para><paramref name="message"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="sender"/> is <c>null</c>.</para>
+		/// <para><paramref name="sender"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="recipients"/> is <c>null</c>.</para>
+		/// <para><paramref name="recipients"/> is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
 		/// The <see cref="SmtpClient"/> has been disposed.
@@ -2656,14 +2663,14 @@ namespace MailKit.Net.Smtp {
 		/// <exception cref="SmtpProtocolException">
 		/// An SMTP protocol exception occurred.
 		/// </exception>
-		public override string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress progress = null)
+		public override string Send (FormatOptions options, MimeMessage message, MailboxAddress sender, IEnumerable<MailboxAddress> recipients, CancellationToken cancellationToken = default, ITransferProgress? progress = null)
 		{
 			var rcpts = ValidateArguments (options, message, sender, recipients);
 
 			return Send (options, message, sender, rcpts, cancellationToken, progress);
 		}
 
-#endregion
+		#endregion
 
 		string CreateExpandCommand (string alias)
 		{
@@ -2713,7 +2720,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="alias">The mailing address alias.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="alias"/> is <c>null</c>.
+		/// <paramref name="alias"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="alias"/> is an empty string.
@@ -2787,7 +2794,7 @@ namespace MailKit.Net.Smtp {
 		/// <param name="address">The mailbox address.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="address"/> is <c>null</c>.
+		/// <paramref name="address"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="address"/> is an empty string.
@@ -2828,8 +2835,8 @@ namespace MailKit.Net.Smtp {
 		/// Releases the unmanaged resources used by the <see cref="SmtpClient"/> and
 		/// optionally releases the managed resources.
 		/// </remarks>
-		/// <param name="disposing"><c>true</c> to release both managed and unmanaged resources;
-		/// <c>false</c> to release only the unmanaged resources.</param>
+		/// <param name="disposing"><see langword="true" /> to release both managed and unmanaged resources;
+		/// <see langword="false" /> to release only the unmanaged resources.</param>
 		protected override void Dispose (bool disposing)
 		{
 			if (disposing && !disposed) {

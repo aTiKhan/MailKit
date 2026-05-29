@@ -6,6 +6,7 @@
 
 * [Are MimeKit and MailKit completely free? Can I use them in my proprietary product(s)?](#completely-free)
 * [Why do I get `NotSupportedException: No data is available for encoding ######. For information on defining a custom encoding, see the documentation for the Encoding.RegisterProvider method.`?](#register-provider)
+* [Why does text show up garbled in my ASP.NET Core / .NET Core / .NET 5+ app?](#garbled-text)
 * [Why do I get a `TypeLoadException` when I try to create a new MimeMessage?](#type-load-exception)
 * [Why do I get `"MailKit.Security.SslHandshakeException: An error occurred while attempting to establish an SSL or TLS connection."` when I try to Connect?](#ssl-handshake-exception)
 * [How can I get a protocol log for IMAP, POP3, or SMTP to see what is going wrong?](#protocol-log)
@@ -23,11 +24,10 @@
 * [How can I save messages?](#save-messages)
 * [How can I save attachments?](#save-attachments)
 * [How can I get the email addresses in the From, To, and Cc headers?](#address-headers)
-* [Why do attachments with unicode filenames appear as "ATT0####.dat" in Outlook?](#untitled-attachments)
-* [How can I decrypt PGP messages that are embedded in the main message text?](#decyrpt-inline-pgp)
+* [Why do attachments with Unicode filenames appear as "ATT0####.dat" in Outlook?](#untitled-attachments)
+* [How can I decrypt PGP messages that are embedded in the main message text?](#decrypt-inline-pgp)
 * [How can I reply to a message?](#reply-message)
 * [How can I forward a message?](#forward-message)
-* [Why does text show up garbled in my ASP.NET Core / .NET Core / .NET 5 app?](#garbled-text)
 
 ### ImapClient
 
@@ -59,13 +59,29 @@ Yes. MimeKit and MailKit are both completely free and open source. They are both
 In .NET Core, Microsoft decided to split out the non-Unicode text encodings into a separate NuGet package called
 [System.Text.Encoding.CodePages](https://www.nuget.org/packages/System.Text.Encoding.CodePages).
 
-MimeKit already pulls in a reference to this NuGet package, so you shsouldn't need to add a reference to it in
+MimeKit already pulls in a reference to this NuGet package, so you shouldn't need to add a reference to it in
 your project. That said, you will still need to register the encoding provider. It is recommended that you add
 the following line of code to your program initialization (e.g. the beginning of your program's Main() method):
 
 ```csharp
 System.Text.Encoding.RegisterProvider (System.Text.CodePagesEncodingProvider.Instance);
 ```
+
+### <a id="garbled-text">Q: Why does text show up garbled in my ASP.NET Core / .NET Core / .NET 5+ app?</a>
+
+.NET Core (and ASP.NET Core by extension) and .NET 5 (and later) only provide the Unicode encodings, ASCII and ISO-8859-1 by default.
+Other text encodings are not available to your application unless your application
+[registers](https://docs.microsoft.com/en-us/dotnet/api/system.text.encoding.registerprovider?view=net-5.0) the encoding
+provider that provides all of the additional encodings.
+
+First, add a package reference for the [System.Text.Encoding.CodePages](https://www.nuget.org/packages/System.Text.Encoding.CodePages)
+nuget package to your project and then register the additional text encodings using the following code snippet:
+
+```csharp
+System.Text.Encoding.RegisterProvider (System.Text.CodePagesEncodingProvider.Instance);
+```
+
+Note: The above code snippet should be safe to call in .NET Framework versions >= 4.6 as well.
 
 ### <a name="type-load-exception">Q: Why do I get a `TypeLoadException` when I try to create a new MimeMessage?</a>
 
@@ -193,7 +209,7 @@ bool MyServerCertificateValidationCallback (object sender, X509Certificate certi
 ```
 
 The downside of the above example is that it requires hard-coding known values for "trusted" mail server
-certificates which can quickly become unweildy to deal with if your program is meant to be used with
+certificates which can quickly become unwieldy to deal with if your program is meant to be used with
 a wide range of mail servers.
 
 The best approach would be to prompt the user with a dialog explaining that the certificate is
@@ -287,11 +303,35 @@ intended to behave according to their protocol specifications, you'll need to lo
 GMail account via your web browser and navigate to the `Forwarding and POP/IMAP` tab of your
 GMail Settings page and set your options to look like this:
 
-![GMail POP3 and IMAP Settings](https://content.screencast.com/users/jeff.xamarin/folders/Jing/media/7d50dada-6cb0-4ab1-b117-8600fb5e07d4/00000022.png "GMail POP3 and IMAP Settings")
+![GMail POP3 and IMAP Settings](Documentation/media/gmail-imap-pop3-settings.png "GMail POP3 and IMAP Settings")
+
+#### POP download:
+
+**1. Status:** POP is enabled for all mail that has arrived since 12/31/69
+- [X] Enable POP for **all mail** (even mail that's already been downloaded)
+- [ ] Enable POP for **mail that arrives from now on**
+- [ ] **Disable** POP
+
+**2. When messages are accessed with POP** \[keep GMail's copy in the Inbox]
+
+#### IMAP access:
+
+**When I mark a message in IMAP as deleted:**
+- [ ] Auto-Expunge on - Immediately update the server. (default)
+- [X] Auto-Expunge off - Wait for the client to update the server.
+
+**When a message is marked as deleted and expunged from the last visible IMAP folder:**
+- [ ] Archive the message (default)
+- [ ] Move the message to the Trash
+- [X] Immediately delete the message forever
+
+**Folder size limits**
+- [X] Do not limit the number of messages in an IMAP folder (default)
+- [ ] Limit IMAP folders to contain no more than this many messages \[1000]
 
 ### <a id="gmail-access">Q: How can I access GMail using MailKit?</a>
 
-As of the end of May, 2022, Google no longer allows enabling "Less secure apps".
+As of September 30th, 2024, authentication using only a username and password is [no longer supported by Google](https://support.google.com/accounts/answer/6010255?hl=en).
 
 There are now only 2 options to choose from:
 
@@ -307,7 +347,7 @@ code snippet to connect to GMail via IMAP:
 ```csharp
 using (var client = new ImapClient ()) {
     client.Connect ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
-    client.Authenticate ("user@gmail.com", "password");
+    client.Authenticate ("user@gmail.com", "app-specific-password");
 
     // do stuff...
 
@@ -342,17 +382,20 @@ var codeFlow = new GoogleAuthorizationCodeFlow (new GoogleAuthorizationCodeFlow.
     // Cache tokens in ~/.local/share/google-filedatastore/CredentialCacheFolder on Linux/Mac
     DataStore = new FileDataStore ("CredentialCacheFolder", false),
     Scopes = new [] { "https://mail.google.com/" },
-    ClientSecrets = clientSecrets
+    ClientSecrets = clientSecrets,
+    LoginHint = GMailAccount
 });
 
+// Note: For a web app, you'll want to use AuthorizationCodeWebApp instead.
 var codeReceiver = new LocalServerCodeReceiver ();
 var authCode = new AuthorizationCodeInstalledApp (codeFlow, codeReceiver);
+
 var credential = await authCode.AuthorizeAsync (GMailAccount, CancellationToken.None);
 
-if (credential.Token.IsExpired (SystemClock.Default))
+if (credential.Token.IsStale)
     await credential.RefreshTokenAsync (CancellationToken.None);
 
-var oauth2 = new SaslMechanismOAuth2 (credential.UserId, credential.Token.AccessToken);
+var oauth2 = new SaslMechanismOAuthBearer (credential.UserId, credential.Token.AccessToken);
 
 using (var client = new ImapClient ()) {
     await client.ConnectAsync ("imap.gmail.com", 993, SecureSocketOptions.SslOnConnect);
@@ -925,6 +968,12 @@ If you are iterating over all of the attachments in a message, you might do some
 foreach (var attachment in message.Attachments) {
     var fileName = attachment.ContentDisposition?.FileName ?? attachment.ContentType.Name;
 
+    if (string.IsNullOrEmpty (fileName))
+        fileName = "untitled.dat";
+
+    // make sure that the filename value does not contain a full path or invalid path characters
+    fileName = Path.GetFileName (fileName);
+
     using (var stream = File.Create (fileName)) {
         if (attachment is MessagePart) {
             var rfc822 = (MessagePart) attachment;
@@ -997,7 +1046,7 @@ foreach (var mailbox in message.To.Mailboxes)
     Console.WriteLine ("{0}'s email address is {1}", mailbox.Name, mailbox.Address);
 ```
 
-### <a id="untitled-attachments">Q: Why do attachments with unicode filenames appear as "ATT0####.dat" in Outlook?</a>
+### <a id="untitled-attachments">Q: Why do attachments with Unicode filenames appear as "ATT0####.dat" in Outlook?</a>
 
 An attachment filename is stored as a MIME parameter on the `Content-Disposition` header. Unfortunately,
 the original MIME specifications did not specify a method for encoding non-ASCII filenames. In 1997,
@@ -1031,7 +1080,7 @@ foreach (var param in attachment.ContentDisposition.Parameters) {
 }
 ```
 
-### <a id="decyrpt-inline-pgp">Q: How can I decrypt PGP messages that are embedded in the main message text?</a>
+### <a id="decrypt-inline-pgp">Q: How can I decrypt PGP messages that are embedded in the main message text?</a>
 
 Some PGP-enabled mail clients, such as Thunderbird, embed encrypted PGP blurbs within the `text/plain` body
 of the message rather than using the PGP/MIME format that MimeKit prefers.
@@ -1088,7 +1137,7 @@ public Stream GetDecryptedStream (Stream encryptedData)
 ```
 
 The first variant is useful in cases where the encrypted PGP blurb is also digitally signed, allowing you to get
-your hands on the list of digitial signatures in order for you to verify each of them.
+your hands on the list of digital signatures in order for you to verify each of them.
 
 To decrypt the content of the message, you'll want to locate the `TextPart` (in this case, it'll just be
 `message.Body`) and then do this:
@@ -1530,22 +1579,6 @@ public static MimeMessage Forward (MimeMessage original, MailboxAddress from, IE
 
 Keep in mind that not all messages will have a `TextBody` available, so you'll have to find a way to handle those cases.
 
-### <a id="garbled-text">Q: Why does text show up garbled in my ASP.NET Core / .NET Core / .NET 5 app?</a>
-
-.NET Core (and ASP.NET Core by extension) and .NET 5 only provide the Unicode encodings, ASCII and ISO-8859-1 by default.
-Other text encodings are not available to your application unless your application
-[registers](https://docs.microsoft.com/en-us/dotnet/api/system.text.encoding.registerprovider?view=net-5.0) the encoding
-provider that provides all of the additional encodings.
-
-First, add a package reference for the [System.Text.Encoding.CodePages](https://www.nuget.org/packages/System.Text.Encoding.CodePages)
-nuget package to your project and then register the additional text encodings using the following code snippet:
-
-```csharp
-System.Text.Encoding.RegisterProvider (System.Text.CodePagesEncodingProvider.Instance);
-```
-
-Note: The above code snippet should be safe to call in .NET Framework versions >= 4.6 as well.
-
 ## ImapClient
 
 ### <a id="imap-unread-count">Q: How can I get the number of unread messages in a folder?</a>
@@ -1671,7 +1704,7 @@ folder.RemoveFlags (uids, MessageFlags.Seen, true);
 
 ### <a id="imap-folder-resync">Q: How can I re-synchronize the cache for an IMAP folder?</a>
 
-Assuming your IMAP server does not support the `QRESYNC` extension (which simplifies this proceedure a ton),
+Assuming your IMAP server does not support the `QRESYNC` extension (which simplifies this procedure a ton),
 here is some simple code to illustrate how to go about re-synchronizing your cache with the remote IMAP
 server.
 

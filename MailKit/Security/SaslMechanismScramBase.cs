@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,10 +50,10 @@ namespace MailKit.Security {
 
 		ChannelBindingKind channelBindingKind;
 		bool negotiatedChannelBinding;
-		byte[] channelBindingToken;
-		internal string cnonce;
-		string client, server;
-		byte[] salted, auth;
+		byte[]? channelBindingToken;
+		internal string? cnonce;
+		string? client, server;
+		byte[]? salted, auth;
 		LoginState state;
 
 		/// <summary>
@@ -64,7 +64,7 @@ namespace MailKit.Security {
 		/// </remarks>
 		/// <param name="credentials">The user's credentials.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="credentials"/> is <c>null</c>.
+		/// <paramref name="credentials"/> is <see langword="null" />.
 		/// </exception>
 		protected SaslMechanismScramBase (NetworkCredential credentials) : base (credentials)
 		{
@@ -79,9 +79,9 @@ namespace MailKit.Security {
 		/// <param name="userName">The user name.</param>
 		/// <param name="password">The password.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
+		/// <para><paramref name="userName"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
+		/// <para><paramref name="password"/> is <see langword="null" />.</para>
 		/// </exception>
 		protected SaslMechanismScramBase (string userName, string password) : base (userName, password)
 		{
@@ -95,7 +95,7 @@ namespace MailKit.Security {
 		/// for all accesses. This is separate from the user name used for authentication.
 		/// </remarks>
 		/// <value>The authorization identifier.</value>
-		public string AuthorizationId {
+		public string? AuthorizationId {
 			get; set;
 		}
 
@@ -105,9 +105,9 @@ namespace MailKit.Security {
 		/// <remarks>
 		/// <para>Get whether or not the mechanism supports an initial response (SASL-IR).</para>
 		/// <para>SASL mechanisms that support sending an initial client response to the server
-		/// should return <value>true</value>.</para>
+		/// should return <see langword="true" />.</para>
 		/// </remarks>
-		/// <value><c>true</c> if the mechanism supports an initial response; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the mechanism supports an initial response; otherwise, <see langword="false" />.</value>
 		public override bool SupportsInitialResponse {
 			get { return true; }
 		}
@@ -120,7 +120,7 @@ namespace MailKit.Security {
 		/// <note type="note">Some SASL mechanisms, such as SCRAM-SHA1-PLUS and NTLM, are able to negotiate
 		/// channel-bindings.</note>
 		/// </remarks>
-		/// <value><c>true</c> if channel-binding was negotiated; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if channel-binding was negotiated; otherwise, <see langword="false" />.</value>
 		public override bool NegotiatedChannelBinding {
 			get { return negotiatedChannelBinding; }
 		}
@@ -263,7 +263,7 @@ namespace MailKit.Security {
 			return kind == ChannelBindingKind.Endpoint ? "tls-server-end-point" : "tls-unique";
 		}
 
-		static string GetChannelBindingInput (ChannelBindingKind kind, string authzid)
+		static string GetChannelBindingInput (ChannelBindingKind kind, string? authzid)
 		{
 			string flag;
 
@@ -273,8 +273,7 @@ namespace MailKit.Security {
 				flag = "n";
 			}
 
-			if (string.IsNullOrEmpty (authzid))
-				authzid = string.Empty;
+			authzid ??= string.Empty;
 
 			return flag + "," + Normalize (authzid) + ",";
 		}
@@ -299,7 +298,7 @@ namespace MailKit.Security {
 		/// <exception cref="SaslException">
 		/// An error has occurred while parsing the server's challenge token.
 		/// </exception>
-		protected override byte[] Challenge (byte[] token, int startIndex, int length, CancellationToken cancellationToken)
+		protected override byte[]? Challenge (byte[]? token, int startIndex, int length, CancellationToken cancellationToken)
 		{
 			if (IsAuthenticated)
 				return null;
@@ -334,9 +333,12 @@ namespace MailKit.Security {
 				state = LoginState.Final;
 				break;
 			case LoginState.Final:
+				if (token == null)
+					throw new SaslException (MechanismName, SaslErrorCode.MissingChallenge, "Server response did not contain any authentication data.");
+
 				server = Encoding.UTF8.GetString (token, startIndex, length);
 				var tokens = ParseServerChallenge (server);
-				string salt, nonce, iterations;
+				string? salt, nonce, iterations;
 				int count;
 
 				if (!tokens.TryGetValue ('s', out salt))
@@ -348,7 +350,7 @@ namespace MailKit.Security {
 				if (!tokens.TryGetValue ('i', out iterations))
 					throw new SaslException (MechanismName, SaslErrorCode.IncompleteChallenge, "Challenge did not contain an iteration count.");
 
-				if (!nonce.StartsWith (cnonce, StringComparison.Ordinal))
+				if (!nonce.StartsWith (cnonce!, StringComparison.Ordinal))
 					throw new SaslException (MechanismName, SaslErrorCode.InvalidChallenge, "Challenge contained an invalid nonce.");
 
 				if (!int.TryParse (iterations, NumberStyles.None, CultureInfo.InvariantCulture, out count) || count < 1)
@@ -362,7 +364,7 @@ namespace MailKit.Security {
 				var inputBuffer = Encoding.ASCII.GetBytes (input);
 				string base64;
 
-				if (SupportsChannelBinding && channelBindingKind != ChannelBindingKind.Unknown) {
+				if (SupportsChannelBinding && channelBindingToken != null) {
 					var binding = new byte[inputBuffer.Length + channelBindingToken.Length];
 
 					Buffer.BlockCopy (inputBuffer, 0, binding, 0, inputBuffer.Length);
@@ -389,14 +391,17 @@ namespace MailKit.Security {
 				state = LoginState.Validate;
 				break;
 			case LoginState.Validate:
+				if (token == null)
+					throw new SaslException (MechanismName, SaslErrorCode.MissingChallenge, "Server response did not contain any authentication data.");
+
 				var challenge = Encoding.UTF8.GetString (token, startIndex, length);
 
 				if (!challenge.StartsWith ("v=", StringComparison.Ordinal))
 					throw new SaslException (MechanismName, SaslErrorCode.InvalidChallenge, "Challenge did not start with a signature.");
 
 				signature = Convert.FromBase64String (challenge.Substring (2));
-				var serverKey = HMAC (salted, Encoding.ASCII.GetBytes ("Server Key"));
-				var calculated = HMAC (serverKey, auth);
+				var serverKey = HMAC (salted!, Encoding.ASCII.GetBytes ("Server Key"));
+				var calculated = HMAC (serverKey, auth!);
 
 				if (signature.Length != calculated.Length)
 					throw new SaslException (MechanismName, SaslErrorCode.IncorrectHash, "Challenge contained a signature with an invalid length.");

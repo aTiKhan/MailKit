@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,12 @@ namespace UnitTests.Security {
 		{
 			data = channelBindingData;
 			supportedKind = kind;
+		}
+
+		public bool TryGetChannelBinding (ChannelBindingKind kind, out ChannelBinding channelBinding)
+		{
+			channelBinding = null;
+			return false;
 		}
 
 		public bool TryGetChannelBindingToken (ChannelBindingKind kind, out byte[] token)

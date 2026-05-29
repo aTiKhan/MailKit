@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -319,8 +319,8 @@ namespace UnitTests.Net.Imap {
 				stream.Stream.Position = 0;
 
 				var token = stream.ReadToken (CancellationToken.None);
-				Assert.That (token.Type, Is.EqualTo (ImapTokenType.Plus));
-				Assert.That (token.ToString (), Is.EqualTo ("'+'"));
+				Assert.That (token.Type, Is.EqualTo (ImapTokenType.Atom));
+				Assert.That (token.ToString (), Is.EqualTo ("+"));
 			}
 		}
 
@@ -334,8 +334,8 @@ namespace UnitTests.Net.Imap {
 				stream.Stream.Position = 0;
 
 				var token = await stream.ReadTokenAsync (CancellationToken.None);
-				Assert.That (token.Type, Is.EqualTo (ImapTokenType.Plus));
-				Assert.That (token.ToString (), Is.EqualTo ("'+'"));
+				Assert.That (token.Type, Is.EqualTo (ImapTokenType.Atom));
+				Assert.That (token.ToString (), Is.EqualTo ("+"));
 			}
 		}
 

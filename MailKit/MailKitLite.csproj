@@ -3,15 +3,15 @@
   <PropertyGroup>
     <Description>An Open Source cross-platform .NET mail-client library that is based on MimeKit and optimized for mobile devices.</Description>
     <AssemblyTitle>MailKit</AssemblyTitle>
-    <VersionPrefix>4.8.0</VersionPrefix>
+    <VersionPrefix>4.17.0</VersionPrefix>
     <Authors>Jeffrey Stedfast</Authors>
     <LangVersion>10</LangVersion>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net462;net47;net48;net6.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net462;net47;net48;net8.0;net10.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <AssemblyName>MailKitLite</AssemblyName>
     <PackageId>MailKitLite</PackageId>
-    <PackageTags>smtp;pop3;imap;mime;security;dkim;smime;s/mime;openpgp;pgp;mbox;mail;email;parser;tnef;net462;net47;net48;net6.0;net8.0;netstandard;netstandard2.0;netstandard2.1</PackageTags>
+    <PackageTags>smtp;pop3;imap;mime;security;dkim;smime;s/mime;openpgp;pgp;mbox;mail;email;parser;tnef</PackageTags>
     <PackageProjectUrl>https://github.com/jstedfast/MailKit</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/jstedfast/MailKit/blob/master/License.md</PackageLicenseUrl>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
@@ -24,6 +24,7 @@
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
     <RootNamespace>MailKit</RootNamespace>
+    <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyOriginatorKeyFile>mailkit.snk</AssemblyOriginatorKeyFile>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
@@ -46,22 +47,25 @@
     <DebugType>full</DebugType>
   </PropertyGroup>
 
-  <!-- Enable serializable support for net4.x and net6.0 -->
-  <PropertyGroup Condition=" $(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('net6')) ">
+  <!-- Enable serializable support for net4.x -->
+  <PropertyGroup Condition=" $(TargetFramework.StartsWith('net4')) ">
     <DefineConstants>$(DefineConstants);SERIALIZABLE</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
+  </PropertyGroup>
+
   <ItemGroup Condition=" $(TargetFramework.StartsWith('net4')) Or '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="System.Formats.Asn1" Version="8.0.1" />
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
+  <ItemGroup Condition=" $(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('netstandard')) Or '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="System.Formats.Asn1" Version="8.0.1" />
   </ItemGroup>
 
-  <ItemGroup Condition=" $(TargetFramework.StartsWith('net4')) Or $(TargetFramework.StartsWith('netstandard2.')) ">
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net10.0' ">
+    <PackageReference Include="System.Formats.Asn1" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -83,6 +87,7 @@
     <Compile Include="Net\Imap\ImapCommand.cs" />
     <Compile Include="Net\Imap\ImapCommandException.cs" />
     <Compile Include="Net\Imap\ImapCommandResponse.cs" />
+    <Compile Include="Net\Imap\ImapCommandStatus.cs" />
     <Compile Include="Net\Imap\ImapEncoding.cs" />
     <Compile Include="Net\Imap\ImapEngine.cs" />
     <Compile Include="Net\Imap\ImapEventGroup.cs" />
@@ -92,7 +97,9 @@
     <Compile Include="Net\Imap\ImapFolderFetch.cs" />
     <Compile Include="Net\Imap\ImapFolderFlags.cs" />
     <Compile Include="Net\Imap\ImapFolderSearch.cs" />
+    <Compile Include="Net\Imap\ImapIdleContext.cs" />
     <Compile Include="Net\Imap\ImapImplementation.cs" />
+    <Compile Include="Net\Imap\ImapLiteral.cs" />
     <Compile Include="Net\Imap\ImapProtocolException.cs" />
     <Compile Include="Net\Imap\ImapResponseCode.cs" />
     <Compile Include="Net\Imap\ImapSearchQueryOptimizer.cs" />
@@ -133,12 +140,12 @@
     <Compile Include="Net\Smtp\SmtpStatusCode.cs" />
     <Compile Include="Net\Smtp\SmtpStream.cs" />
     <Compile Include="Net\ClientMetrics.cs" />
+    <Compile Include="Net\ExtendedSslStream.cs" />
     <Compile Include="Net\IChannelBindingContext.cs" />
     <Compile Include="Net\NetworkOperation.cs" />
     <Compile Include="Net\NetworkStream.cs" />
     <Compile Include="Net\SocketMetrics.cs" />
     <Compile Include="Net\SocketUtils.cs" />
-    <Compile Include="Net\SslStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Search\AnnotationSearchQuery.cs" />
     <Compile Include="Search\BinarySearchQuery.cs" />
@@ -179,8 +186,11 @@
     <Compile Include="Security\SaslMechanismAnonymous.cs" />
     <Compile Include="Security\SaslMechanismCramMd5.cs" />
     <Compile Include="Security\SaslMechanismDigestMd5.cs" />
+    <Compile Include="Security\SaslMechanismGssapi.cs" />
     <Compile Include="Security\SaslMechanismLogin.cs" />
+    <Compile Include="Security\SaslMechanismNegotiateBase.cs" />
     <Compile Include="Security\SaslMechanismNtlm.cs" />
+    <Compile Include="Security\SaslMechanismNtlmNative.cs" />
     <Compile Include="Security\SaslMechanismOAuth2.cs" />
     <Compile Include="Security\SaslMechanismOAuthBearer.cs" />
     <Compile Include="Security\SaslMechanismPlain.cs" />

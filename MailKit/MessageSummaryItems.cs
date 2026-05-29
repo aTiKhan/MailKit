@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,7 @@ namespace MailKit {
 
 		/// <summary>
 		/// <para>Fetch the <see cref="IMessageSummary.Annotations"/>.</para>
-		/// <para>Fetches all <c>ANNOATION</c> values as defined in
+		/// <para>Fetches all <c>ANNOTATION</c> values as defined in
 		/// <a href="https://tools.ietf.org/html/rfc5257">rfc5257</a>.</para>
 		/// </summary>
 		Annotations    = 1 << 0,

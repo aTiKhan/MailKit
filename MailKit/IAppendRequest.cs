@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ namespace MailKit {
 		/// Gets or sets the keywords that should be set on the message.
 		/// </remarks>
 		/// <value>The keywords.</value>
-		ISet<string> Keywords { get; set; }
+		ISet<string>? Keywords { get; set; }
 
 		/// <summary>
 		/// Get or set the timestamp that should be used by folder as the <see cref="MessageSummaryItems.InternalDate"/>.
@@ -71,7 +71,7 @@ namespace MailKit {
 		/// <remarks>
 		/// Gets or sets the timestamp that should be used by folder as the <see cref="MessageSummaryItems.InternalDate"/>.
 		/// </remarks>
-		/// <value>The date and time to use for the INTERNALDATE or <c>null</c> if it should be left up to the folder to decide.</value>
+		/// <value>The date and time to use for the INTERNALDATE or <see langword="null" /> if it should be left up to the folder to decide.</value>
 		DateTimeOffset? InternalDate { get; set; }
 
 		/// <summary>
@@ -86,7 +86,7 @@ namespace MailKit {
 		/// </note>
 		/// </remarks>
 		/// <value>The list of annotations.</value>
-		IList<Annotation> Annotations { get; set; }
+		IList<Annotation>? Annotations { get; set; }
 
 		/// <summary>
 		/// Get or set the transfer progress reporting mechanism.
@@ -95,6 +95,6 @@ namespace MailKit {
 		/// Gets or sets the transfer progress reporting mechanism.
 		/// </remarks>
 		/// <value>The transfer progress mechanism.</value>
-		ITransferProgress TransferProgress { get; set; }
+		ITransferProgress? TransferProgress { get; set; }
 	}
 }

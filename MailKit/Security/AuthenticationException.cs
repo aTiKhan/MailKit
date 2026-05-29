@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,12 +46,12 @@ namespace MailKit.Security {
 		/// Initializes a new instance of the <see cref="AuthenticationException"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="AuthenticationException"/> from the seriaized data.
+		/// Creates a new <see cref="AuthenticationException"/> from the serialized data.
 		/// </remarks>
 		/// <param name="info">The serialization info.</param>
 		/// <param name="context">The streaming context.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="info"/> is <c>null</c>.
+		/// <paramref name="info"/> is <see langword="null" />.
 		/// </exception>
 		[Obsolete ("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
 		protected AuthenticationException (SerializationInfo info, StreamingContext context) : base (info, context)

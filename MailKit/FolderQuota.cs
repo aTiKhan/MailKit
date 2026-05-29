@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ namespace MailKit {
 		/// Creates a new <see cref="FolderQuota"/> with the specified root.
 		/// </remarks>
 		/// <param name="quotaRoot">The quota root.</param>
-		public FolderQuota (IMailFolder quotaRoot)
+		public FolderQuota (IMailFolder? quotaRoot)
 		{
 			QuotaRoot = quotaRoot;
 		}
@@ -52,14 +52,14 @@ namespace MailKit {
 		/// Get the quota root.
 		/// </summary>
 		/// <remarks>
-		/// Gets the quota root. If the quota root is <c>null</c>, then
+		/// Gets the quota root. If the quota root is <see langword="null" />, then
 		/// it suggests that the folder does not have a quota.
 		/// </remarks>
 		/// <example>
 		/// <code language="c#" source="Examples\ImapExamples.cs" region="Capabilities"/>
 		/// </example>
 		/// <value>The quota root.</value>
-		public IMailFolder QuotaRoot {
+		public IMailFolder? QuotaRoot {
 			get; private set;
 		}
 

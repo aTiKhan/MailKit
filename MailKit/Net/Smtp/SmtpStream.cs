@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,13 +29,9 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Net.Sockets;
-using System.Net.Security;
 using System.Threading.Tasks;
 
 using MimeKit.IO;
-
-using Buffer = System.Buffer;
-using NetworkStream = MailKit.Net.NetworkStream;
 
 namespace MailKit.Net.Smtp {
 	/// <summary>
@@ -56,7 +52,7 @@ namespace MailKit.Net.Smtp {
 
 		readonly IProtocolLogger logger;
 		int inputIndex, inputEnd;
-		string lastResponse;
+		string? lastResponse;
 		bool disposed;
 
 		/// <summary>
@@ -75,14 +71,23 @@ namespace MailKit.Net.Smtp {
 		}
 
 		/// <summary>
-		/// Get or sets the underlying network stream.
+		/// Get the underlying network stream.
 		/// </summary>
 		/// <remarks>
-		/// Gets or sets the underlying network stream.
+		/// Gets the underlying network stream.
 		/// </remarks>
 		/// <value>The underlying network stream.</value>
 		public Stream Stream {
-			get; internal set;
+			get; private set;
+		}
+
+		internal void SetStream (Stream stream)
+		{
+			Stream = stream;
+
+			// reset internal buffering
+			inputIndex = 0;
+			inputEnd = 0;
 		}
 
 		/// <summary>
@@ -91,7 +96,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether or not the stream is connected.
 		/// </remarks>
-		/// <value><c>true</c> if the stream is connected; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream is connected; otherwise, <see langword="false" />.</value>
 		public bool IsConnected {
 			get; private set;
 		}
@@ -102,7 +107,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether the stream supports reading.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports reading; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports reading; otherwise, <see langword="false" />.</value>
 		public override bool CanRead {
 			get { return Stream.CanRead; }
 		}
@@ -113,7 +118,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether the stream supports writing.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports writing; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports writing; otherwise, <see langword="false" />.</value>
 		public override bool CanWrite {
 			get { return Stream.CanWrite; }
 		}
@@ -124,7 +129,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether the stream supports seeking.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports seeking; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports seeking; otherwise, <see langword="false" />.</value>
 		public override bool CanSeek {
 			get { return false; }
 		}
@@ -135,7 +140,7 @@ namespace MailKit.Net.Smtp {
 		/// <remarks>
 		/// Gets whether the stream supports I/O timeouts.
 		/// </remarks>
-		/// <value><c>true</c> if the stream supports I/O timeouts; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports I/O timeouts; otherwise, <see langword="false" />.</value>
 		public override bool CanTimeout {
 			get { return Stream.CanTimeout; }
 		}
@@ -262,8 +267,6 @@ namespace MailKit.Net.Smtp {
 			AlignReadAheadBuffer (out int offset, out int count);
 
 			try {
-				var network = Stream as NetworkStream;
-
 				cancellationToken.ThrowIfCancellationRequested ();
 
 				int nread = await Stream.ReadAsync (input, offset, count, cancellationToken).ConfigureAwait (false);
@@ -320,12 +323,12 @@ namespace MailKit.Net.Smtp {
 		/// <param name="count">The number of bytes to read.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -376,12 +379,12 @@ namespace MailKit.Net.Smtp {
 		/// <param name="offset">The buffer offset.</param>
 		/// <param name="count">The number of bytes to read.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -410,12 +413,12 @@ namespace MailKit.Net.Smtp {
 		/// <param name="count">The number of bytes to read.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -776,12 +779,12 @@ namespace MailKit.Net.Smtp {
 		/// <param name='count'>The number of bytes to write.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -857,12 +860,12 @@ namespace MailKit.Net.Smtp {
 		/// <param name='offset'>The offset of the first byte to write.</param>
 		/// <param name='count'>The number of bytes to write.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -893,12 +896,12 @@ namespace MailKit.Net.Smtp {
 		/// <param name='count'>The number of bytes to write.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -920,7 +923,6 @@ namespace MailKit.Net.Smtp {
 			ValidateArguments (buffer, offset, count);
 
 			try {
-				var network = NetworkStream.Get (Stream);
 				int index = offset;
 				int left = count;
 
@@ -1103,8 +1105,8 @@ namespace MailKit.Net.Smtp {
 		/// Releases the unmanaged resources used by the <see cref="SmtpStream"/> and
 		/// optionally releases the managed resources.
 		/// </remarks>
-		/// <param name="disposing"><c>true</c> to release both managed and unmanaged resources;
-		/// <c>false</c> to release only the unmanaged resources.</param>
+		/// <param name="disposing"><see langword="true" /> to release both managed and unmanaged resources;
+		/// <see langword="false" /> to release only the unmanaged resources.</param>
 		protected override void Dispose (bool disposing)
 		{
 			if (disposing && !disposed) {

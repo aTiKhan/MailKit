@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ namespace MailKit {
 		/// Gets the set of headers that will be fetched.
 		/// </remarks>
 		/// <value>The set of headers to be fetched.</value>
-		HeaderSet Headers { get; }
+		HeaderSet? Headers { get; }
 
 #if ENABLE_LAZY_PREVIEW_API
 		/// <summary>

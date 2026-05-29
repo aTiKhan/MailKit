@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,7 @@ namespace MailKit.Net.Imap {
 		/// <param name="info">The serialization info.</param>
 		/// <param name="context">The streaming context.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="info"/> is <c>null</c>.
+		/// <paramref name="info"/> is <see langword="null" />.
 		/// </exception>
 		[SecuritySafeCritical]
 		[Obsolete ("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
@@ -102,9 +102,37 @@ namespace MailKit.Net.Imap {
 		/// <remarks>
 		/// Gets or sets whether or not this exception was thrown due to an unexpected token.
 		/// </remarks>
-		/// <value><c>true</c> if an unexpected token was encountered; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if an unexpected token was encountered; otherwise, <see langword="false" />.</value>
 		internal bool UnexpectedToken {
 			get; set;
+		}
+
+		/// <summary>
+		/// Create a new <see cref="ImapProtocolException"/> based on the <see cref="ImapCommand"/> state.
+		/// </summary>
+		/// <remarks>
+		/// Create a new <see cref="ImapProtocolException"/> based on the <see cref="ImapCommand"/> state.
+		/// </remarks>
+		/// <returns>A new protocol exception.</returns>
+		/// <param name="ic">The command state.</param>
+		internal static ImapProtocolException Create (ImapCommand ic)
+		{
+			string? message = null;
+
+			if (string.IsNullOrEmpty (ic.ResponseText)) {
+				for (int i = ic.RespCodes.Count - 1; i >= 0; i--) {
+					if (ic.RespCodes[i].IsError && !string.IsNullOrEmpty (ic.RespCodes[i].Message)) {
+						message = ic.RespCodes[i].Message;
+						break;
+					}
+				}
+
+				message ??= string.Empty;
+			} else {
+				message = ic.ResponseText!;
+			}
+
+			return ic.Exception != null ? new ImapProtocolException (message, ic.Exception) : new ImapProtocolException (message);
 		}
 	}
 }

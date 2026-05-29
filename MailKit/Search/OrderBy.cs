@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -88,10 +88,10 @@ namespace MailKit.Search {
 		public static readonly OrderBy Arrival = new OrderBy (OrderByType.Arrival, SortOrder.Ascending);
 
 		/// <summary>
-		/// Sort results by arrival date in desending order.
+		/// Sort results by arrival date in descending order.
 		/// </summary>
 		/// <remarks>
-		/// Sort results by arrival date in desending order.
+		/// Sort results by arrival date in descending order.
 		/// </remarks>
 		public static readonly OrderBy ReverseArrival = new OrderBy (OrderByType.Arrival, SortOrder.Descending);
 

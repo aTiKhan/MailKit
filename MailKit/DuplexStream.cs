@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,9 +43,9 @@ namespace MailKit {
 		/// <param name="istream">The stream to use for input.</param>
 		/// <param name="ostream">The stream to use for output.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="istream"/> is <c>null</c>.</para>
+		/// <para><paramref name="istream"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="ostream"/> is <c>null</c>.</para>
+		/// <para><paramref name="ostream"/> is <see langword="null" />.</para>
 		/// </exception>
 		public DuplexStream (Stream istream, Stream ostream)
 		{
@@ -78,7 +78,7 @@ namespace MailKit {
 		/// <summary>
 		/// Gets whether the stream supports reading.
 		/// </summary>
-		/// <value><c>true</c> if the stream supports reading; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports reading; otherwise, <see langword="false" />.</value>
 		public override bool CanRead {
 			get { return true; }
 		}
@@ -86,7 +86,7 @@ namespace MailKit {
 		/// <summary>
 		/// Gets whether the stream supports writing.
 		/// </summary>
-		/// <value><c>true</c> if the stream supports writing; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports writing; otherwise, <see langword="false" />.</value>
 		public override bool CanWrite {
 			get { return true; }
 		}
@@ -94,7 +94,7 @@ namespace MailKit {
 		/// <summary>
 		/// Gets whether the stream supports seeking.
 		/// </summary>
-		/// <value><c>true</c> if the stream supports seeking; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports seeking; otherwise, <see langword="false" />.</value>
 		public override bool CanSeek {
 			get { return false; }
 		}
@@ -102,15 +102,15 @@ namespace MailKit {
 		/// <summary>
 		/// Gets whether the stream supports I/O timeouts.
 		/// </summary>
-		/// <value><c>true</c> if the stream supports I/O timeouts; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if the stream supports I/O timeouts; otherwise, <see langword="false" />.</value>
 		public override bool CanTimeout {
 			get { return InputStream.CanTimeout && OutputStream.CanTimeout; }
 		}
 
 		/// <summary>
-		/// Gets or sets a value, in miliseconds, that determines how long the stream will attempt to read before timing out.
+		/// Gets or sets a value, in milliseconds, that determines how long the stream will attempt to read before timing out.
 		/// </summary>
-		/// <returns>A value, in miliseconds, that determines how long the stream will attempt to read before timing out.</returns>
+		/// <returns>A value, in milliseconds, that determines how long the stream will attempt to read before timing out.</returns>
 		/// <value>The read timeout.</value>
 		public override int ReadTimeout {
 			get { return InputStream.ReadTimeout; }
@@ -118,9 +118,9 @@ namespace MailKit {
 		}
 
 		/// <summary>
-		/// Gets or sets a value, in miliseconds, that determines how long the stream will attempt to write before timing out.
+		/// Gets or sets a value, in milliseconds, that determines how long the stream will attempt to write before timing out.
 		/// </summary>
-		/// <returns>A value, in miliseconds, that determines how long the stream will attempt to write before timing out.</returns>
+		/// <returns>A value, in milliseconds, that determines how long the stream will attempt to write before timing out.</returns>
 		/// <value>The write timeout.</value>
 		public override int WriteTimeout {
 			get { return OutputStream.WriteTimeout; }
@@ -180,12 +180,12 @@ namespace MailKit {
 		/// <param name="offset">The buffer offset.</param>
 		/// <param name="count">The number of bytes to read.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -214,12 +214,12 @@ namespace MailKit {
 		/// <param name="count">The number of bytes to read.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -245,12 +245,12 @@ namespace MailKit {
 		/// <param name="offset">The offset of the first byte to write.</param>
 		/// <param name="count">The number of bytes to write.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -281,12 +281,12 @@ namespace MailKit {
 		/// <param name="count">The number of bytes to write.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="buffer"/> is <c>null</c>.
+		/// <paramref name="buffer"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <para><paramref name="offset"/> is less than zero or greater than the length of <paramref name="buffer"/>.</para>
 		/// <para>-or-</para>
-		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes strting
+		/// <para>The <paramref name="buffer"/> is not large enough to contain <paramref name="count"/> bytes starting
 		/// at the specified <paramref name="offset"/>.</para>
 		/// </exception>
 		/// <exception cref="System.ObjectDisposedException">
@@ -379,8 +379,8 @@ namespace MailKit {
 		/// Releases the unmanaged resources used by the <see cref="DuplexStream"/> and
 		/// optionally releases the managed resources.
 		/// </summary>
-		/// <param name="disposing"><c>true</c> to release both managed and unmanaged resources;
-		/// <c>false</c> to release only the unmanaged resources.</param>
+		/// <param name="disposing"><see langword="true" /> to release both managed and unmanaged resources;
+		/// <see langword="false" /> to release only the unmanaged resources.</param>
 		protected override void Dispose (bool disposing)
 		{
 			if (disposing && !disposed) {

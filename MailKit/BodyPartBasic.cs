@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,25 @@ namespace MailKit {
 		/// <remarks>
 		/// Creates a new <see cref="BodyPartBasic"/>.
 		/// </remarks>
-		public BodyPartBasic ()
+		[Obsolete ("Use BodyPartBasic (ContentType, string) instead.")]
+		public BodyPartBasic () : base ()
+		{
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="MailKit.BodyPartBasic"/> class.
+		/// </summary>
+		/// <remarks>
+		/// Creates a new <see cref="BodyPartBasic"/>.
+		/// </remarks>
+		/// <param name="contentType">The content type.</param>
+		/// <param name="partSpecifier">The part specifier.</param>
+		/// <exception cref="ArgumentNullException">
+		/// <para><paramref name="contentType"/> is <see langword="null" />.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="partSpecifier"/> is <see langword="null" />.</para>
+		/// </exception>
+		public BodyPartBasic (ContentType contentType, string partSpecifier) : base (contentType, partSpecifier)
 		{
 		}
 
@@ -59,7 +77,7 @@ namespace MailKit {
 		/// Gets the Content-Id of the body part, if available.
 		/// </remarks>
 		/// <value>The content identifier.</value>
-		public string ContentId {
+		public string? ContentId {
 			get; set;
 		}
 
@@ -70,7 +88,7 @@ namespace MailKit {
 		/// Gets the Content-Description of the body part, if available.
 		/// </remarks>
 		/// <value>The content description.</value>
-		public string ContentDescription {
+		public string? ContentDescription {
 			get; set;
 		}
 
@@ -83,7 +101,7 @@ namespace MailKit {
 		/// method to parse this value into a usable <see cref="MimeKit.ContentEncoding"/>.</para>
 		/// </remarks>
 		/// <value>The content transfer encoding.</value>
-		public string ContentTransferEncoding {
+		public string? ContentTransferEncoding {
 			get; set;
 		}
 
@@ -91,7 +109,9 @@ namespace MailKit {
 		/// Gets the size of the body part, in bytes.
 		/// </summary>
 		/// <remarks>
-		/// Gets the size of the body part, in bytes.
+		/// <para>Gets the size of the body part, in bytes.</para>
+		/// <note type="note">Note that this size is the size in its transfer encoding
+		/// and not the resulting size after any decoding.</note>
 		/// </remarks>
 		/// <value>The number of octets.</value>
 		public uint Octets {
@@ -105,7 +125,7 @@ namespace MailKit {
 		/// Gets the MD5 hash of the content, if available.
 		/// </remarks>
 		/// <value>The content md5.</value>
-		public string ContentMd5 {
+		public string? ContentMd5 {
 			get; set;
 		}
 
@@ -119,7 +139,7 @@ namespace MailKit {
 		/// summary information from an <see cref="IMailFolder"/>.</note>
 		/// </remarks>
 		/// <value>The content disposition.</value>
-		public ContentDisposition ContentDisposition {
+		public ContentDisposition? ContentDisposition {
 			get; set;
 		}
 
@@ -133,7 +153,7 @@ namespace MailKit {
 		/// summary information from an <see cref="IMailFolder"/>.</para>
 		/// </remarks>
 		/// <value>The content language.</value>
-		public string[] ContentLanguage {
+		public string[]? ContentLanguage {
 			get; set;
 		}
 
@@ -147,7 +167,7 @@ namespace MailKit {
 		/// summary information from an <see cref="IMailFolder"/>.</para>
 		/// </remarks>
 		/// <value>The content location.</value>
-		public Uri ContentLocation {
+		public Uri? ContentLocation {
 			get; set;
 		}
 
@@ -161,7 +181,7 @@ namespace MailKit {
 		/// is necessary to include the <see cref="MessageSummaryItems.BodyStructure"/> flag when
 		/// fetching summary information from an <see cref="IMailFolder"/>.</note>
 		/// </remarks>
-		/// <value><c>true</c> if this part is an attachment; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if this part is an attachment; otherwise, <see langword="false" />.</value>
 		public bool IsAttachment {
 			get { return ContentDisposition != null && ContentDisposition.IsAttachment; }
 		}
@@ -177,9 +197,9 @@ namespace MailKit {
 		/// fetching summary information from an <see cref="IMailFolder"/>.</note>
 		/// </remarks>
 		/// <value>The name of the file.</value>
-		public string FileName {
+		public string? FileName {
 			get {
-				string filename = null;
+				string? filename = null;
 
 				if (ContentDisposition != null)
 					filename = ContentDisposition.FileName;
@@ -203,7 +223,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <param name="visitor">The visitor.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="visitor"/> is <c>null</c>.
+		/// <paramref name="visitor"/> is <see langword="null" />.
 		/// </exception>
 		public override void Accept (BodyPartVisitor visitor)
 		{

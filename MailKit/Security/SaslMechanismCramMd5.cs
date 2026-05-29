@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -52,7 +52,7 @@ namespace MailKit.Security {
 		/// </remarks>
 		/// <param name="credentials">The user's credentials.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="credentials"/> is <c>null</c>.
+		/// <paramref name="credentials"/> is <see langword="null" />.
 		/// </exception>
 		public SaslMechanismCramMd5 (NetworkCredential credentials) : base (credentials)
 		{
@@ -67,9 +67,9 @@ namespace MailKit.Security {
 		/// <param name="userName">The user name.</param>
 		/// <param name="password">The password.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="userName"/> is <c>null</c>.</para>
+		/// <para><paramref name="userName"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="password"/> is <c>null</c>.</para>
+		/// <para><paramref name="password"/> is <see langword="null" />.</para>
 		/// </exception>
 		public SaslMechanismCramMd5 (string userName, string password) : base (userName, password)
 		{
@@ -106,7 +106,7 @@ namespace MailKit.Security {
 		/// <exception cref="SaslException">
 		/// An error has occurred while parsing the server's challenge token.
 		/// </exception>
-		protected override byte[] Challenge (byte[] token, int startIndex, int length, CancellationToken cancellationToken)
+		protected override byte[]? Challenge (byte[]? token, int startIndex, int length, CancellationToken cancellationToken)
 		{
 			if (token == null)
 				throw new NotSupportedException ("CRAM-MD5 does not support SASL-IR.");
@@ -140,13 +140,13 @@ namespace MailKit.Security {
 			using (var md5 = MD5.Create ()) {
 				md5.TransformBlock (ipad, 0, ipad.Length, null, 0);
 				md5.TransformFinalBlock (token, startIndex, length);
-				digest = md5.Hash;
+				digest = md5.Hash!;
 			}
 
 			using (var md5 = MD5.Create ()) {
 				md5.TransformBlock (opad, 0, opad.Length, null, 0);
 				md5.TransformFinalBlock (digest, 0, digest.Length);
-				digest = md5.Hash;
+				digest = md5.Hash!;
 			}
 
 			var buffer = new byte[userName.Length + 1 + (digest.Length * 2)];

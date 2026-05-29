@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,13 +28,9 @@ using System;
 using System.IO;
 using System.Net;
 using System.Text;
-using System.Buffers;
 using System.Threading;
-using System.Net.Sockets;
 using System.Globalization;
 using System.Threading.Tasks;
-
-using NetworkStream = MailKit.Net.NetworkStream;
 
 namespace MailKit.Net.Proxy
 {
@@ -55,7 +51,7 @@ namespace MailKit.Net.Proxy
 		/// <param name="host">The host name of the proxy server.</param>
 		/// <param name="port">The proxy server port.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>1</c> and <c>65535</c>.
@@ -79,9 +75,9 @@ namespace MailKit.Net.Proxy
 		/// <param name="port">The proxy server port.</param>
 		/// <param name="credentials">The credentials to use to authenticate with the proxy server.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/>is <c>null</c>.</para>
+		/// <para><paramref name="credentials"/>is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>1</c> and <c>65535</c>.
@@ -95,7 +91,7 @@ namespace MailKit.Net.Proxy
 		{
 		}
 
-		internal static byte[] GetConnectCommand (string host, int port, NetworkCredential proxyCredentials)
+		internal static byte[] GetConnectCommand (string host, int port, NetworkCredential? proxyCredentials)
 		{
 			var builder = new StringBuilder ();
 
@@ -156,7 +152,7 @@ namespace MailKit.Net.Proxy
 		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -185,24 +181,19 @@ namespace MailKit.Net.Proxy
 			try {
 				Send (socket, command, 0, command.Length, cancellationToken);
 
-				var builder = new ByteArrayBuilder (256);
+				using var builder = new ByteArrayBuilder (256);
 				var buffer = new byte[1];
 				var newline = false;
-				string response;
 
-				try {
-					// read until we consume the end of the headers
-					do {
-						int nread = Receive (socket, buffer, 0, 1, cancellationToken);
+				// read until we consume the end of the headers
+				do {
+					int nread = Receive (socket, buffer, 0, 1, cancellationToken);
 
-						if (nread < 1 || TryConsumeHeaders (builder, buffer[0], ref newline))
-							break;
-					} while (true);
+					if (nread < 1 || TryConsumeHeaders (builder, buffer[0], ref newline))
+						break;
+				} while (true);
 
-					response = builder.ToString ();
-				} finally {
-					builder.Dispose ();
-				}
+				var response = builder.ToString ();
 
 				ValidateHttpResponse (response, host, port);
 				return new NetworkStream (socket, true);
@@ -225,7 +216,7 @@ namespace MailKit.Net.Proxy
 		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -254,24 +245,19 @@ namespace MailKit.Net.Proxy
 			try {
 				await SendAsync (socket, command, 0, command.Length, cancellationToken).ConfigureAwait (false);
 
-				var builder = new ByteArrayBuilder (256);
+				using var builder = new ByteArrayBuilder (256);
 				var buffer = new byte[1];
 				var newline = false;
-				string response;
 
-				try {
-					// read until we consume the end of the headers
-					do {
-						int nread = await ReceiveAsync (socket, buffer, 0, 1, cancellationToken).ConfigureAwait (false);
+				// read until we consume the end of the headers
+				do {
+					int nread = await ReceiveAsync (socket, buffer, 0, 1, cancellationToken).ConfigureAwait (false);
 
-						if (nread < 1 || TryConsumeHeaders (builder, buffer[0], ref newline))
-							break;
-					} while (true);
+					if (nread < 1 || TryConsumeHeaders (builder, buffer[0], ref newline))
+						break;
+				} while (true);
 
-					response = builder.ToString ();
-				} finally {
-					builder.Dispose ();
-				}
+				var response = builder.ToString ();
 
 				ValidateHttpResponse (response, host, port);
 				return new NetworkStream (socket, true);

@@ -3,16 +3,25 @@
   "isRoot": true,
   "tools": {
     "altcover.global": {
-      "version": "8.8.173",
+      "version": "9.0.102",
       "commands": [
         "altcover"
-      ]
+      ],
+      "rollForward": false
     },
     "coveralls.net": {
       "version": "4.0.1",
       "commands": [
         "csmacnz.Coveralls"
-      ]
+      ],
+      "rollForward": false
+    },
+    "nunit.consolerunner.netcore": {
+      "version": "3.22.0",
+      "commands": [
+        "nunit"
+      ],
+      "rollForward": false
     }
   }
 }

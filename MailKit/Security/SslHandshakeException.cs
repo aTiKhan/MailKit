@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,7 @@ namespace MailKit.Security
 	/// </summary>
 	/// <remarks>
 	/// <para>The exception that is thrown when there is an error during the SSL/TLS handshake.</para>
-	/// <para>When this exception occurrs, it typically means that the IMAP, POP3 or SMTP server that
+	/// <para>When this exception occurs, it typically means that the IMAP, POP3 or SMTP server that
 	/// you are connecting to is using an SSL certificate that is either expired or untrusted by
 	/// your system.</para>
 	/// <para>Often times, mail servers will use self-signed certificates instead of using a certificate
@@ -70,12 +70,12 @@ namespace MailKit.Security
 		/// Initializes a new instance of the <see cref="SslHandshakeException"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="SslHandshakeException"/> from the seriaized data.
+		/// Creates a new <see cref="SslHandshakeException"/> from the serialized data.
 		/// </remarks>
 		/// <param name="info">The serialization info.</param>
 		/// <param name="context">The streaming context.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="info"/> is <c>null</c>.
+		/// <paramref name="info"/> is <see langword="null" />.
 		/// </exception>
 		[Obsolete ("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]
 		protected SslHandshakeException (SerializationInfo info, StreamingContext context) : base (info, context)
@@ -135,7 +135,7 @@ namespace MailKit.Security
 		/// Gets the server's SSL certificate, if it is available.
 		/// </remarks>
 		/// <value>The server's SSL certificate.</value>
-		public X509Certificate ServerCertificate {
+		public X509Certificate? ServerCertificate {
 			get; private set;
 		}
 
@@ -146,7 +146,7 @@ namespace MailKit.Security
 		/// Gets the certificate for the Root Certificate Authority, if it is available.
 		/// </remarks>
 		/// <value>The Root Certificate Authority certificate.</value>
-		public X509Certificate RootCertificateAuthority {
+		public X509Certificate? RootCertificateAuthority {
 			get; private set;
 		}
 
@@ -162,7 +162,7 @@ namespace MailKit.Security
 		/// <param name="info">The serialization info.</param>
 		/// <param name="context">The streaming context.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="info"/> is <c>null</c>.
+		/// <paramref name="info"/> is <see langword="null" />.
 		/// </exception>
 		[SecurityCritical]
 #if NET8_0_OR_GREATER
@@ -184,11 +184,11 @@ namespace MailKit.Security
 		}
 #endif
 
-		internal static SslHandshakeException Create (ref SslCertificateValidationInfo validationInfo, Exception ex, bool starttls, string protocol, string host, int port, int sslPort, params int[] standardPorts)
+		internal static SslHandshakeException Create (ref SslCertificateValidationInfo? validationInfo, Exception ex, bool starttls, string protocol, string host, int port, int sslPort, params int[] standardPorts)
 		{
 			var message = new StringBuilder (DefaultMessage);
-			X509Certificate2 certificate = null;
-			X509Certificate2 root = null;
+			X509Certificate2? certificate = null;
+			X509Certificate2? root = null;
 
 			if (ex is AggregateException aggregate) {
 				aggregate = aggregate.Flatten ();
@@ -205,9 +205,22 @@ namespace MailKit.Security
 			if (validationInfo != null) {
 				try {
 					int rootIndex = validationInfo.ChainElements.Count - 1;
-					if (rootIndex > 0)
+
+					if (rootIndex > 0) {
+#if NET10_0_OR_GREATER
+						root = X509CertificateLoader.LoadCertificate (validationInfo.ChainElements[rootIndex].Certificate.RawData);
+#else
 						root = new X509Certificate2 (validationInfo.ChainElements[rootIndex].Certificate.RawData);
-					certificate = new X509Certificate2 (validationInfo.Certificate.RawData);
+#endif
+					}
+
+					if (validationInfo.Certificate != null) {
+#if NET10_0_OR_GREATER
+						certificate = X509CertificateLoader.LoadCertificate (validationInfo.Certificate.RawData);
+#else
+						certificate = new X509Certificate2 (validationInfo.Certificate.RawData);
+#endif
+					}
 
 					if ((validationInfo.SslPolicyErrors & SslPolicyErrors.RemoteCertificateNotAvailable) != 0) {
 						message.AppendLine ("The SSL certificate for the server was not available.");
@@ -289,10 +302,13 @@ namespace MailKit.Security
 		}
 
 		// Adapted from Sebastian Krysmanski's https://github.com/skrysmanski/AppMotor/blob/main/src/AppMotor.Core/Certificates/SanExtensionHelpers.cs under the MIT license
-		static IReadOnlyCollection<string> GetDnsNames (X509Certificate2 certificate)
+		static IReadOnlyCollection<string> GetDnsNames (X509Certificate2? certificate)
 		{
 			const string subjectAlternativeNameOid = "2.5.29.17";
 			var dnsNames = new SortedSet<string> ();
+
+			if (certificate == null)
+				return dnsNames;
 
 			var dnsNameInfo = certificate.GetNameInfo (X509NameType.DnsName, forIssuer: false);
 			if (dnsNameInfo != null)
@@ -338,7 +354,11 @@ namespace MailKit.Security
 
 		public SslChainElement (X509ChainElement element)
 		{
+#if NET10_0_OR_GREATER
+			Certificate = X509CertificateLoader.LoadCertificate (element.Certificate.RawData);
+#else
 			Certificate = new X509Certificate2 (element.Certificate.RawData);
+#endif
 			ChainElementStatus = element.ChainElementStatus;
 			Information = element.Information;
 		}
@@ -354,25 +374,34 @@ namespace MailKit.Security
 		public readonly List<SslChainElement> ChainElements;
 		public readonly X509ChainStatus[] ChainStatus;
 		public readonly SslPolicyErrors SslPolicyErrors;
-		public readonly X509Certificate2 Certificate;
+		public readonly X509Certificate2? Certificate;
 		public readonly string Host;
 
-		public SslCertificateValidationInfo (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		public SslCertificateValidationInfo (string host, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
 		{
-			Certificate = new X509Certificate2 (certificate.Export (X509ContentType.Cert));
+#if NET10_0_OR_GREATER
+			Certificate = certificate != null ? X509CertificateLoader.LoadCertificate (certificate.Export (X509ContentType.Cert)) : null;
+#else
+			Certificate = certificate != null ? new X509Certificate2 (certificate.Export (X509ContentType.Cert)) : null;
+#endif
 			ChainElements = new List<SslChainElement> ();
 			SslPolicyErrors = sslPolicyErrors;
-			ChainStatus = chain.ChainStatus;
-			Host = sender as string;
+			Host = host;
 
 			// Note: we need to copy the ChainElements because the chain will be destroyed
-			foreach (var element in chain.ChainElements)
-				ChainElements.Add (new SslChainElement (element));
+			if (chain != null) {
+				ChainStatus = chain.ChainStatus;
+
+				foreach (var element in chain.ChainElements)
+					ChainElements.Add (new SslChainElement (element));
+			} else {
+				ChainStatus = Array.Empty<X509ChainStatus> ();
+			}
 		}
 
 		public void Dispose ()
 		{
-			Certificate.Dispose ();
+			Certificate?.Dispose ();
 			foreach (var element in ChainElements)
 				element.Dispose ();
 		}

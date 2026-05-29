@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,20 +27,14 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Text;
-using System.Buffers;
 using System.Threading;
 using System.Net.Security;
-using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 
 using MailKit.Security;
-
-using SslStream = MailKit.Net.SslStream;
-using NetworkStream = MailKit.Net.NetworkStream;
 
 namespace MailKit.Net.Proxy {
 	/// <summary>
@@ -66,7 +60,7 @@ namespace MailKit.Net.Proxy {
 		/// <param name="host">The host name of the proxy server.</param>
 		/// <param name="port">The proxy server port.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>1</c> and <c>65535</c>.
@@ -91,9 +85,9 @@ namespace MailKit.Net.Proxy {
 		/// <param name="port">The proxy server port.</param>
 		/// <param name="credentials">The credentials to use to authenticate with the proxy server.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <para><paramref name="host"/> is <c>null</c>.</para>
+		/// <para><paramref name="host"/> is <see langword="null" />.</para>
 		/// <para>-or-</para>
-		/// <para><paramref name="credentials"/>is <c>null</c>.</para>
+		/// <para><paramref name="credentials"/>is <see langword="null" />.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>1</c> and <c>65535</c>.
@@ -130,11 +124,11 @@ namespace MailKit.Net.Proxy {
 		/// </summary>
 		/// <remarks>
 		/// Specifies the cipher suites allowed to be used when negotiating an SSL or TLS connection.
-		/// When set to <c>null</c>, the operating system default is used. Use extreme caution when
+		/// When set to <see langword="null" />, the operating system default is used. Use extreme caution when
 		/// changing this setting.
 		/// </remarks>
 		/// <value>The cipher algorithms allowed for use when negotiating SSL or TLS encryption.</value>
-		public CipherSuitesPolicy SslCipherSuitesPolicy {
+		public CipherSuitesPolicy? SslCipherSuitesPolicy {
 			get; set;
 		}
 #endif
@@ -149,7 +143,7 @@ namespace MailKit.Net.Proxy {
 		/// <a href="Overload_MailKit_Net_Proxy_ProxyClient_Connect.htm">Connect</a> methods.</para>
 		/// </remarks>
 		/// <value>The client SSL certificates.</value>
-		public X509CertificateCollection ClientCertificates {
+		public X509CertificateCollection? ClientCertificates {
 			get; set;
 		}
 
@@ -158,17 +152,17 @@ namespace MailKit.Net.Proxy {
 		/// </summary>
 		/// <remarks>
 		/// <para>Gets or sets whether connecting via SSL/TLS should check certificate revocation.</para>
-		/// <para>Normally, the value of this property should be set to <c>true</c> (the default) for security
-		/// reasons, but there are times when it may be necessary to set it to <c>false</c>.</para>
+		/// <para>Normally, the value of this property should be set to <see langword="true" /> (the default) for security
+		/// reasons, but there are times when it may be necessary to set it to <see langword="false" />.</para>
 		/// <para>For example, most Certificate Authorities are probably pretty good at keeping their CRL and/or
 		/// OCSP servers up 24/7, but occasionally they do go down or are otherwise unreachable due to other
 		/// network problems between the client and the Certificate Authority. When this happens, it becomes
 		/// impossible to check the revocation status of one or more of the certificates in the chain
 		/// resulting in an <see cref="Security.SslHandshakeException"/> being thrown in the
 		/// <a href="Overload_MailKit_Net_Proxy_ProxyClient_Connect.htm">Connect</a> method. If this becomes a problem,
-		/// it may become desirable to set <see cref="CheckCertificateRevocation"/> to <c>false</c>.</para>
+		/// it may become desirable to set <see cref="CheckCertificateRevocation"/> to <see langword="false" />.</para>
 		/// </remarks>
-		/// <value><c>true</c> if certificate revocation should be checked; otherwise, <c>false</c>.</value>
+		/// <value><see langword="true" /> if certificate revocation should be checked; otherwise, <see langword="false" />.</value>
 		public bool CheckCertificateRevocation {
 			get; set;
 		}
@@ -182,14 +176,14 @@ namespace MailKit.Net.Proxy {
 		/// <a href="Overload_MailKit_Net_Proxy_ProxyClient_Connect.htm">Connect</a> methods.</para>
 		/// </remarks>
 		/// <value>The server certificate validation callback function.</value>
-		public RemoteCertificateValidationCallback ServerCertificateValidationCallback {
+		public RemoteCertificateValidationCallback? ServerCertificateValidationCallback {
 			get; set;
 		}
 
 		// Note: This is used by SslHandshakeException to build the exception message.
-		SslCertificateValidationInfo sslValidationInfo;
+		SslCertificateValidationInfo? sslValidationInfo;
 
-		bool ValidateRemoteCertificate (object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+		bool ValidateRemoteCertificate (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
 		{
 			bool valid;
 
@@ -198,15 +192,17 @@ namespace MailKit.Net.Proxy {
 
 			if (ServerCertificateValidationCallback != null) {
 				valid = ServerCertificateValidationCallback (ProxyHost, certificate, chain, sslPolicyErrors);
+#if NETFRAMEWORK
 			} else if (ServicePointManager.ServerCertificateValidationCallback != null) {
 				valid = ServicePointManager.ServerCertificateValidationCallback (ProxyHost, certificate, chain, sslPolicyErrors);
+#endif
 			} else {
 				valid = sslPolicyErrors == SslPolicyErrors.None;
 			}
 
 			if (!valid) {
 				// Note: The SslHandshakeException.Create() method will nullify this once it's done using it.
-				sslValidationInfo = new SslCertificateValidationInfo (sender, certificate, chain, sslPolicyErrors);
+				sslValidationInfo = new SslCertificateValidationInfo (ProxyHost, certificate, chain, sslPolicyErrors);
 			}
 
 			return valid;
@@ -249,7 +245,7 @@ namespace MailKit.Net.Proxy {
 		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -273,7 +269,7 @@ namespace MailKit.Net.Proxy {
 			cancellationToken.ThrowIfCancellationRequested ();
 
 			var socket = SocketUtils.Connect (ProxyHost, ProxyPort, LocalEndPoint, cancellationToken);
-			var ssl = new SslStream (new NetworkStream (socket, true), false, ValidateRemoteCertificate);
+			var ssl = new ExtendedSslStream (new NetworkStream (socket, true), false, ValidateRemoteCertificate);
 
 			try {
 #if NET5_0_OR_GREATER
@@ -292,24 +288,19 @@ namespace MailKit.Net.Proxy {
 			try {
 				ssl.Write (command, 0, command.Length);
 
-				var builder = new ByteArrayBuilder (256);
+				using var builder = new ByteArrayBuilder (256);
 				var buffer = new byte[1];
 				var newline = false;
-				string response;
 
-				try {
-					// read until we consume the end of the headers
-					do {
-						int nread = ssl.Read (buffer, 0, 1);
+				// read until we consume the end of the headers
+				do {
+					int nread = ssl.Read (buffer, 0, 1);
 
-						if (nread < 1 || HttpProxyClient.TryConsumeHeaders (builder, buffer[0], ref newline))
-							break;
-					} while (true);
+					if (nread < 1 || HttpProxyClient.TryConsumeHeaders (builder, buffer[0], ref newline))
+						break;
+				} while (true);
 
-					response = builder.ToString ();
-				} finally {
-					builder.Dispose ();
-				}
+				var response = builder.ToString ();
 
 				HttpProxyClient.ValidateHttpResponse (response, host, port);
 				return ssl;
@@ -330,7 +321,7 @@ namespace MailKit.Net.Proxy {
 		/// <param name="port">The target server port.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
-		/// <paramref name="host"/> is <c>null</c>.
+		/// <paramref name="host"/> is <see langword="null" />.
 		/// </exception>
 		/// <exception cref="System.ArgumentOutOfRangeException">
 		/// <paramref name="port"/> is not between <c>0</c> and <c>65535</c>.
@@ -354,7 +345,7 @@ namespace MailKit.Net.Proxy {
 			cancellationToken.ThrowIfCancellationRequested ();
 
 			var socket = await SocketUtils.ConnectAsync (ProxyHost, ProxyPort, LocalEndPoint, cancellationToken).ConfigureAwait (false);
-			var ssl = new SslStream (new NetworkStream (socket, true), false, ValidateRemoteCertificate);
+			var ssl = new ExtendedSslStream (new NetworkStream (socket, true), false, ValidateRemoteCertificate);
 
 			try {
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
@@ -373,24 +364,19 @@ namespace MailKit.Net.Proxy {
 			try {
 				await ssl.WriteAsync (command, 0, command.Length, cancellationToken).ConfigureAwait (false);
 
-				var builder = new ByteArrayBuilder (256);
+				using var builder = new ByteArrayBuilder (256);
 				var buffer = new byte[1];
 				var newline = false;
-				string response;
 
-				try {
-					// read until we consume the end of the headers
-					do {
-						int nread = ssl.Read (buffer, 0, 1);
+				// read until we consume the end of the headers
+				do {
+					int nread = ssl.Read (buffer, 0, 1);
 
-						if (HttpProxyClient.TryConsumeHeaders (builder, buffer[0], ref newline))
-							break;
-					} while (true);
+					if (HttpProxyClient.TryConsumeHeaders (builder, buffer[0], ref newline))
+						break;
+				} while (true);
 
-					response = builder.ToString ();
-				} finally {
-					builder.Dispose ();
-				}
+				var response = builder.ToString ();
 
 				HttpProxyClient.ValidateHttpResponse (response, host, port);
 				return ssl;

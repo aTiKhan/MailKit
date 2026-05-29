@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -65,9 +65,9 @@ namespace MailKit {
 			/// </remarks>
 			public const string MeterVersion = "0.1";
 
-			static Meter Meter;
+			static Meter? Meter;
 
-			internal static SocketMetrics Metrics { get; private set; }
+			internal static SocketMetrics? Metrics { get; private set; }
 
 			/// <summary>
 			/// Configure socket metering.
@@ -90,7 +90,7 @@ namespace MailKit {
 			/// </remarks>
 			/// <param name="meterFactory">The meter factory.</param>
 			/// <exception cref="ArgumentNullException">
-			/// <paramref name="meterFactory"/> is <c>null</c>.
+			/// <paramref name="meterFactory"/> is <see langword="null" />.
 			/// </exception>
 			public static void Configure (IMeterFactory meterFactory)
 			{
@@ -145,9 +145,9 @@ namespace MailKit {
 			/// </remarks>
 			public const string MeterVersion = "0.1";
 
-			static Meter Meter;
+			static Meter? Meter;
 
-			internal static ClientMetrics Metrics { get; private set; }
+			internal static ClientMetrics? Metrics { get; private set; }
 
 			internal static ClientMetrics CreateMetrics (Meter meter)
 			{
@@ -175,7 +175,7 @@ namespace MailKit {
 			/// </remarks>
 			/// <param name="meterFactory">The meter factory.</param>
 			/// <exception cref="ArgumentNullException">
-			/// <paramref name="meterFactory"/> is <c>null</c>.
+			/// <paramref name="meterFactory"/> is <see langword="null" />.
 			/// </exception>
 			public static void Configure (IMeterFactory meterFactory)
 			{
@@ -230,9 +230,9 @@ namespace MailKit {
 			/// </remarks>
 			public const string MeterVersion = "0.1";
 
-			static Meter Meter;
+			static Meter? Meter;
 
-			internal static ClientMetrics Metrics { get; private set; }
+			internal static ClientMetrics? Metrics { get; private set; }
 
 			internal static ClientMetrics CreateMetrics (Meter meter)
 			{
@@ -260,7 +260,7 @@ namespace MailKit {
 			/// </remarks>
 			/// <param name="meterFactory">The meter factory.</param>
 			/// <exception cref="ArgumentNullException">
-			/// <paramref name="meterFactory"/> is <c>null</c>.
+			/// <paramref name="meterFactory"/> is <see langword="null" />.
 			/// </exception>
 			public static void Configure (IMeterFactory meterFactory)
 			{
@@ -315,9 +315,9 @@ namespace MailKit {
 			/// </remarks>
 			public const string MeterVersion = "0.1";
 
-			static Meter Meter;
+			static Meter? Meter;
 
-			internal static ClientMetrics Metrics { get; private set; }
+			internal static ClientMetrics? Metrics { get; private set; }
 
 			internal static ClientMetrics CreateMetrics (Meter meter)
 			{
@@ -345,7 +345,7 @@ namespace MailKit {
 			/// </remarks>
 			/// <param name="meterFactory">The meter factory.</param>
 			/// <exception cref="ArgumentNullException">
-			/// <paramref name="meterFactory"/> is <c>null</c>.
+			/// <paramref name="meterFactory"/> is <see langword="null" />.
 			/// </exception>
 			public static void Configure (IMeterFactory meterFactory)
 			{
@@ -381,7 +381,7 @@ namespace MailKit {
 		/// </remarks>
 		/// <param name="meterFactory">The meter factory.</param>
 		/// <exception cref="ArgumentNullException">
-		/// <paramref name="meterFactory"/> is <c>null</c>.
+		/// <paramref name="meterFactory"/> is <see langword="null" />.
 		/// </exception>
 		public static void Configure (IMeterFactory meterFactory)
 		{

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,13 +50,13 @@ namespace MailKit.Net {
 		};
 
 		readonly NetworkOperationKind kind;
-		readonly ClientMetrics metrics;
-		readonly Activity activity;
+		readonly ClientMetrics? metrics;
+		readonly Activity? activity;
 		readonly long startTimestamp;
 		readonly Uri uri;
-		Exception ex;
+		Exception? ex;
 
-		NetworkOperation (NetworkOperationKind kind, Uri uri, Activity activity, ClientMetrics metrics)
+		NetworkOperation (NetworkOperationKind kind, Uri uri, Activity? activity, ClientMetrics? metrics)
 		{
 			this.kind = kind;
 			this.uri = uri;
@@ -72,7 +72,7 @@ namespace MailKit.Net {
 			startTimestamp = Stopwatch.GetTimestamp ();
 		}
 #else
-		Exception ex;
+		Exception? ex;
 
 		NetworkOperation ()
 		{
@@ -124,7 +124,7 @@ namespace MailKit.Net {
 		}
 
 #if NET6_0_OR_GREATER
-		public static NetworkOperation Start (NetworkOperationKind kind, Uri uri, ActivitySource source, ClientMetrics metrics)
+		public static NetworkOperation Start (NetworkOperationKind kind, Uri uri, ActivitySource source, ClientMetrics? metrics)
 		{
 
 			var activity = source?.StartActivity (ActivityNames[(int) kind], ActivityKind.Client);

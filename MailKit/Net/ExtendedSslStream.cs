@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +27,17 @@
 using System;
 using System.IO;
 using System.Net.Security;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Authentication.ExtendedProtection;
 
 namespace MailKit.Net
 {
-	class SslStream : System.Net.Security.SslStream, IChannelBindingContext
+	class ExtendedSslStream : SslStream, IChannelBindingContext
 	{
-		ChannelBinding tlsServerEndPoint;
-		ChannelBinding tlsUnique;
+		ChannelBinding? tlsServerEndPoint;
+		ChannelBinding? tlsUnique;
 
-		public SslStream (Stream innerStream, bool leaveInnerStreamOpen, RemoteCertificateValidationCallback userCertificateValidationCallback) : base (innerStream, leaveInnerStreamOpen, userCertificateValidationCallback)
+		public ExtendedSslStream (Stream innerStream, bool leaveInnerStreamOpen, RemoteCertificateValidationCallback userCertificateValidationCallback) : base (innerStream, leaveInnerStreamOpen, userCertificateValidationCallback)
 		{
 		}
 
@@ -44,9 +45,9 @@ namespace MailKit.Net
 			get { return base.InnerStream; }
 		}
 
-		ChannelBinding GetChannelBinding (ChannelBindingKind kind)
+		ChannelBinding? GetChannelBinding (ChannelBindingKind kind)
 		{
-			ChannelBinding channelBinding;
+			ChannelBinding? channelBinding;
 
 			try {
 				// Note: Documentation for TransportContext.GetChannelBinding() states that it will return null if the
@@ -64,20 +65,17 @@ namespace MailKit.Net
 		}
 
 		/// <summary>
-		/// Try to get a channel-binding token.
+		/// Try to get a channel-binding.
 		/// </summary>
 		/// <remarks>
 		/// Tries to get the specified channel-binding.
 		/// </remarks>
 		/// <param name="kind">The kind of channel-binding desired.</param>
-		/// <param name="token">The channel-binding token.</param>
-		/// <returns><c>true</c> if the channel-binding token was acquired; otherwise, <c>false</c>.</returns>
-		public bool TryGetChannelBindingToken (ChannelBindingKind kind, out byte[] token)
+		/// <param name="channelBinding">The channel-binding.</param>
+		/// <returns><see langword="true" /> if the channel-binding token was acquired; otherwise, <see langword="false" />.</returns>
+		public bool TryGetChannelBinding (ChannelBindingKind kind, [NotNullWhen (true)] out ChannelBinding? channelBinding)
 		{
-			ChannelBinding channelBinding = null;
 			int identifierLength;
-
-			token = null;
 
 			if (kind == ChannelBindingKind.Endpoint) {
 				channelBinding = tlsServerEndPoint ??= GetChannelBinding (kind);
@@ -86,11 +84,41 @@ namespace MailKit.Net
 				channelBinding = tlsUnique ??= GetChannelBinding (kind);
 				identifierLength = "tls-unique:".Length;
 			} else {
+				channelBinding = null;
 				return false;
 			}
 
 			if (channelBinding == null || channelBinding.Size <= 32 + identifierLength)
 				return false;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Try to get a channel-binding token.
+		/// </summary>
+		/// <remarks>
+		/// Tries to get the specified channel-binding.
+		/// </remarks>
+		/// <param name="kind">The kind of channel-binding desired.</param>
+		/// <param name="token">The channel-binding token.</param>
+		/// <returns><see langword="true" /> if the channel-binding token was acquired; otherwise, <see langword="false" />.</returns>
+		public bool TryGetChannelBindingToken (ChannelBindingKind kind, [NotNullWhen (true)] out byte[]? token)
+		{
+			token = null;
+
+			if (!TryGetChannelBinding (kind, out var channelBinding))
+				return false;
+
+			int identifierLength;
+
+			if (kind == ChannelBindingKind.Endpoint) {
+				identifierLength = "tls-server-end-point:".Length;
+			} else if (kind == ChannelBindingKind.Unique) {
+				identifierLength = "tls-unique:".Length;
+			} else {
+				return false;
+			}
 
 			int tokenLength = (channelBinding.Size - 32) - identifierLength;
 			token = new byte[tokenLength];

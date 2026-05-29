@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2024 .NET Foundation and Contributors
+// Copyright (c) 2013-2026 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,8 @@ namespace MailKit.Net
 {
 	class NetworkStream : Stream
 	{
-		SocketAsyncEventArgs send;
-		SocketAsyncEventArgs recv;
+		SocketAsyncEventArgs? send;
+		SocketAsyncEventArgs? recv;
 		bool ownsSocket;
 		bool connected;
 
@@ -115,9 +115,9 @@ namespace MailKit.Net
 			}
 		}
 
-		void AsyncOperationCompleted (object sender, SocketAsyncEventArgs args)
+		void AsyncOperationCompleted (object? sender, SocketAsyncEventArgs args)
 		{
-			var tcs = (TaskCompletionSource<bool>) args.UserToken;
+			var tcs = (TaskCompletionSource<bool>) args.UserToken!;
 
 			if (args.SocketError == SocketError.Success) {
 				tcs.TrySetResult (true);
@@ -132,7 +132,7 @@ namespace MailKit.Net
 			if (send != null) {
 				send.Completed -= AsyncOperationCompleted;
 				send.AcceptSocket = null;
-				send?.Dispose ();
+				send.Dispose ();
 				send = null;
 			}
 
@@ -178,7 +178,7 @@ namespace MailKit.Net
 			using (var timeout = new CancellationTokenSource (readTimeout)) {
 				using (var linked = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken, timeout.Token)) {
 					using (var registration = linked.Token.Register (() => tcs.TrySetCanceled (), false)) {
-						recv.SetBuffer (buffer, offset, count);
+						recv!.SetBuffer (buffer, offset, count);
 						recv.UserToken = tcs;
 
 						if (!Socket.ReceiveAsync (recv))
@@ -224,7 +224,7 @@ namespace MailKit.Net
 			using (var timeout = new CancellationTokenSource (writeTimeout)) {
 				using (var linked = CancellationTokenSource.CreateLinkedTokenSource (cancellationToken, timeout.Token)) {
 					using (var registration = linked.Token.Register (() => tcs.TrySetCanceled (), false)) {
-						send.SetBuffer (buffer, offset, count);
+						send!.SetBuffer (buffer, offset, count);
 						send.UserToken = tcs;
 
 						if (!Socket.SendAsync (send))
@@ -267,14 +267,14 @@ namespace MailKit.Net
 			throw new NotSupportedException ();
 		}
 
-		public static NetworkStream Get (Stream stream)
+		public static NetworkStream? Get (Stream stream)
 		{
 #if !MAILKIT_LITE
 			if (stream is CompressedStream compressed)
 				stream = compressed.InnerStream;
 #endif
 
-			if (stream is SslStream ssl)
+			if (stream is ExtendedSslStream ssl)
 				stream = ssl.InnerStream;
 
 			return stream as NetworkStream;

@@ -1,5 +1,122 @@
 # Release Notes
 
+## MailKit 4.17.0 (2026-05-26)
+
+* Updated nullability of ImapClient.Inbox (which will never return null).
+  (issue [#1996](https://github.com/jstedfast/MailKit/issues/1996))
+* Fixed IMAP's logic for ACL, LISTRIGHTS, MYRIGHTS, QUOTAROOT, QUOTA,
+  and METADATA response parsers to properly handle []'s in the folder name.
+  (issue [#2002](https://github.com/jstedfast/MailKit/issues/2002))
+* Updated System.Threading.Tasks.Extensions to v4.6.3.
+* Updated System.Formats.Asn1 to v10.0.0 (instead of 10.0.2) for .NET 10.
+* Bumped MimeKit dependency to 4.17.0.
+* Code quality improvements.
+
+## MailKit 4.16.0 (2026-04-15)
+
+* SECURITY: Fixed protocol streams to reset internal buffers after upgrading to SSL/TLS.
+* Dispose of the RandomNumberGenerator used in RC4.GenerateKey().
+  (issue [#1989](https://github.com/jstedfast/MailKit/issues/1989))
+* Fixed calculation for number of needed bytes in SOCKS5 connect response.
+  (issue [#1993](https://github.com/jstedfast/MailKit/issues/1993))
+* Bumped MimeKit dependency to 4.16.0.
+
+## MailKit 4.15.1 (2026-03-04)
+
+* SECURITY: Bumped MimeKit to 4.15.1 for a security fix that prevents mailbox addresses from being allowed
+  to contain CRLF sequences which can be used to inject SMTP commands in the SmtpClient when it sends
+  `MAIL FROM` or `RCPT TO` commands.
+
+## MailKit 4.15.0 (2026-02-15)
+
+* Default the SmtpClient/Pop3Client/ImapClient.SslProtocols to the ServicePointManager.SecurityProtocol
+  value in .NET Framework (net4x). (issue [#1952](https://github.com/jstedfast/MailKit/issues/1952))
+* Added support for.NET 10.
+* Marked IMailService.SslCipherAlgorithm, SslCipherStrength, SslHashAlgorithm, SslHashStrength,
+  SslKeyExchangeAlgorithm, and SslKeyExchangeStrength as Obsolete in .NET 10 in favor of the
+  IMailService.SslCipherSuite property (.NET 10 only).
+* Bumped MimeKit dependency to 4.15.0.
+
+## MailKit 4.14.1 (2025-10-13)
+
+* Re-added NTLM to the list of mechanisms to try by default.
+  (issue [#1953](https://github.com/jstedfast/MailKit/issues/1953))
+* Fixed IMAP to treat '+' as a normal Atom token.
+  (issue [#1956](https://github.com/jstedfast/MailKit/issues/1956))
+* Added fallback logic for imap.strato.de if LIST doesn't return the INBOX.
+  (issue [#1957](https://github.com/jstedfast/MailKit/issues/1957))
+
+## MailKit 4.14.0 (2025-09-28)
+
+* Updated MailService::GetSslClientAuthenticationOptions to be protected virtual.
+  (issue [#1931](https://github.com/jstedfast/MailKit/issues/1931))
+* Fixed initialization of SaslMechanism to lazily check if GSSAPI and/or NTLM are
+  supported (natively) to avoid undesirable error messages appearing in dotnet logs
+  on Linux systems. (issue [#1924](https://github.com/jstedfast/MailKit/issues/1924))
+* Bumped MimeKit dependency to 4.14.0.
+
+## MailKit 4.13.0 (2025-06-25)
+
+* Fixed tokenization of IMAP atom tokens that start with '+'.
+  (issue [#1914](https://github.com/jstedfast/MailKit/issues/1914))
+* Fixed the Imap/Pop3/Smtp clients to no longer fallback to using the
+  ServicePointManager.ServerCertificateValidationCallback method on .NET Core.
+  (issue [#1925](https://github.com/jstedfast/MailKit/issues/1925))
+* Bumped MimeKit dependency to 4.13.0.
+
+## MailKit 4.12.1 (2025-05-17)
+
+* Fixed authentication bugs introduced into 4.12.0 related to adding GSSAPI and native NTLM auth support
+  which causes problems on Linux/Mac.
+  (issue [#1910](https://github.com/jstedfast/MailKit/issues/1910))
+  (issue [#1911](https://github.com/jstedfast/MailKit/issues/1911))
+* Reverted System.Threading.Tasks.Extensions dependency back to 4.6.2.
+* Reverted System.Formats.Asn1 dependency back to 8.0.1.
+
+## MailKit 4.12.0 (2025-04-28)
+
+* Added support for native NTLM auth (using .NET Core's NegotiateAuthentication API).
+  This new class is called SaslMechanismNtlmNative and is the default NTLM mechanism
+  used by MailKit clients on net8.0+.
+* Added support for the GSSAPI SASL mechanism for net8.0+.
+  (issue [#1249](https://github.com/jstedfast/MailKit/issues/1249))
+* Fixed MailFolder.FirstUnread to be initialized to -1 to indicate unknown.
+  (issue [#1898](https://github.com/jstedfast/MailKit/issues/1898))
+* Added support for non-compliant keywords that begin with '\'.
+  (issue [#1906](https://github.com/jstedfast/MailKit/issues/1906))
+* Added SearchQuery.HasKeywords/NotKeywords() overloads that take params instead of IEnumerable&lt;string&gt;.
+* Bumped System.Threading.Tasks.Extensions from 4.6.2 to 4.6.3.
+* Bumped System.Formats.Asn1 from 8.0.1 to 8.0.2.
+* Bumped MimeKit dependency to 4.12.0.
+
+## MailKit 4.11.0 (2025-03-08)
+
+* Default MailService.SslProtocols to SslProtocols.None which is what the dotnet SslStream team recommends.
+  (As weird as it may seem, SslProtocols.None does not mean "don't support any SSL protocols", it means
+  don't override the default system settings.)
+* Bumped MimeKit dependency to 4.11.0.
+
+## MailKit 4.10.0 (2025-01-26)
+
+* Work around a QQMail/Yandex IMAP BODYSTRUCTURE response for empty multipart.
+  (issue [#1861](https://github.com/jstedfast/MailKit/issues/1861))
+* Added exception documentation for methods in IMailFolder.
+  (issue [#1868](https://github.com/jstedfast/MailKit/issues/1868))
+* Added IMailFolder.CanOpen property that checks IMailFolder.Attributes for NoSelect and NonExistent flags.
+* Bumped MimeKit dependency to 4.10.0.
+
+## MailKit 4.9.0 (2024-12-09)
+
+* Added an IMAP work-around for mail.ru which sometimes sends integer tokens as decimals in its responses.
+  (issue [#1838](https://github.com/jstedfast/MailKit/issues/1838))
+* Added a workaround for GMail IMAP BODY responses that include multipart expressions without any children
+  (e.g. `("ALTERNATIVE")`). (issue [#1841](https://github.com/jstedfast/MailKit/issues/1841))
+* Fixed default system proxy to handle null credentials and check if the targetUri is bypassed.
+  (issue [#1852](https://github.com/jstedfast/MailKit/issues/1852))
+* Dropped support for net6.0 (Microsoft support ended Nov 12, 2024).
+* Bumped System.Threading.Tasks.Extensions dependency to 4.6.0.
+* Bumped MimeKit dependency to 4.9.0.
+
 ## MailKit 4.8.0 (2024-09-29)
 
 * Added a UniqueIdRange.SortOrder property.
@@ -237,7 +354,7 @@
   IStoreLabelsRequest parameter. Made previous APIs into extension methods to aid in porting from 2.x.
 * Simplify Append()/AppendAsync() APIs by using a new IAppendRequest parameter instead. Made previous APIs into
   extension methods to aid in porting from 2.x.
-* Simplify Replace()/ReplaceAsync() APIs by using a new IReplaceRequest parameterinstead. Made previous APIs into
+* Simplify Replace()/ReplaceAsync() APIs by using a new IReplaceRequest parameter instead. Made previous APIs into
   extension methods to aid in porting from 2.x.
 * Updated SmtpClient.Send()/SendAsync() methods to return a string.
   (issue [#1161](https://github.com/jstedfast/MailKit/issues/1161))
@@ -251,7 +368,7 @@
 * Rewrote NTLM support based on official specs. Now supports channel-binding and using the default system credentials.
 * Modified ImapFolder.Fetch(int, int, ...) to shortcut if ImapFolder.Count == 0.
 * Updated SmtpClient to append an ORCPT arg to RCPT TO commands and to hex-encode the ENVID parameter value.
-* Improved/simplified logic for ranking SASL authentication mechisms for each client.
+* Improved/simplified logic for ranking SASL authentication mechanisms for each client.
 * Added SaslMechanism.ChallengeAsync() to facilitate future SASL mechanisms that may need to make network requests
   such as Kerberos/GSSAPI and perhaps even future/custom OAuth2 implementations.
 * Always set SearchResults.Count/Min/Max properties if we can.
@@ -358,7 +475,7 @@
   (issue [#1060](https://github.com/jstedfast/MailKit/issues/1060))
 * Make sure the ImapStream is not null (can be null if user calls Disconnect() causing IDLE to abort).
   (issue [#1025](https://github.com/jstedfast/MailKit/issues/1025))
-* Case-insenitively match IMAP folder attribute flags (e.g. \HasNoChildren and \NoSelect).
+* Case-insensitively match IMAP folder attribute flags (e.g. \HasNoChildren and \NoSelect).
 * Added support for the IMAP SAVEDATE extension.
 * Added support for detecting SMTP's REQUIRETLS extension.
 
@@ -415,7 +532,7 @@
 * Renamed MessageSummaryItems.Id to MessageSummaryItems.EmailId to
   better map to the property name used in the IMAP OBJECTID
   specification.
-* Updated NetworkStream.ReadAsync() and WriteAsync() mehods to make use of
+* Updated NetworkStream.ReadAsync() and WriteAsync() methods to make use of
   timeouts. (issue [#827](https://github.com/jstedfast/MailKit/issues/827))
 
 ## MailKit 2.5.2 (2020-03-14)
@@ -484,7 +601,7 @@ this release breaks API/ABI.
 
 ## MailKit 2.3.2 (2019-10-12)
 
-* Fixed trimming delimeters from the end of IMAP folder names.
+* Fixed trimming delimiters from the end of IMAP folder names.
 * Fixed fetching of IMAP PreviewText when message bodies do not contain any text parts.
 * Fixed Pop3Client to never emit Authenticated events w/ null messages.
 * Dropped SslProtocols.Tls (aka TLSv1.0) from the default SslProtocols used by IMAP, POP3
@@ -621,7 +738,7 @@ this release breaks API/ABI.
 * Made SmtpClient, Pop3Client, and ImapClient's Connect() methods truly cancellable as well
   as made the underlying socket.Connect() call adhere to any specified client.Timeout value.
 * Added support for connecting via a SOCKS4, SOCKS4a, or SOCKS5 proxy server.
-* Fixed ImapClient's OnAuthenticated() method to protect aganst throwing an ArgumentNullException
+* Fixed ImapClient's OnAuthenticated() method to protect against throwing an ArgumentNullException
   when trying to emit the Authenticated event if the server did not supply any resp-code-text in
   the OK response to the AUTHENTICATE command. (issue [#774](https://github.com/jstedfast/MailKit/issues/774))
 * Modified ImapFolder.Create() to handle [ALREADYEXISTS] resp-codes.
@@ -658,7 +775,7 @@ this release breaks API/ABI.
 * All ImapFolder.MessageFlagsChanged, ModSeqChanged, and LabelsChanged events will now also be
   followed by a MessageSummaryFetched event containing the combined information of those events.
 * Added support for IMAP's NOTIFY extension. Many thanks to [Steffen Kieß](https://github.com/steffen-kiess)
-  for getting the ball rolling on this feature by implementing the neccessary ImapEvent, ImapEventGroup,
+  for getting the ball rolling on this feature by implementing the necessary ImapEvent, ImapEventGroup,
   and ImapMailboxFilter classes as well as the initial support.
 
 API Changes Since 2.0.x:
@@ -760,7 +877,7 @@ client.Authenticate (oauth2);
 
 * Updated MailKit to fully support async IO instead of using Task.Run() wrappers.
 * Fixed a resource leak when fetching IMAP body parts gets an exception.
-* Fixed each of the Client.Connect() implementtions to catch exceptions thrown by
+* Fixed each of the Client.Connect() implementations to catch exceptions thrown by
   IProtocolLogger.LogConnect().
 * Removed the ImapFolder.MessagesArrived event.
 * Added new Authenticate() methods that take a SaslMechanism to avoid the need to
